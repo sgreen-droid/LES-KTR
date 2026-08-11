@@ -1,0 +1,48 @@
+# Build outputs
+bin/
+obj/
+publish/
+release-artifacts/
+installer/*.msi
+installer/*.cab
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# WiX build output
+installer/*.wixobj
+installer/*.wixpdb
+
+# .NET
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+*.tlog
+
+# Test results
+TestResults/
+coverage/
+*.trx
+
+# Local user secrets / certs — never commit these
+*.pfx
+*.p12
+*.cer
+*.key
+
+# Temp files created by installer script
+*_Install/
+*.tmp

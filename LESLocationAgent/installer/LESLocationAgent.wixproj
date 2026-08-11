@@ -1,0 +1,10 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <OutputName>LESLocationAgent</OutputName>
+    <Platform>x64</Platform>
+    <SuppressIces>ICE91;ICE69</SuppressIces>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Package.wxs" />
+  </ItemGroup>
+</Project>
