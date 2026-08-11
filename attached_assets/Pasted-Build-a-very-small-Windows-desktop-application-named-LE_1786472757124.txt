@@ -1,0 +1,760 @@
+Build a very small Windows desktop application named:
+
+LES Location Agent
+
+PURPOSE
+This application is for organization-owned Windows PCs.
+
+Its ONLY purpose is to obtain the most accurate geographic location that Windows can provide, save that location locally, and make the result easy for Action1 RMM to read.
+
+Do NOT build:
+- a web dashboard
+- a database
+- a cloud backend
+- user tracking features
+- screenshots
+- camera access
+- microphone access
+- browser history collection
+- keystroke collection
+- file collection
+
+Keep this project extremely small, reliable, and production-oriented.
+
+========================================================
+TECHNOLOGY
+========================================================
+
+Build a native Windows 11 desktop application using:
+
+- C#
+- .NET 8 or the current appropriate supported .NET version
+- Windows App SDK
+- WinUI 3
+- Windows.Devices.Geolocation
+
+Target:
+- Windows 11
+- x64
+
+Use Microsoft's supported Windows geolocation APIs.
+
+Do NOT use:
+- browser HTML5 geolocation
+- IP address location as the primary source
+- Google Maps
+- external location APIs
+- unsupported Windows registry tricks
+
+The primary location source MUST be:
+
+Windows.Devices.Geolocation.Geolocator
+
+========================================================
+IMPORTANT LOCATION PERMISSION REQUIREMENT
+========================================================
+
+Windows location permission must be requested properly.
+
+On first launch, show a small foreground application window.
+
+The application must call:
+
+Geolocator.RequestAccessAsync()
+
+from the foreground UI context.
+
+Do not attempt to bypass Windows privacy controls.
+
+If Windows displays its location permission prompt, allow the normal Windows consent experience to occur.
+
+Display the returned access state:
+
+Allowed
+Denied
+Unspecified
+
+If permission is denied, clearly display:
+
+"Location permission is disabled. Enable location access in Windows Settings."
+
+Also provide a button:
+
+[Open Location Settings]
+
+that opens the appropriate Windows Location privacy settings page if possible.
+
+========================================================
+MAIN WINDOW
+========================================================
+
+Create an extremely simple professional interface.
+
+Title:
+
+LES Location Agent
+
+Display:
+
+Location Permission:
+Windows Location Status:
+Latitude:
+Longitude:
+Accuracy:
+Altitude:
+Location Source:
+Last Updated:
+
+Buttons:
+
+[Enable Location]
+[Get Location]
+[Open Location Settings]
+
+Status area at bottom:
+
+Ready
+Requesting location...
+Location acquired
+Location unavailable
+Permission denied
+Timed out
+
+No unnecessary graphics or complicated navigation.
+
+========================================================
+GET THE MOST PRECISE LOCATION POSSIBLE
+========================================================
+
+When retrieving location, create a new Geolocator instance.
+
+Configure it to request high accuracy.
+
+Use:
+
+DesiredAccuracy =
+Windows.Devices.Geolocation.PositionAccuracy.High
+
+and where appropriate set:
+
+DesiredAccuracyInMeters = 10
+
+Do not claim that Windows will actually achieve 10 meter accuracy.
+
+That value is a REQUEST to Windows for better accuracy.
+
+Windows decides what positioning technology is available.
+
+Call GetGeopositionAsync using an appropriate maximum age and timeout.
+
+Use a reasonable configuration such as:
+
+MaximumAge:
+0 to 30 seconds
+
+Timeout:
+30 seconds
+
+Prefer a fresh location fix over a stale cached result.
+
+If possible, first attempt a fresh high-accuracy position.
+
+If it fails or times out, optionally allow one fallback attempt with slightly less restrictive requirements.
+
+Do not loop forever.
+
+========================================================
+LOCATION DATA
+========================================================
+
+When a Geoposition is successfully returned, obtain as much useful supported data as possible.
+
+At minimum store:
+
+Latitude
+Longitude
+Accuracy
+Timestamp
+
+Where available also store:
+
+Altitude
+AltitudeAccuracy
+Heading
+Speed
+PositionSource
+
+Use:
+
+Geoposition.Coordinate.Point.Position.Latitude
+Geoposition.Coordinate.Point.Position.Longitude
+Geoposition.Coordinate.Accuracy
+Geoposition.Coordinate.Timestamp
+
+Use PositionSource if Windows exposes it.
+
+Possible source values may include things such as:
+- Satellite
+- Cellular
+- WiFi
+- IPAddress
+- Unknown
+
+Do not label a position as GPS unless Windows reports a satellite/GPS-type source.
+
+Display:
+
+Location Source: Windows Geolocation
+
+and separately:
+
+Position Source: <actual Windows source>
+
+========================================================
+ACCURACY HANDLING
+========================================================
+
+Accuracy is critical.
+
+Always save and display Windows' reported accuracy value in meters.
+
+Example:
+
+Latitude: 40.817391
+Longitude: -73.941502
+Accuracy: 28 meters
+
+Do not round latitude/longitude excessively.
+
+Store at least 6 decimal places.
+
+Prefer retaining the original double precision internally.
+
+Create a quality classification:
+
+EXCELLENT:
+accuracy <= 25 meters
+
+GOOD:
+accuracy > 25 and <= 100 meters
+
+APPROXIMATE:
+accuracy > 100 and <= 1000 meters
+
+LOW:
+accuracy > 1000 meters
+
+UNKNOWN:
+no accuracy value available
+
+Save this as:
+
+accuracyQuality
+
+========================================================
+TRY TO IMPROVE THE LOCATION FIX
+========================================================
+
+When the user presses Get Location:
+
+1. Request one high accuracy position.
+
+2. If multiple position updates can be obtained safely within approximately
+15-30 seconds, collect several readings.
+
+3. Compare their reported accuracy values.
+
+4. Keep the reading with the LOWEST accuracy radius value.
+
+For example:
+
+Reading 1 accuracy: 250m
+Reading 2 accuracy: 75m
+Reading 3 accuracy: 22m
+
+Save Reading 3.
+
+Do not average coordinates blindly.
+
+Use Windows' reported accuracy to choose the best result.
+
+Stop early if an excellent fix is obtained.
+
+Example:
+
+accuracy <= 20 meters
+
+Do not continue requesting location unnecessarily after a sufficiently precise reading has been obtained.
+
+========================================================
+LOCAL OUTPUT
+========================================================
+
+Create:
+
+C:\ProgramData\LESLocationAgent\
+
+Write the most recent successful location to:
+
+C:\ProgramData\LESLocationAgent\location.json
+
+Example:
+
+{
+  "latitude": 40.817391,
+  "longitude": -73.941502,
+  "accuracyMeters": 28.4,
+  "accuracyQuality": "GOOD",
+  "altitudeMeters": null,
+  "altitudeAccuracyMeters": null,
+  "headingDegrees": null,
+  "speedMetersPerSecond": null,
+  "positionSource": "WiFi",
+  "locationSource": "Windows Geolocation",
+  "permissionStatus": "Allowed",
+  "timestampUtc": "2026-08-11T18:35:42Z",
+  "computerName": "LES-LAPTOP-001",
+  "agentVersion": "1.0.0"
+}
+
+Use valid JSON.
+
+Write JSON atomically:
+
+1. Write to a temporary file.
+2. Replace location.json only after the new file is complete.
+
+This prevents Action1 from reading a partially-written JSON file.
+
+========================================================
+STALE LOCATION HANDLING
+========================================================
+
+Never overwrite a valid existing position with empty or invalid coordinates.
+
+If a location request fails:
+
+retain the last successful coordinates.
+
+Create a separate status file:
+
+C:\ProgramData\LESLocationAgent\status.json
+
+Example:
+
+{
+  "lastAttemptUtc": "...",
+  "lastSuccessUtc": "...",
+  "permissionStatus": "Allowed",
+  "locationStatus": "TimedOut",
+  "error": null
+}
+
+This lets Action1 distinguish:
+
+- no location ever acquired
+- location currently unavailable
+- last location is stale
+- permission denied
+
+========================================================
+AUTOMATIC LOCATION UPDATES
+========================================================
+
+After the user has granted location permission, support automatic refresh.
+
+Because Windows location permission is user/application-context sensitive, DO NOT build this solely as a LocalSystem Windows service.
+
+Use a supported logged-in-user mechanism.
+
+Preferred design:
+
+- small WinUI application
+- starts automatically when the user signs in
+- normally runs minimized
+- periodically requests a location update
+
+Initial refresh interval:
+
+15 minutes
+
+Make this setting configurable in:
+
+C:\ProgramData\LESLocationAgent\config.json
+
+Example:
+
+{
+  "refreshMinutes": 15,
+  "desiredAccuracyMeters": 10,
+  "locationTimeoutSeconds": 30
+}
+
+Minimum permitted refresh interval:
+5 minutes
+
+Do not request location continuously every few seconds.
+
+========================================================
+START WITH WINDOWS
+========================================================
+
+Configure the application so it can launch automatically after an authorized user signs into Windows.
+
+Use an appropriate supported startup mechanism.
+
+Do NOT place a visible console window on startup.
+
+The application may start minimized after first-time configuration.
+
+The first run must remain visible because Windows location permission may need user interaction.
+
+========================================================
+TRAY ICON
+========================================================
+
+If straightforward and reliable, provide a small system tray icon.
+
+Menu:
+
+Open LES Location Agent
+Update Location
+Location Status
+Exit
+
+Do not hide the application in a deceptive manner.
+
+========================================================
+ACTION1 INTEGRATION
+========================================================
+
+Create a PowerShell file:
+
+Action1-Location-Sync.ps1
+
+Its only purpose is to read:
+
+C:\ProgramData\LESLocationAgent\location.json
+
+and:
+
+C:\ProgramData\LESLocationAgent\status.json
+
+Then populate Action1 Custom Attributes.
+
+Use:
+
+Action1-Set-CustomAttribute
+
+with these exact names:
+
+Latitude
+Longitude
+Location Accuracy
+Location Quality
+Location Source
+Position Source
+Location Permission
+Location Updated
+Location Status
+
+Example:
+
+Action1-Set-CustomAttribute "Latitude" $data.latitude
+Action1-Set-CustomAttribute "Longitude" $data.longitude
+Action1-Set-CustomAttribute "Location Accuracy" $data.accuracyMeters
+Action1-Set-CustomAttribute "Location Quality" $data.accuracyQuality
+Action1-Set-CustomAttribute "Location Source" $data.locationSource
+Action1-Set-CustomAttribute "Position Source" $data.positionSource
+Action1-Set-CustomAttribute "Location Permission" $data.permissionStatus
+Action1-Set-CustomAttribute "Location Updated" $data.timestampUtc
+
+The Action1 script must:
+
+- validate that location.json exists
+- validate JSON
+- verify latitude is between -90 and 90
+- verify longitude is between -180 and 180
+- calculate how old the saved location is
+
+Use these statuses:
+
+ACTIVE
+STALE
+NO LOCATION
+PERMISSION DENIED
+ERROR
+
+Default:
+
+ACTIVE:
+location <= 30 minutes old
+
+STALE:
+location > 30 minutes old
+
+NO LOCATION:
+no successful coordinates exist
+
+PERMISSION DENIED:
+Windows permission denied
+
+ERROR:
+invalid/corrupted data
+
+Write useful results into Action1 Automation History.
+
+========================================================
+ACTION1 CUSTOM ATTRIBUTES
+========================================================
+
+Document that these custom attributes need to exist:
+
+Latitude
+Longitude
+Location Accuracy
+Location Quality
+Location Source
+Position Source
+Location Permission
+Location Updated
+Location Status
+
+========================================================
+INSTALLER
+========================================================
+
+Create a simple Windows installer.
+
+Requirements:
+
+- silent install option
+- silent uninstall option
+- upgrades
+- installation under:
+
+C:\Program Files\LES Location Agent\
+
+- data under:
+
+C:\ProgramData\LESLocationAgent\
+
+Prefer MSI if practical.
+
+If MSIX is significantly more appropriate for Windows App SDK permission behavior, explain why before changing architecture.
+
+Do not require Microsoft Store installation.
+
+========================================================
+ACTION1 DEPLOYMENT
+========================================================
+
+Create:
+
+Action1-Install-LESLocationAgent.ps1
+
+The script should:
+
+1. Download the installer from a configurable HTTPS URL.
+
+2. Verify SHA-256 before installation.
+
+3. Install silently.
+
+4. Confirm application files exist.
+
+5. Confirm startup configuration exists.
+
+6. Report SUCCESS or FAILURE.
+
+IMPORTANT:
+
+The first location permission grant cannot be silently bypassed.
+
+After installation, the application should launch visibly for the logged-in user so that Windows can request location permission.
+
+========================================================
+ACTION1 HEALTH CHECK
+========================================================
+
+Also create:
+
+Action1-LESLocationAgent-Health.ps1
+
+It should report:
+
+Installed:
+YES/NO
+
+Agent version
+
+Last successful location
+
+Age of last location
+
+Location permission
+
+Latitude
+
+Longitude
+
+Accuracy
+
+Location quality
+
+========================================================
+ERROR HANDLING
+========================================================
+
+Handle at minimum:
+
+Location permission denied
+Location services disabled
+Location unavailable
+No positioning hardware/provider available
+Timeout
+Invalid coordinates
+Very low accuracy
+No internet
+No logged-in user
+Windows API exception
+JSON write failure
+ProgramData permission failure
+
+Do not crash simply because location cannot be obtained.
+
+Display understandable errors.
+
+========================================================
+PRIVACY
+========================================================
+
+On the first-run window display:
+
+"LES Location Agent uses Windows Location Services on this
+organization-owned computer for device management and recovery.
+Location access is controlled by Windows privacy settings."
+
+Do not attempt to suppress or bypass Windows location indicators or consent.
+
+========================================================
+NO CLOUD REQUIREMENT
+========================================================
+
+This version must NOT require:
+
+- Replit hosting
+- an API
+- a database
+- an external server
+- recurring Replit deployment
+
+Replit is being used to CREATE THE WINDOWS SOFTWARE.
+
+The finished Windows application should function independently.
+
+Action1 is the system that will remotely read and manage the results.
+
+========================================================
+IMPORTANT DEVELOPMENT CONSTRAINT
+========================================================
+
+Replit may not be able to execute Windows App SDK/WinUI code in its Linux development environment.
+
+Do NOT substitute another technology simply to make the preview work on Replit.
+
+Generate the complete Windows solution.
+
+Include all:
+
+.csproj files
+C# source
+WinUI files
+manifest/package configuration
+installer configuration
+PowerShell scripts
+README
+
+Clearly tell me which files must be transferred to a Windows environment for final compilation.
+
+========================================================
+README
+========================================================
+
+Create a README with exact instructions for:
+
+1. Building the Windows application
+2. Required Visual Studio components
+3. Required Windows App SDK version
+4. Creating an x64 Release build
+5. Creating the installer
+6. Installing on one test PC
+7. Turning Windows Location Services on
+8. Granting LES Location Agent permission
+9. Pressing Get Location
+10. Verifying latitude/longitude
+11. Verifying accuracy
+12. Finding location.json
+13. Testing Action1-Location-Sync.ps1
+14. Creating Action1 custom attributes
+15. Deploying installer using Action1
+16. Troubleshooting inaccurate location
+17. Troubleshooting permission denied
+18. Troubleshooting location unavailable
+
+========================================================
+TEST REQUIREMENTS
+========================================================
+
+Before considering the project complete, create test logic for:
+
+- valid coordinates
+- invalid latitude
+- invalid longitude
+- missing JSON
+- malformed JSON
+- stale location
+- denied permission
+- timeout
+- accuracy classification
+
+========================================================
+SUCCESS CRITERIA
+========================================================
+
+The project is successful when:
+
+1. I install LES Location Agent on a Windows 11 test PC.
+
+2. I launch it.
+
+3. Windows asks for location permission if required.
+
+4. I grant permission.
+
+5. I click Get Location.
+
+6. The program displays real latitude and longitude.
+
+7. It displays Windows-reported accuracy.
+
+8. The same coordinates are written to:
+
+C:\ProgramData\LESLocationAgent\location.json
+
+9. Action1-Location-Sync.ps1 reads that file.
+
+10. The corresponding Action1 endpoint displays:
+
+Latitude
+Longitude
+Location Accuracy
+Location Quality
+Position Source
+Location Updated
+Location Status
+
+Do not expand the scope beyond this.
+
+Focus on making Windows location acquisition as accurate, reliable,
+small, and easy to deploy as possible.
