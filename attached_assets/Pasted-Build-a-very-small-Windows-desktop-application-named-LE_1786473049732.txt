@@ -1,0 +1,628 @@
+Build a very small Windows desktop application named:
+
+LES Location Agent
+
+PRIMARY GOAL
+I do NOT want to manually use Visual Studio.
+
+I want the project to produce a ready-to-install Windows installer automatically, preferably:
+
+LESLocationAgent-Setup.exe
+
+or:
+
+LESLocationAgent.msi
+
+I should be able to download the finished installer, put it on a Windows PC, install it, grant Windows location permission once, and then use Action1 to read the location data.
+
+The development/build process should be automated as much as possible.
+
+========================================================
+PURPOSE
+========================================================
+
+This application is for organization-owned Windows PCs.
+
+Its ONLY purpose is to obtain the most accurate geographic location Windows can provide, save that result locally, and make the result available to Action1 RMM.
+
+Do NOT build:
+- a web dashboard
+- a database
+- a cloud tracking backend
+- screenshots
+- camera access
+- microphone access
+- browser history collection
+- keystroke collection
+- personal file collection
+
+Keep the application small and focused.
+
+========================================================
+WINDOWS APPLICATION
+========================================================
+
+Use:
+
+- C#
+- .NET
+- Windows App SDK / WinUI 3 if appropriate
+- Windows.Devices.Geolocation
+- Windows 11
+- x64 target
+
+The app must use Microsoft's supported Windows location APIs.
+
+Do NOT use browser geolocation.
+
+Do NOT use an external IP geolocation service as the main source.
+
+Primary location source:
+
+Windows.Devices.Geolocation.Geolocator
+
+========================================================
+FIRST RUN
+========================================================
+
+When the app is first installed and launched, display a small visible window:
+
+LES Location Agent
+
+Text:
+
+"This organization-owned computer uses Windows Location Services for device management and recovery."
+
+Buttons:
+
+[Enable Location]
+[Get Location]
+[Open Location Settings]
+
+The application must call:
+
+Geolocator.RequestAccessAsync()
+
+from the foreground UI context.
+
+Do NOT attempt to bypass Windows location privacy controls.
+
+Display:
+
+Location Permission:
+Allowed / Denied / Unspecified
+
+If denied, show:
+
+"Location permission is disabled. Enable it in Windows Settings."
+
+========================================================
+LOCATION ACQUISITION
+========================================================
+
+When location access is allowed:
+
+Create Geolocator.
+
+Request:
+
+PositionAccuracy.High
+
+Where supported, set:
+
+DesiredAccuracyInMeters = 10
+
+This is only a requested accuracy target, not a guaranteed result.
+
+Request a fresh location.
+
+Prefer:
+
+MaximumAge around 0-30 seconds
+Timeout around 30 seconds
+
+Collect:
+
+Latitude
+Longitude
+Accuracy
+Timestamp
+Altitude where available
+Altitude accuracy where available
+Speed where available
+Heading where available
+PositionSource where available
+
+Do not call the location GPS unless Windows actually reports a satellite/GPS source.
+
+Display:
+
+Location Source: Windows Geolocation
+Position Source: <Windows-reported source>
+
+========================================================
+BEST-AVAILABLE LOCATION
+========================================================
+
+Try to obtain the best reasonable fix.
+
+When Get Location is clicked:
+
+1. Request a high-accuracy position.
+2. If multiple readings can be collected within roughly 15-30 seconds, compare them.
+3. Keep the reading with the smallest reported accuracy radius.
+4. Stop early if accuracy is excellent, such as <= 20 meters.
+5. Do not loop indefinitely.
+
+Do NOT average coordinates blindly.
+
+Use Windows' reported accuracy to select the best position.
+
+========================================================
+ACCURACY CLASSIFICATION
+========================================================
+
+Classify:
+
+EXCELLENT:
+<= 25 meters
+
+GOOD:
+> 25 and <= 100 meters
+
+APPROXIMATE:
+> 100 and <= 1000 meters
+
+LOW:
+> 1000 meters
+
+UNKNOWN:
+no accuracy value
+
+========================================================
+LOCAL FILE OUTPUT
+========================================================
+
+Create:
+
+C:\ProgramData\LESLocationAgent\
+
+Write latest successful location to:
+
+C:\ProgramData\LESLocationAgent\location.json
+
+Example:
+
+{
+  "latitude": 40.817391,
+  "longitude": -73.941502,
+  "accuracyMeters": 28.4,
+  "accuracyQuality": "GOOD",
+  "altitudeMeters": null,
+  "altitudeAccuracyMeters": null,
+  "headingDegrees": null,
+  "speedMetersPerSecond": null,
+  "positionSource": "WiFi",
+  "locationSource": "Windows Geolocation",
+  "permissionStatus": "Allowed",
+  "timestampUtc": "2026-08-11T18:35:42Z",
+  "computerName": "LES-LAPTOP-001",
+  "agentVersion": "1.0.0"
+}
+
+Use valid JSON.
+
+Write atomically:
+- write temporary file first
+- replace location.json after successful write
+
+Do not overwrite a good previous location with empty or invalid data.
+
+Also create:
+
+C:\ProgramData\LESLocationAgent\status.json
+
+with:
+
+last attempt
+last successful location
+permission status
+current location status
+error if applicable
+
+========================================================
+AUTOMATIC UPDATES
+========================================================
+
+After permission has been granted, support automatic location refresh.
+
+Default:
+
+every 15 minutes
+
+Use a supported logged-in-user startup/background mechanism.
+
+Do NOT rely solely on a LocalSystem Windows service because Windows geolocation permission is user/app-context sensitive.
+
+The app may start minimized after initial setup.
+
+Make refresh interval configurable through:
+
+C:\ProgramData\LESLocationAgent\config.json
+
+Default:
+
+{
+  "refreshMinutes": 15,
+  "desiredAccuracyMeters": 10,
+  "locationTimeoutSeconds": 30
+}
+
+Minimum interval:
+5 minutes
+
+========================================================
+ACTION1 INTEGRATION
+========================================================
+
+Create:
+
+Action1-Location-Sync.ps1
+
+It must read:
+
+C:\ProgramData\LESLocationAgent\location.json
+
+and:
+
+C:\ProgramData\LESLocationAgent\status.json
+
+Then populate Action1 Custom Attributes:
+
+Latitude
+Longitude
+Location Accuracy
+Location Quality
+Location Source
+Position Source
+Location Permission
+Location Updated
+Location Status
+
+Use:
+
+Action1-Set-CustomAttribute
+
+Examples:
+
+Action1-Set-CustomAttribute "Latitude" $data.latitude
+Action1-Set-CustomAttribute "Longitude" $data.longitude
+
+Status rules:
+
+ACTIVE:
+latest successful location <= 30 minutes old
+
+STALE:
+latest successful location > 30 minutes old
+
+NO LOCATION:
+no valid coordinates have ever been written
+
+PERMISSION DENIED:
+Windows location access denied
+
+ERROR:
+invalid or unreadable data
+
+The script must safely handle:
+- missing file
+- malformed JSON
+- invalid latitude
+- invalid longitude
+- null values
+- stale timestamp
+
+========================================================
+ACTION1 INSTALL SCRIPT
+========================================================
+
+Create:
+
+Action1-Install-LESLocationAgent.ps1
+
+It should:
+
+1. Download the installer from a configurable HTTPS URL.
+2. Verify SHA-256.
+3. Install silently.
+4. Confirm installation succeeded.
+5. Confirm expected files exist.
+6. Report SUCCESS or FAILURE.
+
+Do NOT disable Defender or antivirus.
+
+After installation, the first-run application should launch visibly for the logged-in user so Windows location permission can be granted.
+
+========================================================
+ACTION1 HEALTH CHECK
+========================================================
+
+Create:
+
+Action1-LESLocationAgent-Health.ps1
+
+It should report:
+
+Installed YES/NO
+Agent version
+Last successful location time
+Location age
+Permission status
+Latitude
+Longitude
+Accuracy
+Accuracy quality
+
+========================================================
+INSTALLER REQUIREMENT
+========================================================
+
+This is critical:
+
+I want a finished Windows installer.
+
+Preferred final artifact:
+
+LESLocationAgent-Setup.exe
+
+or:
+
+LESLocationAgent.msi
+
+The installer must support:
+
+- normal interactive install
+- silent install
+- silent uninstall
+- upgrades
+
+Install program files under:
+
+C:\Program Files\LES Location Agent\
+
+Store data under:
+
+C:\ProgramData\LESLocationAgent\
+
+Do not require installation through the Microsoft Store.
+
+========================================================
+NO MANUAL VISUAL STUDIO REQUIREMENT
+========================================================
+
+I do NOT want the final workflow to require me to open Visual Studio and manually compile the application.
+
+Set up an AUTOMATED WINDOWS BUILD PIPELINE.
+
+Use GitHub Actions or another appropriate Windows cloud CI system.
+
+Preferred:
+
+GitHub Actions with:
+
+runs-on: windows-latest
+
+The automated pipeline should:
+
+1. Checkout the project.
+2. Install required .NET / Windows App SDK dependencies.
+3. Restore packages.
+4. Build x64 Release.
+5. Build the installer.
+6. Upload the installer as a CI artifact.
+
+Create a workflow such as:
+
+.github/workflows/windows-build.yml
+
+The workflow must produce a downloadable build artifact containing:
+
+LESLocationAgent-Setup.exe
+
+or:
+
+LESLocationAgent.msi
+
+and optionally:
+
+Action1-Location-Sync.ps1
+Action1-Install-LESLocationAgent.ps1
+Action1-LESLocationAgent-Health.ps1
+
+========================================================
+GITHUB AUTOMATION
+========================================================
+
+Prepare the repository so the workflow builds automatically whenever:
+
+- code is pushed to main
+OR
+- I manually trigger the workflow
+
+Support:
+
+workflow_dispatch
+
+The README must explain, in very simple steps:
+
+1. Put project in GitHub repository.
+2. Open Actions.
+3. Run Windows Build.
+4. Wait for build.
+5. Download build artifact.
+6. Extract installer.
+7. Install on test PC.
+
+Do NOT require me to understand compiler commands.
+
+========================================================
+CODE SIGNING
+========================================================
+
+Do not invent a certificate.
+
+Make signing optional during development.
+
+Document where a legitimate code-signing certificate could be added later.
+
+Unsigned test builds are acceptable.
+
+The build must still succeed in unsigned test mode.
+
+========================================================
+REPLIT ROLE
+========================================================
+
+Replit is being used to:
+
+- generate and edit the project
+- create the Windows source
+- create the GitHub Actions workflow
+- create installer configuration
+- create Action1 scripts
+- create documentation
+
+Replit itself does NOT need to execute the Windows GUI application.
+
+Do not replace the Windows app with a browser app simply because Replit runs Linux.
+
+========================================================
+FINAL DELIVERABLE STRUCTURE
+========================================================
+
+The project should contain something similar to:
+
+/LESLocationAgent
+    /src
+        Windows app source
+    /installer
+        installer configuration
+    /scripts
+        Action1-Location-Sync.ps1
+        Action1-Install-LESLocationAgent.ps1
+        Action1-LESLocationAgent-Health.ps1
+    /.github
+        /workflows
+            windows-build.yml
+    README.md
+
+========================================================
+README — SIMPLE USER INSTRUCTIONS
+========================================================
+
+Write README instructions for a non-developer.
+
+Include:
+
+STEP 1
+Push/import project to GitHub.
+
+STEP 2
+Open GitHub Actions.
+
+STEP 3
+Run:
+Windows Build
+
+STEP 4
+Wait until build shows green success.
+
+STEP 5
+Open completed build.
+
+STEP 6
+Download:
+LESLocationAgent-Windows
+
+STEP 7
+Extract:
+
+LESLocationAgent-Setup.exe
+
+STEP 8
+Move installer to Windows test PC.
+
+STEP 9
+Double-click installer.
+
+STEP 10
+Open LES Location Agent.
+
+STEP 11
+Click Enable Location.
+
+STEP 12
+Allow Windows location permission.
+
+STEP 13
+Click Get Location.
+
+STEP 14
+Verify:
+Latitude
+Longitude
+Accuracy
+Location Source
+Timestamp
+
+STEP 15
+Verify this file exists:
+
+C:\ProgramData\LESLocationAgent\location.json
+
+STEP 16
+Run the Action1 sync script on this test endpoint.
+
+STEP 17
+Confirm Action1 Custom Attributes populate.
+
+========================================================
+SUCCESS CRITERIA
+========================================================
+
+The project is NOT complete just because source files exist.
+
+The required end-user workflow is:
+
+Replit creates code
+↓
+GitHub receives project
+↓
+GitHub Actions runs on Windows
+↓
+GitHub Actions creates installer
+↓
+I download installer
+↓
+I install it normally on Windows
+↓
+Windows asks for location permission
+↓
+I allow permission
+↓
+App gets coordinates
+↓
+App writes location.json
+↓
+Action1 reads location.json
+
+I should NOT have to:
+
+- install Visual Studio
+- open Visual Studio
+- manually compile source code
+- understand MSBuild
+- manually package the installer
+
+Keep this project focused on achieving that exact workflow.
