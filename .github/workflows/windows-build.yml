@@ -26,6 +26,7 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
+          
                 - name: Remove .NET SDK 10 (incompatible with WinUI 3 PRI tasks)
         shell: pwsh
         run: |
