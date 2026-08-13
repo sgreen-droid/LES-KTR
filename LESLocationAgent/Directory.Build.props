@@ -2,7 +2,7 @@
   <PropertyGroup>
     <AppVersion>1.0.0</AppVersion>
     <AppVersionWindows>1.0.0.0</AppVersionWindows>
-    <WindowsAppSdkVersion>1.6.250228002</WindowsAppSdkVersion>
+    <WindowsAppSdkVersion>1.6.250402001</WindowsAppSdkVersion>
     <Company>LES</Company>
     <Product>LES Location Agent</Product>
     <Copyright>Copyright © 2026 LES</Copyright>

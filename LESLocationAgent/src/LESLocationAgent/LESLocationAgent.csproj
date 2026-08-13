@@ -24,8 +24,6 @@
   <ItemGroup>
     <!-- Windows App SDK -->
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="$(WindowsAppSdkVersion)" />
-    <!-- WinUI 3 toolkit -->
-    <PackageReference Include="CommunityToolkit.WinUI.UI" Version="8.1.240916" />
     <!-- System tray icon for WinUI 3 unpackaged apps -->
     <PackageReference Include="H.NotifyIcon.WinUI" Version="2.1.0" />
     <!-- JSON -->
