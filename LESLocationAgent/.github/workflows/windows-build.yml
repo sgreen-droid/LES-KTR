@@ -21,6 +21,10 @@ jobs:
       CONFIGURATION: Release
       PLATFORM: x64
       PUBLISH_DIR: publish\x64\Release
+      # Prevent dotnet from finding the pre-installed SDK 10 on windows-latest.
+      # With MULTILEVEL_LOOKUP=0, dotnet only uses the SDK installed by setup-dotnet.
+      DOTNET_MULTILEVEL_LOOKUP: '0'
+      DOTNET_NOLOGO: '1'
 
     steps:
 
