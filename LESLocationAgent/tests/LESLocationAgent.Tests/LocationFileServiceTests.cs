@@ -115,8 +115,11 @@ public sealed class LocationFileServiceTests : IDisposable
     [InlineData(120, "STALE")]
     public void StalenessClassification_BasedOnAge(int minutesOld, string expected)
     {
-        var timestamp = DateTimeOffset.UtcNow.AddMinutes(-minutesOld);
-        var ageMinutes = (DateTimeOffset.UtcNow - timestamp).TotalMinutes;
+        // Capture a single instant so ageMinutes == minutesOld exactly,
+        // avoiding a race condition where two UtcNow calls differ by milliseconds.
+        var now = DateTimeOffset.UtcNow;
+        var timestamp = now.AddMinutes(-minutesOld);
+        var ageMinutes = (now - timestamp).TotalMinutes;
 
         var result = ageMinutes <= 30 ? "ACTIVE" : "STALE";
         result.Should().Be(expected);
