@@ -194,15 +194,14 @@ jobs:
           Copy-Item 'scripts\Action1-Install-LESLocationAgent.ps1'   $out
           Copy-Item 'scripts\Action1-LESLocationAgent-Health.ps1'    $out
 
-          @"
-LESLocationAgent.msi SHA-256 : $env:INSTALLER_SHA256
-Built                         : $(Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ')
-Commit                        : ${{ github.sha }}
-Branch                        : ${{ github.ref_name }}
-
-Paste the SHA-256 above into Action1-Install-LESLocationAgent.ps1
-as the value of `$ExpectedSha256.
-"@ | Set-Content "$out\SHA256-MANIFEST.txt"
+          $manifestPath = "$out\SHA256-MANIFEST.txt"
+          "LESLocationAgent.msi SHA-256 : $env:INSTALLER_SHA256"                    | Set-Content $manifestPath
+          "Built                         : $(Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ')" | Add-Content $manifestPath
+          "Commit                        : ${{ github.sha }}"                        | Add-Content $manifestPath
+          "Branch                        : ${{ github.ref_name }}"                   | Add-Content $manifestPath
+          ""                                                                          | Add-Content $manifestPath
+          "Paste the SHA-256 above into Action1-Install-LESLocationAgent.ps1"        | Add-Content $manifestPath
+          'as the value of $ExpectedSha256.'                                          | Add-Content $manifestPath
 
           Write-Host 'Artifacts:'
           Get-ChildItem $out | Format-Table Name, Length -AutoSize
