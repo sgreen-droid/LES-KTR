@@ -18,7 +18,6 @@ jobs:
       DOTNET_VERSION: '8.0.x'
       CONFIGURATION: Release
       PLATFORM: x64
-      PUBLISH_DIR: publish\x64\Release
       DOTNET_MULTILEVEL_LOOKUP: '0'
       DOTNET_NOLOGO: '1'
 
@@ -27,27 +26,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Visual Studio MSBuild is required for WinUI 3 PRI resource tasks.
+      # 'dotnet publish' uses dotnet's bundled MSBuild which lacks the
+      # AppxPackage folder; VS MSBuild has it and resolves the task DLL correctly.
+      - name: Setup MSBuild (Visual Studio)
+        uses: microsoft/setup-msbuild@v2
+
       - name: Set up .NET 8
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      # windows-latest ships .NET SDK 10 pre-installed. Windows App SDK 1.6
-      # PRI tasks resolve their DLL from the active SDK directory; that DLL is
-      # absent in the SDK 10 layout, causing MSB4062. Removing SDK 10 forces
-      # MSBuild to use the SDK 8 we just installed above.
-      - name: Remove .NET SDK 10
-        shell: pwsh
-        run: |
-          $sdkRoot = 'C:\Program Files\dotnet\sdk'
-          $removed = Get-ChildItem $sdkRoot -ErrorAction SilentlyContinue |
-                     Where-Object { $_.Name -match '^10\.' }
-          foreach ($dir in $removed) {
-            Remove-Item $dir.FullName -Recurse -Force -ErrorAction SilentlyContinue
-            Write-Host "Removed SDK $($dir.Name)"
-          }
-          if (-not $removed) { Write-Host 'No SDK 10.x found.' }
-          Write-Host "Active SDK: $(dotnet --version)"
 
       - name: Install WiX v5
         run: dotnet tool install --global wix --version 5.0.2
@@ -80,25 +68,38 @@ jobs:
             --no-restore `
             --logger "console;verbosity=normal"
 
+      # Use Visual Studio MSBuild (/t:Publish) instead of 'dotnet publish'.
+      # VS MSBuild resolves the WinUI 3 PRI task DLL from its own AppxPackage
+      # folder; dotnet's bundled MSBuild does not have that folder.
       - name: Publish app (x64, self-contained)
         shell: pwsh
         run: |
-          dotnet publish src\LESLocationAgent\LESLocationAgent.csproj `
-            --configuration ${{ env.CONFIGURATION }} `
-            --runtime win-x64 `
-            --self-contained true `
-            -p:Platform=${{ env.PLATFORM }} `
-            -p:PublishSingleFile=false `
-            -p:WindowsAppSDKSelfContained=true `
-            --output ${{ env.PUBLISH_DIR }}
-          $n = (Get-ChildItem '${{ env.PUBLISH_DIR }}' -Recurse -File).Count
-          Write-Host "Published $n files."
+          $publishDir = Join-Path (Get-Location) 'publish\x64\Release'
+          New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
+
+          msbuild src\LESLocationAgent\LESLocationAgent.csproj `
+            /t:Publish `
+            /p:Configuration=${{ env.CONFIGURATION }} `
+            /p:Platform=${{ env.PLATFORM }} `
+            /p:RuntimeIdentifier=win-x64 `
+            /p:SelfContained=true `
+            /p:PublishSingleFile=false `
+            /p:WindowsAppSDKSelfContained=true `
+            /p:PublishDir="$publishDir\\" `
+            /p:RestorePackages=false `
+            /verbosity:minimal
+
+          $n = (Get-ChildItem $publishDir -Recurse -File).Count
+          Write-Host "Published $n files to $publishDir"
 
       - name: Build MSI installer
         shell: pwsh
         run: |
-          $pub = Resolve-Path '${{ env.PUBLISH_DIR }}'
+          $pub = Resolve-Path 'publish\x64\Release'
+          Write-Host "Publish dir: $pub"
+
           wix build installer\Package.wxs -arch x64 -d "PublishDir=$pub" -o installer\LESLocationAgent.msi
+
           if (-not (Test-Path 'installer\LESLocationAgent.msi')) {
             throw 'WiX did not produce LESLocationAgent.msi'
           }
@@ -106,7 +107,6 @@ jobs:
           Write-Host "MSI built ($mb MB)."
 
       - name: Compute SHA-256
-        id: sha256
         shell: pwsh
         run: |
           $hash = (Get-FileHash 'installer\LESLocationAgent.msi' -Algorithm SHA256).Hash
@@ -138,10 +138,10 @@ jobs:
           Copy-Item 'scripts\Action1-Location-Sync.ps1'            release-artifacts
           Copy-Item 'scripts\Action1-Install-LESLocationAgent.ps1' release-artifacts
           Copy-Item 'scripts\Action1-LESLocationAgent-Health.ps1'  release-artifacts
-          $ts   = Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ'
-          $sha  = '${{ github.sha }}'
+          $ts     = Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ'
+          $sha    = '${{ github.sha }}'
           $branch = '${{ github.ref_name }}'
-          $lines = @(
+          $lines  = @(
             "LESLocationAgent.msi SHA-256 : $env:INSTALLER_SHA256",
             "Built                        : $ts",
             "Commit                       : $sha",
