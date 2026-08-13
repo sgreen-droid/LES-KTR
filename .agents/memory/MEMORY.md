@@ -1,0 +1,1 @@
+- [WinUI3 SDK pinning](winui3-sdk-pinning.md) — GitHub Actions windows-latest now ships .NET SDK 10; WinUI 3 PRI tasks break on SDK 10; pin to 8.x via global.json.
