@@ -352,14 +352,20 @@ Run `Action1-LESLocationAgent-Health.ps1` on any endpoint to report:
 The test build is **unsigned**. Windows SmartScreen may warn users when they run the MSI.
 
 For production deployment:
-1. Obtain a code-signing certificate from a certificate authority (e.g. DigiCert, Sectigo, GlobalSign). Cost is typically $200–$500/year.
-2. Export the certificate as a `.pfx` file.
+1. Obtain a code-signing certificate from a certificate authority (e.g. DigiCert, Sectigo, GlobalSign). EV certificates remove SmartScreen warnings immediately; OV certificates build reputation over time. Cost is typically $200–$500/year.
+2. Export the certificate as a `.pfx` file and base64-encode it:
+   ```powershell
+   [Convert]::ToBase64String([IO.File]::ReadAllBytes('cert.pfx')) | clip
+   ```
 3. In your GitHub repository, go to **Settings → Secrets and Variables → Actions**.
-4. Add two secrets: `CODE_SIGN_PFX` (base64-encoded pfx) and `CODE_SIGN_PASSWORD`.
-5. Open `.github/workflows/windows-build.yml` and uncomment the **Sign installer** step.
-6. Push and rebuild.
+4. Add two secrets:
+   - `CODE_SIGN_PFX` — the base64-encoded `.pfx` content
+   - `CODE_SIGN_PASSWORD` — the password protecting the `.pfx`
+5. Push any commit to `main` (or trigger **Run workflow** manually).
 
-Signed installers install without SmartScreen warnings and are required for enterprise deployment without Group Policy exceptions.
+The **Sign MSI** step in the workflow is already active and runs automatically whenever `CODE_SIGN_PFX` is present. Development builds that lack the secret are left unsigned without any code change.
+
+Signed installers show your publisher name in Windows SmartScreen instead of "Unknown publisher" and are required for enterprise deployment without Group Policy exceptions.
 
 ---
 
