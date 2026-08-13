@@ -404,6 +404,57 @@ Signed installers install without SmartScreen warnings and are required for ente
 
 ---
 
+## Publishing a release for Action1 deployment
+
+When you are ready to deploy to endpoints, publish a tagged GitHub Release so Action1 can download the MSI from a permanent public URL.
+
+### Step 1 — Tag and push
+
+Run these commands locally (or in any terminal with git access):
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+That's it. GitHub Actions detects the `v*.*.*` tag, builds the MSI, and automatically creates a GitHub Release with the following files attached:
+
+| File | Purpose |
+|---|---|
+| `LESLocationAgent.msi` | The installer — Action1 downloads this |
+| `SHA256-MANIFEST.txt` | SHA-256 hash for integrity verification |
+| `Action1-Install-LESLocationAgent.ps1` | Ready-to-use Action1 install script |
+| `Action1-Location-Sync.ps1` | Action1 location sync script |
+| `Action1-LESLocationAgent-Health.ps1` | Action1 health check script |
+
+### Step 2 — Copy the SHA-256
+
+Open `SHA256-MANIFEST.txt` from the release assets. Copy the long hash next to `SHA-256`.
+
+### Step 3 — Update the install script
+
+Open `Action1-Install-LESLocationAgent.ps1` and edit the two lines at the top:
+
+```powershell
+$InstallerUrl   = 'https://github.com/sgreen-droid/LES-KTR/releases/download/v1.0.0/LESLocationAgent.msi'
+$ExpectedSha256 = 'PASTE-YOUR-HASH-HERE'
+```
+
+Then paste this updated script into Action1 → Automation → Scripts.
+
+### For future releases
+
+Each new build gets a new tag with a higher version number:
+
+```powershell
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+Then update `$InstallerUrl` and `$ExpectedSha256` in your Action1 script to match the new release.
+
+---
+
 ## Project Structure
 
 ```

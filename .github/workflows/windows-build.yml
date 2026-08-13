@@ -3,12 +3,18 @@ name: Windows Build
 on:
   push:
     branches: [main]
+    tags: ['v*.*.*']       # e.g. v1.0.0  — triggers a GitHub Release
   workflow_dispatch:
 
 jobs:
   build:
     name: Build & Package (Windows x64)
     runs-on: windows-latest
+
+    # Required so the Publish GitHub Release step can create releases and
+    # upload assets. Read-only for all other runs (branch pushes).
+    permissions:
+      contents: write
 
     defaults:
       run:
@@ -138,14 +144,14 @@ jobs:
           Copy-Item 'scripts\Action1-Location-Sync.ps1'            release-artifacts
           Copy-Item 'scripts\Action1-Install-LESLocationAgent.ps1' release-artifacts
           Copy-Item 'scripts\Action1-LESLocationAgent-Health.ps1'  release-artifacts
-          $ts     = Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ'
+          $ts     = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
           $sha    = '${{ github.sha }}'
           $branch = '${{ github.ref_name }}'
           $lines  = @(
             "LESLocationAgent.msi SHA-256 : $env:INSTALLER_SHA256",
             "Built                        : $ts",
             "Commit                       : $sha",
-            "Branch                       : $branch",
+            "Branch / Tag                 : $branch",
             "",
             "Paste the SHA-256 above into Action1-Install-LESLocationAgent.ps1",
             "as the value of ExpectedSha256."
@@ -153,10 +159,30 @@ jobs:
           $lines | Set-Content 'release-artifacts\SHA256-MANIFEST.txt'
           Get-ChildItem release-artifacts | Format-Table Name, Length -AutoSize
 
-      - name: Upload artifact
+      - name: Upload Actions artifact
         uses: actions/upload-artifact@v4
         with:
           name: LESLocationAgent-Windows
           path: LESLocationAgent/release-artifacts/
           retention-days: 90
           if-no-files-found: error
+
+      # ----------------------------------------------------------------
+      # Publish GitHub Release — only runs when a v*.*.* tag is pushed.
+      # The MSI, SHA-256 manifest, and all three Action1 scripts are
+      # attached as release assets with permanent public download URLs.
+      # ----------------------------------------------------------------
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: LES Location Agent ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            LESLocationAgent/release-artifacts/LESLocationAgent.msi
+            LESLocationAgent/release-artifacts/SHA256-MANIFEST.txt
+            LESLocationAgent/release-artifacts/Action1-Install-LESLocationAgent.ps1
+            LESLocationAgent/release-artifacts/Action1-Location-Sync.ps1
+            LESLocationAgent/release-artifacts/Action1-LESLocationAgent-Health.ps1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

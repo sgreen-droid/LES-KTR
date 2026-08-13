@@ -32,9 +32,15 @@ $ErrorActionPreference = 'Stop'
 
 # ---------------------------------------------------------------
 # CONFIGURATION — update these for each release
+#
+# InstallerUrl pattern (replace {tag} with the release tag, e.g. v1.0.0):
+#   https://github.com/sgreen-droid/LES-KTR/releases/download/{tag}/LESLocationAgent.msi
+#
+# ExpectedSha256: copy from SHA256-MANIFEST.txt attached to the same release,
+#   or from the Actions build log (uppercase hex, no dashes).
 # ---------------------------------------------------------------
-$InstallerUrl  = 'https://your-host.example.com/releases/LESLocationAgent.msi'
-$ExpectedSha256 = 'REPLACE_WITH_SHA256_FROM_BUILD_ARTIFACT'   # uppercase hex, no dashes
+$InstallerUrl   = 'https://github.com/sgreen-droid/LES-KTR/releases/download/v1.0.0/LESLocationAgent.msi'
+$ExpectedSha256 = 'REPLACE_WITH_SHA256_FROM_RELEASE_MANIFEST'  # uppercase hex, no dashes
 # ---------------------------------------------------------------
 
 $TempDir       = Join-Path $env:TEMP 'LESLocationAgent_Install'
