@@ -70,8 +70,11 @@ Pass "Temp dir: $TempDir"
 # ---------------------------------------------------------------
 Write-Step "Downloading installer from: $InstallerUrl"
 try {
-    $wc = New-Object System.Net.WebClient
-    $wc.DownloadFile($InstallerUrl, $InstallerPath)
+    # Force TLS 1.2 — required for GitHub (PS5.1 defaults to older versions)
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+    # Use Invoke-WebRequest — handles GitHub CDN redirects more reliably than WebClient
+    Invoke-WebRequest -Uri $InstallerUrl -OutFile $InstallerPath -UseBasicParsing `
+        -UserAgent 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
     $sizeMB = [Math]::Round((Get-Item $InstallerPath).Length / 1MB, 2)
     Pass "Downloaded $sizeMB MB to $InstallerPath"
 } catch {
