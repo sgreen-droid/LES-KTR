@@ -16,7 +16,7 @@ internal static class Program
     private static extern bool XamlCheckProcessRequirements();
 
     [global::System.STAThread]
-    private static void Main(string[] _)
+    private static void Main(string[] args)
     {
         // Verify WinUI 3 runtime requirements are met on this Windows version
         XamlCheckProcessRequirements();
