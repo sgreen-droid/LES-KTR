@@ -54,10 +54,11 @@
          ============================================================ -->
     <ComponentGroup Id="ApplicationFiles" Directory="INSTALLFOLDER">
 
-      <!-- Harvest all publish-output files recursively.
-           WiX v5 generates one Component per file, setting KeyPath
-           on the primary executable automatically. -->
-      <Files Source="$(var.PublishDir)\**" />
+      <!-- WiX v5: <Files> harvests every file under PublishDir
+           recursively, including all Windows App SDK DLLs bundled by
+           the self-contained publish. One Component is auto-created
+           per file; KeyPath is set on the primary executable. -->
+      <Files Source="$(var.PublishDir)" />
 
     </ComponentGroup>
 
