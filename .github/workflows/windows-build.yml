@@ -10,8 +10,6 @@ jobs:
     name: Build & Package (Windows x64)
     runs-on: windows-latest
 
-    # All 'run' steps execute inside the LESLocationAgent subfolder,
-    # so paths in commands match the local project layout exactly.
     defaults:
       run:
         working-directory: LESLocationAgent
@@ -21,101 +19,68 @@ jobs:
       CONFIGURATION: Release
       PLATFORM: x64
       PUBLISH_DIR: publish\x64\Release
-      # Prevent dotnet from finding the pre-installed SDK 10 on windows-latest.
-      # With MULTILEVEL_LOOKUP=0, dotnet only uses the SDK installed by setup-dotnet.
       DOTNET_MULTILEVEL_LOOKUP: '0'
       DOTNET_NOLOGO: '1'
 
     steps:
 
-      # ----------------------------------------------------------------
-      # 1. Checkout
-      # ----------------------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ----------------------------------------------------------------
-      # 2. .NET 8 SDK
-      # ----------------------------------------------------------------
       - name: Set up .NET 8
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      # ----------------------------------------------------------------
-      # 3. Remove pre-installed .NET SDK 10 from the runner.
-      #    Windows App SDK 1.6 PRI build tasks (MrtCore.PriGen.targets)
-      #    resolve their DLL path from the active SDK directory. SDK 10
-      #    ships a different layout — the DLL is missing — causing MSB4062.
-      #    Removing SDK 10 forces MSBuild to use the SDK 8 we just installed.
-      # ----------------------------------------------------------------
-      - name: Remove .NET SDK 10 (incompatible with WinUI 3 PRI tasks)
+      # windows-latest ships .NET SDK 10 pre-installed. Windows App SDK 1.6
+      # PRI tasks resolve their DLL from the active SDK directory; that DLL is
+      # absent in the SDK 10 layout, causing MSB4062. Removing SDK 10 forces
+      # MSBuild to use the SDK 8 we just installed above.
+      - name: Remove .NET SDK 10
         shell: pwsh
         run: |
-          $removed = @()
-          Get-ChildItem 'C:\Program Files\dotnet\sdk\' -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -match '^10\.' } |
-            ForEach-Object {
-              Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
-              $removed += $_.Name
-            }
-          if ($removed.Count -gt 0) {
-            Write-Host "Removed SDK(s): $($removed -join ', ')"
-          } else {
-            Write-Host "No SDK 10.x found to remove."
+          $sdkRoot = 'C:\Program Files\dotnet\sdk'
+          $removed = Get-ChildItem $sdkRoot -ErrorAction SilentlyContinue |
+                     Where-Object { $_.Name -match '^10\.' }
+          foreach ($dir in $removed) {
+            Remove-Item $dir.FullName -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Host "Removed SDK $($dir.Name)"
           }
+          if (-not $removed) { Write-Host 'No SDK 10.x found.' }
           Write-Host "Active SDK: $(dotnet --version)"
 
-      # ----------------------------------------------------------------
-      # 4. WiX Toolset v5
-      # ----------------------------------------------------------------
       - name: Install WiX v5
         run: dotnet tool install --global wix --version 5.0.2
 
-      # ----------------------------------------------------------------
-      # 4. Restore NuGet packages
-      # ----------------------------------------------------------------
       - name: Restore packages
         run: dotnet restore LESLocationAgent.sln -p:Platform=${{ env.PLATFORM }}
 
-      # ----------------------------------------------------------------
-      # 5. Generate placeholder icon BEFORE compilation.
-      #    The .csproj references Assets\appicon.ico at build time.
-      #    Replace src\LESLocationAgent\Assets\appicon.ico in the repo
-      #    with your real branded .ico file to skip this step.
-      # ----------------------------------------------------------------
+      # Generates a solid-blue 32x32 placeholder .ico so the build succeeds.
+      # Replace src\LESLocationAgent\Assets\appicon.ico in the repo with your
+      # real branded icon to skip this step.
       - name: Generate placeholder icon
         shell: pwsh
         run: |
-          $assetsDir = "src\LESLocationAgent\Assets"
-          New-Item -ItemType Directory -Path $assetsDir -Force | Out-Null
-
+          $dir = 'src\LESLocationAgent\Assets'
+          New-Item -ItemType Directory -Path $dir -Force | Out-Null
           Add-Type -AssemblyName System.Drawing
           $bmp = New-Object System.Drawing.Bitmap(32, 32)
           $g   = [System.Drawing.Graphics]::FromImage($bmp)
           $g.Clear([System.Drawing.Color]::FromArgb(0, 120, 212))
           $g.Dispose()
-          $icoPath = "$assetsDir\appicon.ico"
-          $bmp.Save($icoPath)
+          $bmp.Save("$dir\appicon.ico")
           $bmp.Dispose()
-          Write-Host "Placeholder icon created at $icoPath"
+          Write-Host 'Placeholder icon created.'
 
-      # ----------------------------------------------------------------
-      # 6. Run unit tests (Core library, targets net8.0, runs on any OS)
-      # ----------------------------------------------------------------
       - name: Run unit tests
+        shell: pwsh
         run: |
           dotnet test tests\LESLocationAgent.Tests\LESLocationAgent.Tests.csproj `
             --configuration ${{ env.CONFIGURATION }} `
             --no-restore `
             --logger "console;verbosity=normal"
 
-      # ----------------------------------------------------------------
-      # 7. Publish — self-contained x64
-      #    WindowsAppSDKSelfContained bundles the runtime so target PCs
-      #    need no pre-installed Windows App SDK.
-      # ----------------------------------------------------------------
-      - name: Publish app (x64 Release, self-contained)
+      - name: Publish app (x64, self-contained)
         shell: pwsh
         run: |
           dotnet publish src\LESLocationAgent\LESLocationAgent.csproj `
@@ -126,33 +91,20 @@ jobs:
             -p:PublishSingleFile=false `
             -p:WindowsAppSDKSelfContained=true `
             --output ${{ env.PUBLISH_DIR }}
+          $n = (Get-ChildItem '${{ env.PUBLISH_DIR }}' -Recurse -File).Count
+          Write-Host "Published $n files."
 
-          $count = (Get-ChildItem '${{ env.PUBLISH_DIR }}' -Recurse -File).Count
-          Write-Host "Published $count files to ${{ env.PUBLISH_DIR }}"
-
-      # ----------------------------------------------------------------
-      # 8. Build MSI with WiX v5
-      # ----------------------------------------------------------------
       - name: Build MSI installer
         shell: pwsh
         run: |
           $pub = Resolve-Path '${{ env.PUBLISH_DIR }}'
-          Write-Host "Publish dir: $pub"
-
-          wix build installer\Package.wxs `
-            -arch x64 `
-            -d "PublishDir=$pub" `
-            -o installer\LESLocationAgent.msi
-
+          wix build installer\Package.wxs -arch x64 -d "PublishDir=$pub" -o installer\LESLocationAgent.msi
           if (-not (Test-Path 'installer\LESLocationAgent.msi')) {
-            throw 'WiX build did not produce LESLocationAgent.msi'
+            throw 'WiX did not produce LESLocationAgent.msi'
           }
           $mb = [Math]::Round((Get-Item 'installer\LESLocationAgent.msi').Length / 1MB, 2)
-          Write-Host "MSI built ($mb MB)"
+          Write-Host "MSI built ($mb MB)."
 
-      # ----------------------------------------------------------------
-      # 9. SHA-256 checksum
-      # ----------------------------------------------------------------
       - name: Compute SHA-256
         id: sha256
         shell: pwsh
@@ -161,7 +113,7 @@ jobs:
           Write-Host "SHA-256: $hash"
           "INSTALLER_SHA256=$hash" | Out-File $env:GITHUB_ENV -Append
 
-      # CODE SIGNING — disabled for development builds.
+      # CODE SIGNING - disabled for development builds.
       # To enable: add secrets CODE_SIGN_PFX and CODE_SIGN_PASSWORD,
       # then uncomment the block below.
       #
@@ -172,44 +124,35 @@ jobs:
       #     SIGN_PASSWORD:   ${{ secrets.CODE_SIGN_PASSWORD }}
       #   run: |
       #     $pfx = Join-Path $env:TEMP 'sign.pfx'
-      #     [IO.File]::WriteAllBytes($pfx,
-      #       [Convert]::FromBase64String($env:SIGN_PFX_BASE64))
+      #     [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_PFX_BASE64))
       #     $tool = 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe'
       #     & $tool sign /fd SHA256 /f $pfx /p $env:SIGN_PASSWORD `
-      #       /tr http://timestamp.digicert.com /td SHA256 `
-      #       installer\LESLocationAgent.msi
+      #       /tr http://timestamp.digicert.com /td SHA256 installer\LESLocationAgent.msi
       #     Remove-Item $pfx -Force
 
-      # ----------------------------------------------------------------
-      # 10. Collect release artifacts
-      # ----------------------------------------------------------------
       - name: Collect release artifacts
         shell: pwsh
         run: |
-          $out = 'release-artifacts'
-          New-Item -ItemType Directory -Path $out | Out-Null
+          New-Item -ItemType Directory -Path release-artifacts | Out-Null
+          Copy-Item 'installer\LESLocationAgent.msi'               release-artifacts
+          Copy-Item 'scripts\Action1-Location-Sync.ps1'            release-artifacts
+          Copy-Item 'scripts\Action1-Install-LESLocationAgent.ps1' release-artifacts
+          Copy-Item 'scripts\Action1-LESLocationAgent-Health.ps1'  release-artifacts
+          $ts   = Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ'
+          $sha  = '${{ github.sha }}'
+          $branch = '${{ github.ref_name }}'
+          $lines = @(
+            "LESLocationAgent.msi SHA-256 : $env:INSTALLER_SHA256",
+            "Built                        : $ts",
+            "Commit                       : $sha",
+            "Branch                       : $branch",
+            "",
+            "Paste the SHA-256 above into Action1-Install-LESLocationAgent.ps1",
+            "as the value of ExpectedSha256."
+          )
+          $lines | Set-Content 'release-artifacts\SHA256-MANIFEST.txt'
+          Get-ChildItem release-artifacts | Format-Table Name, Length -AutoSize
 
-          Copy-Item 'installer\LESLocationAgent.msi'                 $out
-          Copy-Item 'scripts\Action1-Location-Sync.ps1'              $out
-          Copy-Item 'scripts\Action1-Install-LESLocationAgent.ps1'   $out
-          Copy-Item 'scripts\Action1-LESLocationAgent-Health.ps1'    $out
-
-          @"
-LESLocationAgent.msi SHA-256 : $env:INSTALLER_SHA256
-Built                         : $(Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ')
-Commit                        : ${{ github.sha }}
-Branch                        : ${{ github.ref_name }}
-
-Paste the SHA-256 above into Action1-Install-LESLocationAgent.ps1
-as the value of `$ExpectedSha256.
-"@ | Set-Content "$out\SHA256-MANIFEST.txt"
-
-          Write-Host 'Artifacts:'
-          Get-ChildItem $out | Format-Table Name, Length -AutoSize
-
-      # ----------------------------------------------------------------
-      # 11. Upload artifact — download from Actions tab when build is green
-      # ----------------------------------------------------------------
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
