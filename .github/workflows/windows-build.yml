@@ -1,0 +1,103 @@
+name: Windows Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build & Package (Windows x64)
+    runs-on: windows-latest
+
+    env:
+      DOTNET_VERSION: '8.0.x'
+      CONFIGURATION: Release
+      PLATFORM: x64
+      PUBLISH_DIR: publish\x64\Release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install WiX v5
+        run: dotnet tool install --global wix --version 5.0.2
+
+      - name: Restore packages
+        run: dotnet restore LESLocationAgent/LESLocationAgent.sln -p:Platform=${{ env.PLATFORM }}
+
+      - name: Run unit tests
+        run: |
+          dotnet test LESLocationAgent/tests/LESLocationAgent.Tests/LESLocationAgent.Tests.csproj `
+            --configuration ${{ env.CONFIGURATION }} `
+            --no-restore `
+            --logger "console;verbosity=normal"
+
+      - name: Publish app (x64 Release, self-contained)
+        run: |
+          dotnet publish LESLocationAgent/src/LESLocationAgent/LESLocationAgent.csproj `
+            --configuration ${{ env.CONFIGURATION }} `
+            --runtime win-x64 `
+            --self-contained true `
+            -p:Platform=${{ env.PLATFORM }} `
+            -p:PublishSingleFile=false `
+            -p:WindowsAppSDKSelfContained=true `
+            --output ${{ env.PUBLISH_DIR }}
+
+      - name: Generate placeholder icon
+        shell: pwsh
+        run: |
+          $assetsSrc  = "LESLocationAgent\src\LESLocationAgent\Assets"
+          $assetsDest = "${{ env.PUBLISH_DIR }}\Assets"
+          New-Item -ItemType Directory -Path $assetsSrc  -Force | Out-Null
+          New-Item -ItemType Directory -Path $assetsDest -Force | Out-Null
+          Add-Type -AssemblyName System.Drawing
+          $bmp = New-Object System.Drawing.Bitmap(32, 32)
+          $g   = [System.Drawing.Graphics]::FromImage($bmp)
+          $g.Clear([System.Drawing.Color]::FromArgb(0, 120, 212))
+          $g.Dispose()
+          $icoPath = "$assetsSrc\appicon.ico"
+          $bmp.Save($icoPath)
+          $bmp.Dispose()
+          Copy-Item $icoPath "$assetsDest\appicon.ico" -Force
+
+      - name: Build MSI installer
+        shell: pwsh
+        run: |
+          $publishAbsPath = Resolve-Path '${{ env.PUBLISH_DIR }}'
+          wix build LESLocationAgent\installer\Package.wxs `
+            -arch x64 `
+            -d "PublishDir=$publishAbsPath" `
+            -o LESLocationAgent\installer\LESLocationAgent.msi
+
+      - name: Compute SHA-256
+        id: sha256
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash -Path 'LESLocationAgent\installer\LESLocationAgent.msi' -Algorithm SHA256).Hash
+          Write-Host "SHA-256: $hash"
+          "INSTALLER_SHA256=$hash" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Collect release artifacts
+        shell: pwsh
+        run: |
+          $out = 'release-artifacts'
+          New-Item -ItemType Directory -Path $out | Out-Null
+          Copy-Item 'LESLocationAgent\installer\LESLocationAgent.msi'               $out
+          Copy-Item 'LESLocationAgent\scripts\Action1-Location-Sync.ps1'            $out
+          Copy-Item 'LESLocationAgent\scripts\Action1-Install-LESLocationAgent.ps1' $out
+          Copy-Item 'LESLocationAgent\scripts\Action1-LESLocationAgent-Health.ps1'  $out
+          "SHA-256: $env:INSTALLER_SHA256" | Set-Content (Join-Path $out 'SHA256-MANIFEST.txt')
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LESLocationAgent-Windows
+          path: release-artifacts\
+          retention-days: 90
+          if-no-files-found: error
