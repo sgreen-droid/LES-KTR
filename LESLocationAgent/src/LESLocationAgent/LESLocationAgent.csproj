@@ -11,6 +11,8 @@
     <UseWinUI>true</UseWinUI>
     <!-- Unpackaged app: no MSIX, deploys as plain exe via MSI -->
     <WindowsPackageType>None</WindowsPackageType>
+    <!-- Suppress the XAML-generated Main so Program.cs is the sole entry point -->
+    <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>

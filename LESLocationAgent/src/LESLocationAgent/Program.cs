@@ -1,34 +1,38 @@
 // LES Location Agent — application entry point for unpackaged WinUI 3.
-// This file is required; do not delete it.
-// The WinUI 3 SDK generates a partial class for App but needs this
-// manual entry point when running as an unpackaged Win32 application.
+// DISABLE_XAML_GENERATED_MAIN is defined in the .csproj to suppress the
+// auto-generated entry point so this class is the sole entry point.
 
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using WinRT;
 
-[global::System.Runtime.InteropServices.DllImport("Microsoft.ui.xaml.dll")]
-[return: global::System.Runtime.InteropServices.MarshalAs(
-    global::System.Runtime.InteropServices.UnmanagedType.Bool)]
-static extern bool XamlCheckProcessRequirements();
+namespace LESLocationAgent;
 
-[global::System.STAThreadAttribute]
-static void Main(string[] args)
+internal static class Program
 {
-    // Verify WinUI 3 runtime requirements are met on this Windows version
-    XamlCheckProcessRequirements();
+    [global::System.Runtime.InteropServices.DllImport("Microsoft.ui.xaml.dll")]
+    [return: global::System.Runtime.InteropServices.MarshalAs(
+        global::System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool XamlCheckProcessRequirements();
 
-    // Required for WinUI 3 unpackaged apps
-    ComWrappersSupport.InitializeComWrappers();
-
-    Application.Start((p) =>
+    [global::System.STAThread]
+    private static void Main(string[] _)
     {
-        // Set up the dispatcher queue synchronisation context so that
-        // async/await continuations run on the UI thread
-        var context = new DispatcherQueueSynchronizationContext(
-            DispatcherQueue.GetForCurrentThread());
-        SynchronizationContext.SetSynchronizationContext(context);
+        // Verify WinUI 3 runtime requirements are met on this Windows version
+        XamlCheckProcessRequirements();
 
-        _ = new LESLocationAgent.App();
-    });
+        // Required for WinUI 3 unpackaged apps
+        ComWrappersSupport.InitializeComWrappers();
+
+        Application.Start((p) =>
+        {
+            // Set up the dispatcher queue synchronisation context so that
+            // async/await continuations run on the UI thread
+            var context = new DispatcherQueueSynchronizationContext(
+                DispatcherQueue.GetForCurrentThread());
+            SynchronizationContext.SetSynchronizationContext(context);
+
+            _ = new App();
+        });
+    }
 }

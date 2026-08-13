@@ -86,7 +86,8 @@ public sealed partial class MainWindow : Window
 
     public void MinimizeToTray()
     {
-        Hide();
+        // WinUI 3 Window has no Hide() method — hide via AppWindow instead
+        GetAppWindow()?.Hide();
     }
 
     public void BringToFront()

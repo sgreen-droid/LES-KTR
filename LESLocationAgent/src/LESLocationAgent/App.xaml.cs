@@ -2,6 +2,7 @@ using H.NotifyIcon;
 using LESLocationAgent.Core.Models;
 using LESLocationAgent.Services;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using System.Diagnostics;
 
 namespace LESLocationAgent;
@@ -19,7 +20,7 @@ public partial class App : Application
     private MainWindow? _mainWindow;
     private TaskbarIcon? _trayIcon;
 
-    public static App Current => (App)Application.Current;
+    public static new App Current => (App)Application.Current;
     public MainWindow? MainWindowInstance => _mainWindow;
 
     public App()
