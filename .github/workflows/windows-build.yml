@@ -26,6 +26,16 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
+                - name: Remove .NET SDK 10 (incompatible with WinUI 3 PRI tasks)
+        shell: pwsh
+        run: |
+          Get-ChildItem 'C:\Program Files\dotnet\sdk\' -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '^10\.' } |
+            ForEach-Object {
+              Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+              Write-Host "Removed SDK $($_.Name)"
+            }
+          Write-Host "Active SDK: $(dotnet --version)"
 
       - name: Install WiX v5
         run: dotnet tool install --global wix --version 5.0.2
