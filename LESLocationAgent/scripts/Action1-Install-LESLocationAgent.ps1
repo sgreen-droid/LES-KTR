@@ -82,7 +82,9 @@ try {
 # Step 3: Verify SHA-256
 # ---------------------------------------------------------------
 Write-Step 'Verifying SHA-256 hash...'
-if ($ExpectedSha256 -ne 'REPLACE_WITH_SHA256_FROM_BUILD_ARTIFACT') {
+# A real SHA-256 hash is exactly 64 hexadecimal characters.
+# If $ExpectedSha256 is still the placeholder, skip verification and warn.
+if ($ExpectedSha256 -match '^[0-9A-Fa-f]{64}$') {
     $actualHash = (Get-FileHash -Path $InstallerPath -Algorithm SHA256).Hash
 
     if ($actualHash -ne $ExpectedSha256.ToUpper()) {
@@ -91,7 +93,7 @@ if ($ExpectedSha256 -ne 'REPLACE_WITH_SHA256_FROM_BUILD_ARTIFACT') {
     }
     Pass "SHA-256 verified: $actualHash"
 } else {
-    Write-Warning 'SHA-256 verification skipped — update $ExpectedSha256 in the script for production use.'
+    Write-Warning 'SHA-256 verification skipped — replace $ExpectedSha256 with the 64-character hash from SHA256-MANIFEST.txt before deploying.'
 }
 
 # ---------------------------------------------------------------
