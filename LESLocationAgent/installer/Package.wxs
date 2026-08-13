@@ -47,22 +47,15 @@
     </StandardDirectory>
 
     <!-- ============================================================
-         File harvesting
-         WiX v5 <Files> discovers EVERY file under PublishDir
-         (including all Windows App SDK DLLs bundled by the
-         self-contained publish step) and packages them automatically.
+         File harvesting — WiX v5 uses Include="glob\**" syntax.
+         Harvests every file under PublishDir recursively, including
+         all Windows App SDK DLLs bundled by the self-contained publish.
          ============================================================ -->
     <ComponentGroup Id="ApplicationFiles" Directory="INSTALLFOLDER">
-
-      <!-- WiX v5: <Files> harvests every file under PublishDir
-           recursively, including all Windows App SDK DLLs bundled by
-           the self-contained publish. One Component is auto-created
-           per file; KeyPath is set on the primary executable. -->
-      <Files Source="$(var.PublishDir)" />
-
+      <Files Include="$(var.PublishDir)\**" />
     </ComponentGroup>
 
-    <!-- Start Menu shortcut (separate component — not inside Files harvest) -->
+    <!-- Start Menu shortcut (separate component) -->
     <ComponentGroup Id="Shortcuts" Directory="INSTALLFOLDER">
       <Component Id="StartMenuShortcut" Guid="D3E4F5A6-B7C8-9012-DEFA-123456789013">
         <Shortcut Id="StartMenuEntry"
@@ -96,6 +89,7 @@
          Runs in the logged-in user context (Impersonate=yes) so that
          the Windows location permission dialog appears for the user
          rather than the SYSTEM account.
+         In WiX v5 the condition is an attribute on <Custom>, not inner text.
          ============================================================ -->
     <CustomAction Id="LaunchApp"
                   Directory="INSTALLFOLDER"
@@ -105,7 +99,7 @@
                   Return="asyncNoWait" />
 
     <InstallExecuteSequence>
-      <Custom Action="LaunchApp" After="InstallFinalize">NOT REMOVE</Custom>
+      <Custom Action="LaunchApp" After="InstallFinalize" Condition="NOT REMOVE" />
     </InstallExecuteSequence>
 
   </Package>
