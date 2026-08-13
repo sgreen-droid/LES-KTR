@@ -15,7 +15,9 @@ jobs:
       CONFIGURATION: Release
       PLATFORM: x64
       PUBLISH_DIR: publish\x64\Release
-
+      DOTNET_MULTILEVEL_LOOKUP: '0'
+      DOTNET_NOLOGO: '1'
+      
     steps:
       - name: Checkout
         uses: actions/checkout@v4
