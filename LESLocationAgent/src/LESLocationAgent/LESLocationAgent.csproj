@@ -20,7 +20,9 @@
     <Version>$(AppVersion)</Version>
     <FileVersion>$(AppVersionWindows)</FileVersion>
     <AssemblyVersion>$(AppVersionWindows)</AssemblyVersion>
-    <ApplicationIcon>Assets\appicon.ico</ApplicationIcon>
+    <!-- ApplicationIcon intentionally omitted; icon is managed via the
+         H.NotifyIcon tray resource in App.xaml. Add an .ico file here
+         if you want a custom taskbar/window icon. -->
   </PropertyGroup>
 
   <ItemGroup>
