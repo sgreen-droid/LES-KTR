@@ -24,7 +24,7 @@ $StatusFile   = 'C:\ProgramData\LESLocationAgent\status.json'
 
 Write-Host '=== LES Location Agent Health Check ==='
 Write-Host "Computer : $env:COMPUTERNAME"
-Write-Host "Time     : $(Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ')"
+Write-Host "Time     : $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
 Write-Host ''
 
 # ---------------------------------------------------------------
@@ -61,10 +61,10 @@ $lastSuccess      = 'Never'
 if (Test-Path $StatusFile) {
     try {
         $statusData = Get-Content $StatusFile -Raw -Encoding UTF8 | ConvertFrom-Json
-        $permissionStatus = $statusData.permissionStatus ?? 'Unknown'
-        $locationStatus   = $statusData.locationStatus   ?? 'Unknown'
-        $lastAttempt      = $statusData.lastAttemptUtc   ?? 'Never'
-        $lastSuccess      = $statusData.lastSuccessUtc   ?? 'Never'
+        $permissionStatus = if ($statusData.permissionStatus) { $statusData.permissionStatus } else { 'Unknown' }
+        $locationStatus   = if ($statusData.locationStatus)   { $statusData.locationStatus   } else { 'Unknown' }
+        $lastAttempt      = if ($statusData.lastAttemptUtc)   { $statusData.lastAttemptUtc   } else { 'Never' }
+        $lastSuccess      = if ($statusData.lastSuccessUtc)   { $statusData.lastSuccessUtc   } else { 'Never' }
     } catch {
         Write-Warning "Could not read status.json: $_"
     }
@@ -101,10 +101,10 @@ $quality  = 'N/A'
 if (Test-Path $LocationFile) {
     try {
         $locData  = Get-Content $LocationFile -Raw -Encoding UTF8 | ConvertFrom-Json
-        $lat      = $locData.latitude      ?? 'N/A'
-        $lon      = $locData.longitude     ?? 'N/A'
+        $lat      = if ($locData.latitude)       { $locData.latitude      } else { 'N/A' }
+        $lon      = if ($locData.longitude)      { $locData.longitude     } else { 'N/A' }
         $accuracy = if ($locData.accuracyMeters) { "$($locData.accuracyMeters) meters" } else { 'N/A' }
-        $quality  = $locData.accuracyQuality ?? 'N/A'
+        $quality  = if ($locData.accuracyQuality){ $locData.accuracyQuality } else { 'N/A' }
     } catch {
         Write-Warning "Could not read location.json: $_"
     }

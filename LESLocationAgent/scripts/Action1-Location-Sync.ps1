@@ -67,7 +67,7 @@ function Set-ErrorState {
 
 Write-Host '=== LES Location Agent — Action1 Sync ==='
 Write-Host "Running as: $($env:USERNAME) on $($env:COMPUTERNAME)"
-Write-Host "Timestamp:  $(Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ' -AsUTC)"
+Write-Host "Timestamp:  $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
 
 # 1. Check permission status first (from status.json — more reliable for permission info)
 $permissionStatus = 'Unknown'

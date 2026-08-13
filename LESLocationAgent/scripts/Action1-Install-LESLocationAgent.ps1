@@ -49,7 +49,7 @@ function Pass       { param([string]$Msg) Write-Host "  OK: $Msg" }
 Write-Host '=== LES Location Agent — Action1 Installer ==='
 Write-Host "Computer : $env:COMPUTERNAME"
 Write-Host "Run as   : $($env:USERNAME)"
-Write-Host "Time     : $(Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ')"
+Write-Host "Time     : $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
 
 # ---------------------------------------------------------------
 # Step 1: Create temp directory
