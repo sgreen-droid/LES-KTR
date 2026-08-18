@@ -3,18 +3,25 @@ using LESLocationAgent.Core.Models;
 using LESLocationAgent.Core.Services;
 using LESLocationAgent.Services;
 using Microsoft.UI;
+using Microsoft.UI.Text;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Windows.Devices.Geolocation;
 using Windows.System;
+using Windows.UI;
 
 namespace LESLocationAgent;
 
 /// <summary>
 /// Main application window.
-/// Handles location acquisition, display, auto-refresh timer, and tray integration.
+/// The entire UI is built in code — no XAML, no InitializeComponent(), no
+/// Application.LoadComponent(). The compiled-XAML (XBF) loader repeatedly
+/// failed with "XAML parsing failed" in this self-contained unpackaged
+/// WinUI 3 configuration, so we bypass it completely.
 /// </summary>
-public sealed partial class MainWindow : Window
+public sealed class MainWindow : Window
 {
     private readonly LocationService _locationService;
     private readonly LocationFileService _fileService;
@@ -26,9 +33,26 @@ public sealed partial class MainWindow : Window
     private AppConfig _config;
     private string _currentPermissionStatus = "Unknown";
 
+    // ── UI elements (assigned in BuildUi) ────────────────────────────────────
+    private TextBlock PermissionValueText  = null!;
+    private TextBlock LocationStatusText   = null!;
+    private TextBlock LatitudeText         = null!;
+    private TextBlock LongitudeText        = null!;
+    private TextBlock AccuracyText         = null!;
+    private TextBlock AltitudeText         = null!;
+    private TextBlock LocationSourceText   = null!;
+    private TextBlock PositionSourceText   = null!;
+    private TextBlock LastUpdatedText      = null!;
+    private TextBlock StatusBarText        = null!;
+    private Button    EnableLocationButton = null!;
+    private Button    GetLocationButton    = null!;
+    private Button    OpenSettingsButton   = null!;
+
     public MainWindow()
     {
-        InitializeComponent();
+        App.StartupLog("MainWindow ctor — building UI in code");
+        BuildUi();
+        App.StartupLog("MainWindow UI built");
 
         _locationService = new LocationService();
         _fileService     = new LocationFileService();
@@ -43,6 +67,142 @@ public sealed partial class MainWindow : Window
 
         // Request permission immediately on load (non-blocking)
         _ = CheckPermissionOnLoadAsync();
+    }
+
+    // ---------------------------------------------------------------
+    // Code-built UI (replaces MainWindow.xaml)
+    // ---------------------------------------------------------------
+
+    private void BuildUi()
+    {
+        Title = "LES Location Agent";
+
+        var root = new Grid { Padding = new Thickness(20) };
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });                       // 0 privacy
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(16) });                    // 1 gap
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });                       // 2 fields
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(16) });                    // 3 gap
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });                       // 4 buttons
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });  // 5 spacer
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });                       // 6 status
+
+        // Use the theme background if resolvable at runtime; fall back to system default.
+        if (Application.Current.Resources.TryGetValue("ApplicationPageBackgroundThemeBrush", out var bg)
+            && bg is Brush bgBrush)
+        {
+            root.Background = bgBrush;
+        }
+
+        // ── Privacy notice ───────────────────────────────────────────────────
+        var privacyBorder = new Border
+        {
+            Background   = new SolidColorBrush(Color.FromArgb(255, 0xDE, 0xEA, 0xF7)),
+            CornerRadius = new CornerRadius(4),
+            Padding      = new Thickness(12, 8, 12, 8),
+            Child = new TextBlock
+            {
+                TextWrapping = TextWrapping.Wrap,
+                Foreground   = new SolidColorBrush(Color.FromArgb(255, 0x1A, 0x3A, 0x5C)),
+                FontSize     = 12,
+                Text = "This organization-owned computer uses Windows Location Services for " +
+                       "device management and recovery. Location access is controlled by " +
+                       "Windows privacy settings.",
+            },
+        };
+        Grid.SetRow(privacyBorder, 0);
+        root.Children.Add(privacyBorder);
+
+        // ── Data fields ──────────────────────────────────────────────────────
+        var fields = new Grid();
+        fields.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
+        fields.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        PermissionValueText = AddFieldRow(fields, 0, "Location Permission:");
+        LocationStatusText  = AddFieldRow(fields, 1, "Windows Location Status:");
+        LatitudeText        = AddFieldRow(fields, 2, "Latitude:",  monospace: true);
+        LongitudeText       = AddFieldRow(fields, 3, "Longitude:", monospace: true);
+        AccuracyText        = AddFieldRow(fields, 4, "Accuracy:");
+        AltitudeText        = AddFieldRow(fields, 5, "Altitude:");
+        LocationSourceText  = AddFieldRow(fields, 6, "Location Source:", initial: "Windows Geolocation");
+        PositionSourceText  = AddFieldRow(fields, 7, "Position Source:");
+        LastUpdatedText     = AddFieldRow(fields, 8, "Last Updated:");
+
+        Grid.SetRow(fields, 2);
+        root.Children.Add(fields);
+
+        // ── Buttons ──────────────────────────────────────────────────────────
+        EnableLocationButton = new Button { Content = "Enable Location",       MinWidth = 130 };
+        GetLocationButton    = new Button { Content = "Get Location",          MinWidth = 130 };
+        OpenSettingsButton   = new Button { Content = "Open Location Settings", MinWidth = 160 };
+
+        // Accent style for the primary button — runtime lookup, never fails the build
+        if (Application.Current.Resources.TryGetValue("AccentButtonStyle", out var accent)
+            && accent is Style accentStyle)
+        {
+            GetLocationButton.Style = accentStyle;
+        }
+
+        EnableLocationButton.Click += EnableLocationButton_Click;
+        GetLocationButton.Click    += GetLocationButton_Click;
+        OpenSettingsButton.Click   += OpenSettingsButton_Click;
+
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        buttons.Children.Add(EnableLocationButton);
+        buttons.Children.Add(GetLocationButton);
+        buttons.Children.Add(OpenSettingsButton);
+        Grid.SetRow(buttons, 4);
+        root.Children.Add(buttons);
+
+        // ── Status bar ───────────────────────────────────────────────────────
+        StatusBarText = new TextBlock
+        {
+            Text       = "Ready",
+            FontSize   = 12,
+            Foreground = new SolidColorBrush(Color.FromArgb(255, 0x66, 0x66, 0x66)),
+        };
+        var statusBorder = new Border
+        {
+            BorderBrush     = new SolidColorBrush(Color.FromArgb(255, 0xCC, 0xCC, 0xCC)),
+            BorderThickness = new Thickness(0, 1, 0, 0),
+            Padding         = new Thickness(0, 8, 0, 0),
+            Child           = StatusBarText,
+        };
+        Grid.SetRow(statusBorder, 6);
+        root.Children.Add(statusBorder);
+
+        Content = root;
+    }
+
+    /// <summary>Adds a label + value row to the fields grid; returns the value TextBlock.</summary>
+    private static TextBlock AddFieldRow(
+        Grid grid, int row, string label, bool monospace = false, string initial = "—")
+    {
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        var labelBlock = new TextBlock
+        {
+            Text              = label,
+            FontWeight        = FontWeights.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin            = new Thickness(0, 4, 0, 4),
+        };
+        Grid.SetRow(labelBlock, row);
+        Grid.SetColumn(labelBlock, 0);
+        grid.Children.Add(labelBlock);
+
+        var valueBlock = new TextBlock
+        {
+            Text              = initial,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin            = new Thickness(8, 4, 8, 4),
+        };
+        if (monospace)
+            valueBlock.FontFamily = new FontFamily("Consolas");
+        Grid.SetRow(valueBlock, row);
+        Grid.SetColumn(valueBlock, 1);
+        grid.Children.Add(valueBlock);
+
+        return valueBlock;
     }
 
     // ---------------------------------------------------------------
@@ -88,6 +248,11 @@ public sealed partial class MainWindow : Window
     {
         // WinUI 3 Window has no Hide() method — hide via AppWindow instead
         GetAppWindow()?.Hide();
+    }
+
+    public void ShowFromTray()
+    {
+        GetAppWindow()?.Show();
     }
 
     public void BringToFront()

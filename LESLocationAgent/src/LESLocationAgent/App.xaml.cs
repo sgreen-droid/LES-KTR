@@ -79,6 +79,11 @@ public partial class App : Application
 
         StartupLog("First instance — initialising");
 
+        // ── Auto-grant location consent for the current user ─────────────────
+        // Pre-sets the Windows Location Consent Store so RequestAccessAsync()
+        // returns Allowed without ever showing the OS permission dialog.
+        GrantLocationConsent();
+
         // ── Show-window listener for subsequent launches ─────────────────────
         StartShowWindowListener();
 
@@ -134,6 +139,33 @@ public partial class App : Application
         }
 
         StartupLog("OnLaunched complete");
+    }
+
+    // ── Location consent auto-grant ──────────────────────────────────────────
+
+    private const string LocationConsentKeyPath =
+        @"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location";
+
+    private static void GrantLocationConsent()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.CreateSubKey(LocationConsentKeyPath, writable: true);
+            var current = key.GetValue("Value") as string;
+            if (!string.Equals(current, "Allow", StringComparison.OrdinalIgnoreCase))
+            {
+                key.SetValue("Value", "Allow", RegistryValueKind.String);
+                StartupLog("Location consent registry set to Allow");
+            }
+            else
+            {
+                StartupLog("Location consent already Allow");
+            }
+        }
+        catch (Exception ex)
+        {
+            StartupLog($"Location consent write failed: {ex.Message}");
+        }
     }
 
     // ── Startup flag helpers ─────────────────────────────────────────────────
@@ -248,7 +280,7 @@ public partial class App : Application
     internal void ShowMainWindow()
     {
         if (_mainWindow is null) return;
-        _mainWindow.Show();
+        _mainWindow.ShowFromTray();
         _mainWindow.Activate();
         _mainWindow.BringToFront();
     }
