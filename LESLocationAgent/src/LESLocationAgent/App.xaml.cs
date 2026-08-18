@@ -46,6 +46,12 @@ public partial class App : Application
     {
         StartupLog("OnLaunched entered");
 
+        // ── Auto-grant location consent for the current user ─────────────────
+        // Must run BEFORE the single-instance check: on multi-user machines a
+        // second user's launch exits early when another session already owns
+        // the mutex, and their HKCU consent key still needs to be written.
+        GrantLocationConsent();
+
         // ── Single-instance check ────────────────────────────────────────────
         bool ownsMutex = false;
         try
@@ -78,11 +84,6 @@ public partial class App : Application
         }
 
         StartupLog("First instance — initialising");
-
-        // ── Auto-grant location consent for the current user ─────────────────
-        // Pre-sets the Windows Location Consent Store so RequestAccessAsync()
-        // returns Allowed without ever showing the OS permission dialog.
-        GrantLocationConsent();
 
         // ── Show-window listener for subsequent launches ─────────────────────
         StartShowWindowListener();
