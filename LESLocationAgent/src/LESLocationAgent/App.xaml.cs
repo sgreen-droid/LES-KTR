@@ -3,6 +3,7 @@ using LESLocationAgent.Core.Models;
 using LESLocationAgent.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.Win32;
 using System.Diagnostics;
 
 namespace LESLocationAgent;
@@ -42,7 +43,7 @@ public partial class App : Application
         _trayIcon = (TaskbarIcon)Resources["TrayIcon"];
         WireTrayMenuHandlers();
 
-        bool isFirstRun = !File.Exists(AppConfig.ConfigFilePath);
+        bool isFirstRun = CheckAndMarkFirstRunForCurrentUser();
 
         _mainWindow = new MainWindow();
 
@@ -112,6 +113,40 @@ public partial class App : Application
         _trayIcon?.Dispose();
         _instanceMutex.ReleaseMutex();
         Exit();
+    }
+
+    /// <summary>
+    /// Returns <see langword="true"/> the very first time the current Windows user
+    /// launches the app, and atomically sets the per-user HKCU flag so subsequent
+    /// launches return <see langword="false"/>.
+    ///
+    /// Using HKCU instead of the machine-wide config file ensures that every user
+    /// account on a shared/managed machine receives the Windows location-permission
+    /// prompt on their own first launch — even if another user has already created
+    /// the machine-wide config file.
+    /// </summary>
+    private static bool CheckAndMarkFirstRunForCurrentUser()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(AppConfig.UserRegistryKeyPath);
+            if (key?.GetValue(AppConfig.HasRunBeforeValueName) is not null)
+                return false; // Flag already set — not first run for this user
+        }
+        catch { /* Fall through and treat as first run */ }
+
+        // Flag absent — first run for this user account. Mark it now so the next
+        // launch (e.g. after a crash/reboot) starts in tray mode as expected.
+        try
+        {
+            using var writeKey = Registry.CurrentUser.CreateSubKey(
+                AppConfig.UserRegistryKeyPath, writable: true);
+            writeKey.SetValue(
+                AppConfig.HasRunBeforeValueName, 1, RegistryValueKind.DWord);
+        }
+        catch { /* Non-fatal; window will be shown again next launch if write fails */ }
+
+        return true;
     }
 
     private static bool ShouldStartVisible(LaunchActivatedEventArgs args)

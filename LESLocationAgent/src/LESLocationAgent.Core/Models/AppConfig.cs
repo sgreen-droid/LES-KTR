@@ -15,6 +15,12 @@ public sealed class AppConfig
     public const int MinRefreshMinutes = 5;
     public const string AgentVersion = "1.0.0";
 
+    // Per-user first-run flag stored in HKCU so every user account gets the
+    // location-permission prompt on their first launch, regardless of whether
+    // another user has already created the machine-wide config file.
+    public const string UserRegistryKeyPath = @"Software\LES\LESLocationAgent";
+    public const string HasRunBeforeValueName = "HasRunBefore";
+
     [JsonPropertyName("refreshMinutes")]
     public int RefreshMinutes { get; set; } = 15;
 
