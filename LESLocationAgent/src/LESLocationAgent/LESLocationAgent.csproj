@@ -32,6 +32,8 @@
     <PackageReference Include="H.NotifyIcon.WinUI" Version="2.1.0" />
     <!-- JSON -->
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <!-- EventLog / EventLogEntryType — not included by default in .NET 8 -->
+    <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.1" />
   </ItemGroup>
 
   <ItemGroup>
