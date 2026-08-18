@@ -363,7 +363,7 @@ For production deployment:
    - `CODE_SIGN_PASSWORD` — the password protecting the `.pfx`
 5. Push any commit to `main` (or trigger **Run workflow** manually).
 
-The **Sign MSI** step in the workflow is already active and runs automatically whenever `CODE_SIGN_PFX` is present. Development builds that lack the secret are left unsigned without any code change.
+The **Sign MSI (production)** step in the workflow runs automatically whenever `CODE_SIGN_PFX` is present. Development builds that lack the secret are left unsigned without any code change. After signing, the workflow also runs `signtool verify` to confirm the signature is valid before the MSI is packaged into the release artifact.
 
 Signed installers show your publisher name in Windows SmartScreen instead of "Unknown publisher" and are required for enterprise deployment without Group Policy exceptions.
 

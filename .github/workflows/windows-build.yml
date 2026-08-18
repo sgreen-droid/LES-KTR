@@ -119,22 +119,47 @@ jobs:
           Write-Host "SHA-256: $hash"
           "INSTALLER_SHA256=$hash" | Out-File $env:GITHUB_ENV -Append
 
-      # CODE SIGNING - disabled for development builds.
-      # To enable: add secrets CODE_SIGN_PFX and CODE_SIGN_PASSWORD,
-      # then uncomment the block below.
-      #
-      # - name: Sign MSI
-      #   shell: pwsh
-      #   env:
-      #     SIGN_PFX_BASE64: ${{ secrets.CODE_SIGN_PFX }}
-      #     SIGN_PASSWORD:   ${{ secrets.CODE_SIGN_PASSWORD }}
-      #   run: |
-      #     $pfx = Join-Path $env:TEMP 'sign.pfx'
-      #     [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_PFX_BASE64))
-      #     $tool = 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe'
-      #     & $tool sign /fd SHA256 /f $pfx /p $env:SIGN_PASSWORD `
-      #       /tr http://timestamp.digicert.com /td SHA256 installer\LESLocationAgent.msi
-      #     Remove-Item $pfx -Force
+      # CODE SIGNING — runs automatically when CODE_SIGN_PFX is set as a
+      # GitHub Actions secret.  Development builds that lack the secret are
+      # left unsigned without any code change needed.
+      - name: Sign MSI (production)
+        if: ${{ secrets.CODE_SIGN_PFX != '' }}
+        shell: pwsh
+        env:
+          SIGN_PFX_BASE64: ${{ secrets.CODE_SIGN_PFX }}
+          SIGN_PASSWORD:   ${{ secrets.CODE_SIGN_PASSWORD }}
+        run: |
+          Write-Host 'CODE_SIGN_PFX is present — signing MSI...'
+          $pfx = Join-Path $env:TEMP 'sign.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_PFX_BASE64))
+
+          # Locate signtool.exe — prefer the newest Windows Kit available.
+          $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' `
+              -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+              Where-Object { $_.FullName -match 'x64' } |
+              Sort-Object FullName -Descending |
+              Select-Object -First 1 -ExpandProperty FullName
+
+          if (-not $signtool) {
+            throw 'signtool.exe not found — ensure the Windows SDK is installed on the runner.'
+          }
+          Write-Host "Using signtool: $signtool"
+
+          & $signtool sign /fd SHA256 /f $pfx /p $env:SIGN_PASSWORD `
+            /tr http://timestamp.digicert.com /td SHA256 `
+            installer\LESLocationAgent.msi
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "signtool exited with code $LASTEXITCODE"
+          }
+          Remove-Item $pfx -Force
+
+          # Verify the signature is present and trusted.
+          & $signtool verify /pa /v installer\LESLocationAgent.msi
+          if ($LASTEXITCODE -ne 0) {
+            throw "Signature verification failed (exit $LASTEXITCODE)."
+          }
+          Write-Host 'MSI signed and verified successfully.'
 
       - name: Collect release artifacts
         shell: pwsh
