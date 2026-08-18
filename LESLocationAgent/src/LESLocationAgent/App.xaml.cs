@@ -82,16 +82,17 @@ public partial class App : Application
         // ── Show-window listener for subsequent launches ─────────────────────
         StartShowWindowListener();
 
-        // ── Tray icon ────────────────────────────────────────────────────────
+        // ── Tray icon (created entirely in code — ms-appx:// doesn't work for
+        //    unpackaged apps, so the icon is loaded from an absolute path) ──────
         try
         {
-            _trayIcon = (TaskbarIcon)Resources["TrayIcon"];
+            _trayIcon = BuildTrayIcon();
             WireTrayMenuHandlers();
             StartupLog("Tray icon initialised");
         }
         catch (Exception ex)
         {
-            StartupLog($"Tray icon failed: {ex.Message}");
+            StartupLog($"Tray icon failed: {ex.Message}\n{ex.StackTrace}");
         }
 
         // ── Main window ──────────────────────────────────────────────────────
@@ -197,6 +198,40 @@ public partial class App : Application
     }
 
     // ── Tray menu ────────────────────────────────────────────────────────────
+
+    private static TaskbarIcon BuildTrayIcon()
+    {
+        // Resolve icon path relative to the running exe.
+        // ms-appx:// URIs don't work in unpackaged apps, so we use an absolute path.
+        var exeDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
+        var iconPath = Path.Combine(exeDir, "Assets", "appicon.ico");
+
+        var icon = new TaskbarIcon
+        {
+            ToolTipText = "LES Location Agent",
+            ContextMenuMode = H.NotifyIcon.ContextMenuMode.SecondWindow,
+        };
+
+        // Set the icon from file if it exists; otherwise H.NotifyIcon shows a default
+        if (File.Exists(iconPath))
+            icon.IconSource = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(iconPath));
+
+        // Build context menu
+        var open   = new MenuFlyoutItem { Name = "TrayMenuOpen",   Text = "Open LES Location Agent" };
+        var update = new MenuFlyoutItem { Name = "TrayMenuUpdate", Text = "Update Location" };
+        var status = new MenuFlyoutItem { Name = "TrayMenuStatus", Text = "Location Status", IsEnabled = false };
+        var exit   = new MenuFlyoutItem { Name = "TrayMenuExit",   Text = "Exit" };
+
+        var flyout = new MenuFlyout();
+        flyout.Items.Add(open);
+        flyout.Items.Add(update);
+        flyout.Items.Add(status);
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(exit);
+
+        icon.ContextFlyout = flyout;
+        return icon;
+    }
 
     private void WireTrayMenuHandlers()
     {

@@ -1,36 +1,13 @@
 <Application
     x:Class="LESLocationAgent.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:tb="using:H.NotifyIcon">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
-
-            <!-- Tray icon defined as a global resource so it persists while the window is hidden -->
-            <tb:TaskbarIcon
-                x:Key="TrayIcon"
-                ToolTipText="LES Location Agent"
-                IconSource="Assets/appicon.ico">
-
-                <tb:TaskbarIcon.ContextMenuMode>
-                    SecondWindow
-                </tb:TaskbarIcon.ContextMenuMode>
-
-                <tb:TaskbarIcon.ContextFlyout>
-                    <MenuFlyout>
-                        <MenuFlyoutItem x:Name="TrayMenuOpen" Text="Open LES Location Agent" />
-                        <MenuFlyoutItem x:Name="TrayMenuUpdate" Text="Update Location" />
-                        <MenuFlyoutItem x:Name="TrayMenuStatus" Text="Location Status" IsEnabled="False" />
-                        <MenuFlyoutSeparator />
-                        <MenuFlyoutItem x:Name="TrayMenuExit" Text="Exit" />
-                    </MenuFlyout>
-                </tb:TaskbarIcon.ContextFlyout>
-
-            </tb:TaskbarIcon>
         </ResourceDictionary>
     </Application.Resources>
 
