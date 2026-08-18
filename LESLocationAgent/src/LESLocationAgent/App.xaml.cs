@@ -32,6 +32,14 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+
+        // Catch any exception that escapes a XAML event handler.
+        // Without this, WinUI calls FailFast and the process vanishes silently.
+        UnhandledException += (_, e) =>
+        {
+            StartupLog($"UNHANDLED XAML EXCEPTION — {e.Exception?.GetType().Name}: {e.Exception?.Message}\n{e.Exception?.StackTrace}");
+            e.Handled = true; // write the log, then keep running rather than crashing
+        };
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -248,12 +256,22 @@ public partial class App : Application
 
     internal static void StartupLog(string message)
     {
+        var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  {message}{Environment.NewLine}";
+
+        // Primary: C:\ProgramData\LESLocationAgent\startup.log
         try
         {
             Directory.CreateDirectory(AppConfig.DataDirectory);
             File.AppendAllText(
-                System.IO.Path.Combine(AppConfig.DataDirectory, "startup.log"),
-                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  {message}{Environment.NewLine}");
+                System.IO.Path.Combine(AppConfig.DataDirectory, "startup.log"), line);
+        }
+        catch { }
+
+        // Fallback: %TEMP%\LESLocationAgent.log  (always writable by any user)
+        try
+        {
+            File.AppendAllText(
+                System.IO.Path.Combine(Path.GetTempPath(), "LESLocationAgent.log"), line);
         }
         catch { }
     }
