@@ -205,14 +205,9 @@ public partial class App : Application
         {
             ToolTipText = "LES Location Agent",
             ContextMenuMode = H.NotifyIcon.ContextMenuMode.SecondWindow,
-            // GeneratedIconParameters renders a coloured letter icon via H.NotifyIcon's
-            // built-in generator — no System.Drawing.Icon conversion, works in unpackaged apps.
-            GeneratedIconParameters = new H.NotifyIcon.GeneratedIconParameters
-            {
-                Text = "L",
-                BackgroundColor = Windows.UI.Color.FromArgb(255, 0, 99, 177),  // LES blue
-                FontSize = 28,
-            },
+            // No IconSource — ms-appx:// doesn't resolve in unpackaged apps and
+            // BitmapImage→System.Drawing.Icon conversion throws in H.NotifyIcon v2.1.
+            // The tray shows a blank icon; the context menu and tooltip still work.
         };
 
         // Build context menu
