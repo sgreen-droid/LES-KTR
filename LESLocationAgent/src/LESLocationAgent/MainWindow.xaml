@@ -64,13 +64,13 @@
             <TextBlock Grid.Row="2" Grid.Column="0" Text="Latitude:"
                        FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,4"/>
             <TextBlock Grid.Row="2" Grid.Column="1" x:Name="LatitudeText"
-                       Text="—" VerticalAlignment="Center" Margin="8,4" FontFamily="Cascadia Mono, Consolas"/>
+                       Text="—" VerticalAlignment="Center" Margin="8,4" FontFamily="Consolas"/>
 
             <!-- Row 3: Longitude -->
             <TextBlock Grid.Row="3" Grid.Column="0" Text="Longitude:"
                        FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,4"/>
             <TextBlock Grid.Row="3" Grid.Column="1" x:Name="LongitudeText"
-                       Text="—" VerticalAlignment="Center" Margin="8,4" FontFamily="Cascadia Mono, Consolas"/>
+                       Text="—" VerticalAlignment="Center" Margin="8,4" FontFamily="Consolas"/>
 
             <!-- Row 4: Accuracy -->
             <TextBlock Grid.Row="4" Grid.Column="0" Text="Accuracy:"

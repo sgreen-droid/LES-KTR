@@ -201,20 +201,19 @@ public partial class App : Application
 
     private static TaskbarIcon BuildTrayIcon()
     {
-        // Resolve icon path relative to the running exe.
-        // ms-appx:// URIs don't work in unpackaged apps, so we use an absolute path.
-        var exeDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
-        var iconPath = Path.Combine(exeDir, "Assets", "appicon.ico");
-
         var icon = new TaskbarIcon
         {
             ToolTipText = "LES Location Agent",
             ContextMenuMode = H.NotifyIcon.ContextMenuMode.SecondWindow,
+            // GeneratedIconParameters renders a coloured letter icon via H.NotifyIcon's
+            // built-in generator — no System.Drawing.Icon conversion, works in unpackaged apps.
+            GeneratedIconParameters = new H.NotifyIcon.GeneratedIconParameters
+            {
+                Text = "L",
+                BackgroundColor = Windows.UI.Color.FromArgb(255, 0, 99, 177),  // LES blue
+                FontSize = 28,
+            },
         };
-
-        // Set the icon from file if it exists; otherwise H.NotifyIcon shows a default
-        if (File.Exists(iconPath))
-            icon.IconSource = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(iconPath));
 
         // Build context menu
         var open   = new MenuFlyoutItem { Name = "TrayMenuOpen",   Text = "Open LES Location Agent" };
