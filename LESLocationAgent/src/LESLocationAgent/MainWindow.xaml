@@ -9,23 +9,24 @@
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>  <!-- Privacy notice -->
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="16"/>
-            <RowDefinition Height="Auto"/>  <!-- Data fields -->
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="16"/>
-            <RowDefinition Height="Auto"/>  <!-- Buttons -->
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>  <!-- Status bar -->
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Privacy Notice -->
+        <!-- Privacy Notice — hardcoded colours; SystemFillColorAttention* variants
+             do not exist as brush keys in WinUI 3 generic.xaml and throw at load. -->
         <Border Grid.Row="0"
-                Background="{ThemeResource SystemFillColorAttentionBackgroundBrush}"
+                Background="#DEEAF7"
                 CornerRadius="4"
                 Padding="12,8">
             <TextBlock x:Name="PrivacyNoticeText"
                        TextWrapping="Wrap"
-                       Foreground="{ThemeResource SystemFillColorAttentionForegroundBrush}"
+                       Foreground="#1A3A5C"
                        FontSize="12"
                        Text="This organization-owned computer uses Windows Location Services for device management and recovery. Location access is controlled by Windows privacy settings." />
         </Border>
@@ -48,55 +49,46 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Row 0: Permission -->
             <TextBlock Grid.Row="0" Grid.Column="0" Text="Location Permission:"
                        FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,4"/>
             <TextBlock Grid.Row="0" Grid.Column="1" x:Name="PermissionValueText"
                        Text="—" VerticalAlignment="Center" Margin="8,4"/>
 
-            <!-- Row 1: Windows Location Status -->
             <TextBlock Grid.Row="1" Grid.Column="0" Text="Windows Location Status:"
                        FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,4"/>
             <TextBlock Grid.Row="1" Grid.Column="1" x:Name="LocationStatusText"
                        Text="—" VerticalAlignment="Center" Margin="8,4"/>
 
-            <!-- Row 2: Latitude -->
             <TextBlock Grid.Row="2" Grid.Column="0" Text="Latitude:"
                        FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,4"/>
             <TextBlock Grid.Row="2" Grid.Column="1" x:Name="LatitudeText"
                        Text="—" VerticalAlignment="Center" Margin="8,4" FontFamily="Consolas"/>
 
-            <!-- Row 3: Longitude -->
             <TextBlock Grid.Row="3" Grid.Column="0" Text="Longitude:"
                        FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,4"/>
             <TextBlock Grid.Row="3" Grid.Column="1" x:Name="LongitudeText"
                        Text="—" VerticalAlignment="Center" Margin="8,4" FontFamily="Consolas"/>
 
-            <!-- Row 4: Accuracy -->
             <TextBlock Grid.Row="4" Grid.Column="0" Text="Accuracy:"
                        FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,4"/>
             <TextBlock Grid.Row="4" Grid.Column="1" x:Name="AccuracyText"
                        Text="—" VerticalAlignment="Center" Margin="8,4"/>
 
-            <!-- Row 5: Altitude -->
             <TextBlock Grid.Row="5" Grid.Column="0" Text="Altitude:"
                        FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,4"/>
             <TextBlock Grid.Row="5" Grid.Column="1" x:Name="AltitudeText"
                        Text="—" VerticalAlignment="Center" Margin="8,4"/>
 
-            <!-- Row 6: Location Source -->
             <TextBlock Grid.Row="6" Grid.Column="0" Text="Location Source:"
                        FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,4"/>
             <TextBlock Grid.Row="6" Grid.Column="1" x:Name="LocationSourceText"
                        Text="Windows Geolocation" VerticalAlignment="Center" Margin="8,4"/>
 
-            <!-- Row 7: Position Source -->
             <TextBlock Grid.Row="7" Grid.Column="0" Text="Position Source:"
                        FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,4"/>
             <TextBlock Grid.Row="7" Grid.Column="1" x:Name="PositionSourceText"
                        Text="—" VerticalAlignment="Center" Margin="8,4"/>
 
-            <!-- Row 8: Last Updated -->
             <TextBlock Grid.Row="8" Grid.Column="0" Text="Last Updated:"
                        FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,4"/>
             <TextBlock Grid.Row="8" Grid.Column="1" x:Name="LastUpdatedText"
@@ -120,15 +112,16 @@
                     MinWidth="160"/>
         </StackPanel>
 
-        <!-- Status Bar -->
+        <!-- Status Bar — hardcoded border colour; SystemFillColorNeutral* Foreground
+             variant does not exist as a brush key in WinUI 3 generic.xaml. -->
         <Border Grid.Row="6"
-                BorderBrush="{ThemeResource SystemFillColorNeutralBrush}"
+                BorderBrush="#CCCCCC"
                 BorderThickness="0,1,0,0"
                 Padding="0,8,0,0">
             <TextBlock x:Name="StatusBarText"
                        Text="Ready"
                        FontSize="12"
-                       Foreground="{ThemeResource SystemFillColorNeutralForegroundBrush}"/>
+                       Foreground="{ThemeResource SystemBaseMediumColor}"/>
         </Border>
     </Grid>
 
