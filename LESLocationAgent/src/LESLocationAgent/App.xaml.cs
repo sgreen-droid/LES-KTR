@@ -18,8 +18,13 @@ public partial class App : Application
     private static readonly Mutex _instanceMutex =
         new(true, @"Global\LESLocationAgent_{C7A3B2D1-E4F5-6789-ABCD-EF0123456789}");
 
+    // Named event: second instance signals this to tell the first instance to show its window
+    private const string ShowWindowEventName =
+        @"Global\LESLocationAgent_ShowWindow_{C7A3B2D1-E4F5-6789-ABCD-EF0123456789}";
+
     private MainWindow? _mainWindow;
     private TaskbarIcon? _trayIcon;
+    private Thread? _showWindowListenerThread;
 
     public static new App Current => (App)Application.Current;
     public MainWindow? MainWindowInstance => _mainWindow;
@@ -34,10 +39,25 @@ public partial class App : Application
         // Enforce single instance
         if (!_instanceMutex.WaitOne(TimeSpan.Zero, true))
         {
-            // Another instance is already running — signal it and exit
+            // Another instance is already running.
+            // If the user launched us manually (no --startup flag), tell the
+            // running instance to bring its window forward, then exit.
+            if (!Environment.CommandLine.Contains("--startup", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    using var ev = EventWaitHandle.OpenExisting(ShowWindowEventName);
+                    ev.Set();
+                }
+                catch { /* Running instance may not have created the event yet — ignore */ }
+            }
             Exit();
             return;
         }
+
+        // First (and only) instance — create the named show-window event and
+        // start a background thread that listens for signals from future launches.
+        StartShowWindowListener();
 
         // Initialise tray icon from Application resources
         _trayIcon = (TaskbarIcon)Resources["TrayIcon"];
@@ -57,6 +77,26 @@ public partial class App : Application
             // Subsequent auto-starts run minimised to tray
             _mainWindow.MinimizeToTray();
         }
+    }
+
+    private void StartShowWindowListener()
+    {
+        // Create (or open) the named event — auto-reset so each signal is consumed once.
+        var showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowWindowEventName);
+
+        _showWindowListenerThread = new Thread(() =>
+        {
+            while (true)
+            {
+                showEvent.WaitOne(); // blocks until a second instance signals us
+                DispatcherQueue.GetForCurrentThread()?.TryEnqueue(() => ShowMainWindow());
+            }
+        })
+        {
+            IsBackground = true, // don't keep the process alive on exit
+            Name = "ShowWindowListener"
+        };
+        _showWindowListenerThread.Start();
     }
 
     // ---------------------------------------------------------------
