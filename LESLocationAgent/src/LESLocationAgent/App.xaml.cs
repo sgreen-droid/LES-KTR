@@ -4,25 +4,23 @@ using LESLocationAgent.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Win32;
-using System.Diagnostics;
 
 namespace LESLocationAgent;
 
 /// <summary>
-/// Application entry point. Handles single-instance enforcement, first-run detection,
-/// and tray icon lifecycle.
+/// Application entry point. Handles single-instance enforcement and tray icon lifecycle.
 /// </summary>
 public partial class App : Application
 {
-    // Single-instance mutex — system-wide unique name
-    private static readonly Mutex _instanceMutex =
-        new(true, @"Global\LESLocationAgent_{C7A3B2D1-E4F5-6789-ABCD-EF0123456789}");
+    // Single-instance mutex — Global\ is fine for interactive users
+    private static Mutex? _instanceMutex;
 
-    // Named event: second instance signals this to tell the first instance to show its window.
-    // Use Local\ (session-scoped) — Global\ requires SeCreateGlobalPrivilege which non-elevated
-    // processes don't have.  Local\ is sufficient because both instances run in the same session.
+    // Named event: second instance signals this to bring the window forward.
+    // Local\ is session-scoped and works without elevated privileges.
     private const string ShowWindowEventName =
         @"Local\LESLocationAgent_ShowWindow_{C7A3B2D1-E4F5-6789-ABCD-EF0123456789}";
+    private const string MutexName =
+        @"Global\LESLocationAgent_{C7A3B2D1-E4F5-6789-ABCD-EF0123456789}";
 
     private MainWindow? _mainWindow;
     private TaskbarIcon? _trayIcon;
@@ -38,67 +36,140 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        // Enforce single instance
-        if (!_instanceMutex.WaitOne(TimeSpan.Zero, true))
+        StartupLog("OnLaunched entered");
+
+        // ── Single-instance check ────────────────────────────────────────────
+        bool ownsMutex = false;
+        try
         {
-            // Another instance is already running.
-            // If the user launched us manually (no --startup flag), tell the
-            // running instance to bring its window forward, then exit.
-            if (!Environment.CommandLine.Contains("--startup", StringComparison.OrdinalIgnoreCase))
+            _instanceMutex = new Mutex(true, MutexName, out ownsMutex);
+        }
+        catch (Exception ex)
+        {
+            // Mutex creation failed (unusual) — log and continue without enforcement
+            StartupLog($"Mutex creation failed: {ex.Message}");
+            ownsMutex = true; // treat as first instance
+        }
+
+        if (!ownsMutex)
+        {
+            StartupLog("Another instance is already running — signalling it and exiting");
+            // If the user launched manually (no --startup), tell the running
+            // instance to show its window
+            if (!IsStartupLaunch())
             {
                 try
                 {
                     using var ev = EventWaitHandle.OpenExisting(ShowWindowEventName);
                     ev.Set();
                 }
-                catch { /* Running instance may not have created the event yet — ignore */ }
+                catch { }
             }
             Exit();
             return;
         }
 
-        // First (and only) instance — create the named show-window event and
-        // start a background thread that listens for signals from future launches.
+        StartupLog("First instance — initialising");
+
+        // ── Show-window listener for subsequent launches ─────────────────────
         StartShowWindowListener();
 
-        // Initialise tray icon from Application resources
-        _trayIcon = (TaskbarIcon)Resources["TrayIcon"];
-        WireTrayMenuHandlers();
-
-        bool isFirstRun = CheckAndMarkFirstRunForCurrentUser();
-
-        _mainWindow = new MainWindow();
-
-        if (isFirstRun || ShouldStartVisible(args))
+        // ── Tray icon ────────────────────────────────────────────────────────
+        try
         {
-            // Always visible on first run so Windows can prompt for location permission
-            _mainWindow.Activate();
+            _trayIcon = (TaskbarIcon)Resources["TrayIcon"];
+            WireTrayMenuHandlers();
+            StartupLog("Tray icon initialised");
         }
-        else
+        catch (Exception ex)
         {
-            // Subsequent auto-starts run minimised to tray
-            _mainWindow.MinimizeToTray();
+            StartupLog($"Tray icon failed: {ex.Message}");
         }
+
+        // ── Main window ──────────────────────────────────────────────────────
+        try
+        {
+            _mainWindow = new MainWindow();
+            StartupLog("MainWindow created");
+
+            if (IsStartupLaunch())
+            {
+                // Launched by the Windows startup key — run in tray.
+                // Only do this after the user has explicitly run the app at
+                // least once (i.e. first-run flag is already set).
+                if (CheckFirstRunFlagExists())
+                {
+                    StartupLog("Startup launch — minimising to tray");
+                    _mainWindow.MinimizeToTray();
+                }
+                else
+                {
+                    // First ever launch (even via startup key) — show window
+                    // so the user can grant location permission.
+                    StartupLog("Startup launch but first-run — showing window");
+                    MarkFirstRunComplete();
+                    _mainWindow.Activate();
+                }
+            }
+            else
+            {
+                // Manual launch — ALWAYS show the window.
+                StartupLog("Manual launch — showing window");
+                MarkFirstRunComplete();
+                _mainWindow.Activate();
+            }
+        }
+        catch (Exception ex)
+        {
+            StartupLog($"MainWindow creation/activation failed: {ex.Message}\n{ex.StackTrace}");
+        }
+
+        StartupLog("OnLaunched complete");
     }
+
+    // ── Startup flag helpers ─────────────────────────────────────────────────
+
+    private static bool IsStartupLaunch() =>
+        Environment.CommandLine.Contains("--startup", StringComparison.OrdinalIgnoreCase);
+
+    private static bool CheckFirstRunFlagExists()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(AppConfig.UserRegistryKeyPath);
+            return key?.GetValue(AppConfig.HasRunBeforeValueName) is not null;
+        }
+        catch { return false; }
+    }
+
+    private static void MarkFirstRunComplete()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.CreateSubKey(
+                AppConfig.UserRegistryKeyPath, writable: true);
+            key.SetValue(AppConfig.HasRunBeforeValueName, 1, RegistryValueKind.DWord);
+        }
+        catch { }
+    }
+
+    // ── Show-window listener ─────────────────────────────────────────────────
 
     private void StartShowWindowListener()
     {
-        // Capture the UI-thread dispatcher queue NOW (we're on the UI thread here).
-        // The background thread cannot call GetForCurrentThread() — it would return null.
+        // Capture the UI-thread dispatcher queue before spawning the background thread.
         var uiQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
 
         EventWaitHandle? showEvent = null;
         try
         {
-            // Auto-reset: each Set() wakes exactly one waiter and resets automatically.
             showEvent = new EventWaitHandle(
                 false, EventResetMode.AutoReset, ShowWindowEventName);
         }
-        catch
+        catch (Exception ex)
         {
-            // If we can't create the named event (unusual), skip the listener.
-            // The tray right-click menu "Open" still works as a fallback.
-            return;
+            StartupLog($"ShowWindowListener event creation failed: {ex.Message}");
+            return; // tray right-click Open still works
         }
 
         var capturedEvent = showEvent;
@@ -106,8 +177,8 @@ public partial class App : Application
         {
             while (true)
             {
-                capturedEvent.WaitOne(); // blocks until a second instance signals us
-                uiQueue?.TryEnqueue(() => ShowMainWindow());
+                capturedEvent.WaitOne();
+                uiQueue?.TryEnqueue(ShowMainWindow);
             }
         })
         {
@@ -117,18 +188,11 @@ public partial class App : Application
         _showWindowListenerThread.Start();
     }
 
-    // ---------------------------------------------------------------
-    // Tray icon menu handlers
-    // ---------------------------------------------------------------
+    // ── Tray menu ────────────────────────────────────────────────────────────
 
     private void WireTrayMenuHandlers()
     {
-        if (_trayIcon is null) return;
-
-        // Left-click on the tray icon opens the window
-        _trayIcon.LeftClickCommand = new ActionCommand(ShowMainWindow);
-
-        if (_trayIcon.ContextFlyout is not MenuFlyout flyout) return;
+        if (_trayIcon?.ContextFlyout is not MenuFlyout flyout) return;
 
         foreach (var item in flyout.Items)
         {
@@ -174,56 +238,23 @@ public partial class App : Application
     private void ExitApplication()
     {
         _trayIcon?.Dispose();
-        _instanceMutex.ReleaseMutex();
+        try { _instanceMutex?.ReleaseMutex(); } catch { }
         Exit();
     }
 
-    /// <summary>
-    /// Returns <see langword="true"/> the very first time the current Windows user
-    /// launches the app, and atomically sets the per-user HKCU flag so subsequent
-    /// launches return <see langword="false"/>.
-    ///
-    /// Using HKCU instead of the machine-wide config file ensures that every user
-    /// account on a shared/managed machine receives the Windows location-permission
-    /// prompt on their own first launch — even if another user has already created
-    /// the machine-wide config file.
-    /// </summary>
-    private static bool CheckAndMarkFirstRunForCurrentUser()
+    // ── Startup log ──────────────────────────────────────────────────────────
+    // Written to C:\ProgramData\LESLocationAgent\startup.log.
+    // Lets IT staff diagnose silent startup failures without attaching a debugger.
+
+    internal static void StartupLog(string message)
     {
         try
         {
-            using var key = Registry.CurrentUser.OpenSubKey(AppConfig.UserRegistryKeyPath);
-            if (key?.GetValue(AppConfig.HasRunBeforeValueName) is not null)
-                return false; // Flag already set — not first run for this user
+            Directory.CreateDirectory(AppConfig.DataDirectory);
+            File.AppendAllText(
+                System.IO.Path.Combine(AppConfig.DataDirectory, "startup.log"),
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  {message}{Environment.NewLine}");
         }
-        catch { /* Fall through and treat as first run */ }
-
-        // Flag absent — first run for this user account. Mark it now so the next
-        // launch (e.g. after a crash/reboot) starts in tray mode as expected.
-        try
-        {
-            using var writeKey = Registry.CurrentUser.CreateSubKey(
-                AppConfig.UserRegistryKeyPath, writable: true);
-            writeKey.SetValue(
-                AppConfig.HasRunBeforeValueName, 1, RegistryValueKind.DWord);
-        }
-        catch { /* Non-fatal; window will be shown again next launch if write fails */ }
-
-        return true;
-    }
-
-    // Minimal ICommand for wiring tray icon clicks without a full MVVM framework
-    private sealed class ActionCommand(Action execute) : System.Windows.Input.ICommand
-    {
-        public event EventHandler? CanExecuteChanged;
-        public bool CanExecute(object? _) => true;
-        public void Execute(object? _) => execute();
-    }
-
-    private static bool ShouldStartVisible(LaunchActivatedEventArgs args)
-    {
-        // Check if launched with --startup flag (from Windows startup registry key)
-        var cmdLine = Environment.CommandLine;
-        return !cmdLine.Contains("--startup", StringComparison.OrdinalIgnoreCase);
+        catch { }
     }
 }

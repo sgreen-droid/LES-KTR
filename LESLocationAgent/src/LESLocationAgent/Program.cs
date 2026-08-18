@@ -36,8 +36,13 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        // Very first thing — write to the startup log before any WinUI code runs.
+        // If the app disappears silently, check C:\ProgramData\LESLocationAgent\startup.log
+        App.StartupLog($"Main() entered — args: {string.Join(" ", args)}");
+
         try
         {
+            App.StartupLog("Calling XamlCheckProcessRequirements");
             // Verify WinUI 3 runtime requirements are met on this Windows version.
             // This call loads Microsoft.ui.xaml.dll; if the DLL is missing or
             // incompatible it throws DllNotFoundException / TypeLoadException here,
