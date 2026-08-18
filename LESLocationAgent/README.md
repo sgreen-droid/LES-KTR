@@ -396,16 +396,33 @@ Signed installers show your publisher name in Windows SmartScreen instead of "Un
 
 ### App won't start after installation
 
-If the installer completes but double-clicking the EXE (or the Start Menu shortcut) does nothing, or the app crashes immediately, the most likely cause is a missing Windows App SDK runtime.
+If the installer completes but double-clicking the EXE (or the Start Menu shortcut) does nothing, or the app crashes immediately, the most likely cause is a missing or incompatible Windows App SDK runtime.
 
-**How to confirm:**
+**What you will see (starting with current builds):**
 
-1. Open **Event Viewer** → Windows Logs → Application.
-2. Look for an error from `LESLocationAgent.exe` mentioning `Microsoft.ui.xaml.dll` or `WindowsAppRuntime`.
+When the app detects a load failure it shows a dialog like:
+
+> *LES Location Agent could not start because a required Windows App SDK component failed to load.*
+> *Missing DLL: Unable to load DLL 'Microsoft.ui.xaml.dll' …*
+> *To fix this, download and run the Windows App SDK runtime installer on this PC …*
+
+The same information is written to the **Windows Application Event Log** so IT staff can investigate without needing to reproduce the crash interactively.
+
+**How to read the Event Log entry:**
+
+1. Open **Event Viewer** (press `Win + R`, type `eventvwr`, press Enter).
+2. Expand **Windows Logs → Application**.
+3. Filter by **Source = LESLocationAgent** (Action pane → Filter Current Log…).
+4. Look for **Event ID 1000** with Level = Error.
+
+The entry contains:
+- The exception type (`DllNotFoundException` or `TypeLoadException`)
+- The exact DLL name or type that failed to load
+- A full stack trace for deeper diagnosis
 
 **Fix — Option A (preferred): re-download the installer from the latest GitHub Actions build.**
 
-The CI pipeline now verifies that `Microsoft.ui.xaml.dll` is bundled in every build. A build that passed CI is guaranteed to be self-contained. If you downloaded the MSI before this check was added, rebuild from `main`.
+The CI pipeline verifies that `Microsoft.ui.xaml.dll` is bundled in every build. A build that passed CI is guaranteed to be self-contained. If you downloaded the MSI before this check was added, rebuild from `main`.
 
 **Fix — Option B: install the Windows App SDK runtime manually.**
 
