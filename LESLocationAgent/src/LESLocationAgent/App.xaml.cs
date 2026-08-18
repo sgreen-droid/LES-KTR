@@ -126,7 +126,7 @@ public partial class App : Application
         if (_trayIcon is null) return;
 
         // Left-click on the tray icon opens the window
-        _trayIcon.TrayLeftMouseDown += (_, _) => ShowMainWindow();
+        _trayIcon.LeftClickCommand = new ActionCommand(ShowMainWindow);
 
         if (_trayIcon.ContextFlyout is not MenuFlyout flyout) return;
 
@@ -210,6 +210,14 @@ public partial class App : Application
         catch { /* Non-fatal; window will be shown again next launch if write fails */ }
 
         return true;
+    }
+
+    // Minimal ICommand for wiring tray icon clicks without a full MVVM framework
+    private sealed class ActionCommand(Action execute) : System.Windows.Input.ICommand
+    {
+        public event EventHandler? CanExecuteChanged;
+        public bool CanExecute(object? _) => true;
+        public void Execute(object? _) => execute();
     }
 
     private static bool ShouldStartVisible(LaunchActivatedEventArgs args)
