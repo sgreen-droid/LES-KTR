@@ -1,1 +1,2 @@
 - [WinUI3 SDK pinning](winui3-sdk-pinning.md) — GitHub Actions windows-latest now ships .NET SDK 10; WinUI 3 PRI tasks break on SDK 10; pin to 8.x via global.json.
+- [H.NotifyIcon WinUI API](h-notifyicon-winui-api.md) — No public events; use LeftClickCommand (ICommand). Global\ named events crash non-elevated processes; use Local\. Capture DispatcherQueue on UI thread before spawning listener thread.
