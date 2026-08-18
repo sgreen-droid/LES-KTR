@@ -82,7 +82,7 @@
     <ComponentGroup Id="SystemSettings" Directory="INSTALLFOLDER">
 
       <!-- HKLM Run key: launches the agent at sign-in for EVERY user account.
-           The --startup flag tells the app to start minimised to tray.
+           Launched with the startup flag so it starts minimised to tray.
            MSI removes this key automatically on uninstall. -->
       <Component Id="AllUserStartup" Guid="F1E2D3C4-B5A6-9078-FEDC-BA9876543210">
         <RegistryValue Root="HKLM"
