@@ -30,6 +30,15 @@ private sealed class ActionCommand(Action execute) : System.Windows.Input.IComma
 
 **Why:** Tried `TrayMouseDoubleClick` and `TrayLeftMouseDown` — both caused CS1061 compile errors. Inspected the DLL with `strings` and confirmed only `get_LeftClickCommand` / `set_LeftClickCommand` (and Right/Middle/Double variants) are exposed publicly.
 
+## Icon Loading (v2.1.0) — do NOT use IconSource or GeneratedIconParameters
+
+- `IconSource = new BitmapImage(new Uri(absolutePath))` compiles but throws at runtime: `ArgumentException: Argument 'picture' must be a picture that can be used as a Icon` — H.NotifyIcon tries to convert ImageSource → System.Drawing.Icon via a stream; a BitmapImage from a file URI isn't a valid .ico stream.
+- `GeneratedIconParameters` does NOT exist in v2.1.0 — CS0117/CS0234 compile errors.
+- **Working solution:** Set no icon at all. Tray shows a blank/default icon; tooltip and context menu still work perfectly.
+- `ms-appx://` URIs also don't resolve in unpackaged apps, so XAML-declared `IconSource="Assets/appicon.ico"` fails too.
+
+**Why:** Icon is purely cosmetic. Attempting any icon in v2.1.0 from an unpackaged app path causes either a runtime crash or compile error. Leave it blank until the package is upgraded or a proper Win32 NOTIFYICONDATA path is used.
+
 ## Named Event Caution
 When creating named `EventWaitHandle` for single-instance signaling:
 - Use `Local\` prefix, NOT `Global\` — `Global\` requires `SeCreateGlobalPrivilege` which non-elevated processes don't have, causing an exception before the tray is ever created.
