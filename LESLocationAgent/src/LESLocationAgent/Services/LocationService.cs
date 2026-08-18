@@ -173,22 +173,25 @@ public sealed class LocationService
         catch { }
 
         double? altitudeAccuracy = null;
-        try { if (coord.AltitudeAccuracy.HasValue) altitudeAccuracy = coord.AltitudeAccuracy.Value; }
+        try { if (coord.AltitudeAccuracy.HasValue && double.IsFinite(coord.AltitudeAccuracy.Value)) altitudeAccuracy = coord.AltitudeAccuracy.Value; }
         catch { }
 
         double? heading = null;
-        try { if (coord.Heading.HasValue) heading = coord.Heading.Value; }
+        try { if (coord.Heading.HasValue && double.IsFinite(coord.Heading.Value)) heading = coord.Heading.Value; }
         catch { }
 
         double? speed = null;
-        try { if (coord.Speed.HasValue) speed = coord.Speed.Value; }
+        try { if (coord.Speed.HasValue && double.IsFinite(coord.Speed.Value)) speed = coord.Speed.Value; }
         catch { }
+
+        // coord.Accuracy can be NaN/Infinity from WiFi/IP sources — clamp to null-safe zero
+        var accuracy = double.IsFinite(coord.Accuracy) ? coord.Accuracy : 0.0;
 
         return new LocationReading
         {
             Latitude              = point.Latitude,
             Longitude             = point.Longitude,
-            AccuracyMeters        = coord.Accuracy,
+            AccuracyMeters        = accuracy,
             Timestamp             = coord.Timestamp,
             AltitudeMeters        = altitude,
             AltitudeAccuracyMeters= altitudeAccuracy,
