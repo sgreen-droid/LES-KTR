@@ -122,8 +122,21 @@ jobs:
       # CODE SIGNING — runs automatically when CODE_SIGN_PFX is set as a
       # GitHub Actions secret.  Development builds that lack the secret are
       # left unsigned without any code change needed.
+      #
+      # GitHub Actions does not allow 'secrets' in if: conditions, so we
+      # detect the secret inside a run: step and write the result as an output.
+      - name: Check code-signing secret
+        id: check-signing
+        shell: pwsh
+        env:
+          SIGN_PFX_BASE64: ${{ secrets.CODE_SIGN_PFX }}
+        run: |
+          $enabled = ($env:SIGN_PFX_BASE64 -ne '') -and ($null -ne $env:SIGN_PFX_BASE64)
+          "signing_enabled=$($enabled.ToString().ToLower())" | Out-File $env:GITHUB_OUTPUT -Append
+          Write-Host "Code signing enabled: $enabled"
+
       - name: Sign MSI (production)
-        if: ${{ secrets.CODE_SIGN_PFX != '' }}
+        if: steps.check-signing.outputs.signing_enabled == 'true'
         shell: pwsh
         env:
           SIGN_PFX_BASE64: ${{ secrets.CODE_SIGN_PFX }}
