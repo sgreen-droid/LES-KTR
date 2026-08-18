@@ -394,6 +394,35 @@ Signed installers show your publisher name in Windows SmartScreen instead of "Un
 - Check `C:\ProgramData\LESLocationAgent\status.json` for the `locationStatus` and `error` fields.
 - Review the Windows Event Log for Location-related errors.
 
+### App won't start after installation
+
+If the installer completes but double-clicking the EXE (or the Start Menu shortcut) does nothing, or the app crashes immediately, the most likely cause is a missing Windows App SDK runtime.
+
+**How to confirm:**
+
+1. Open **Event Viewer** → Windows Logs → Application.
+2. Look for an error from `LESLocationAgent.exe` mentioning `Microsoft.ui.xaml.dll` or `WindowsAppRuntime`.
+
+**Fix — Option A (preferred): re-download the installer from the latest GitHub Actions build.**
+
+The CI pipeline now verifies that `Microsoft.ui.xaml.dll` is bundled in every build. A build that passed CI is guaranteed to be self-contained. If you downloaded the MSI before this check was added, rebuild from `main`.
+
+**Fix — Option B: install the Windows App SDK runtime manually.**
+
+Download and run the Windows App SDK runtime installer from Microsoft:
+
+```
+https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe
+```
+
+Run it once on the affected PC, then launch LES Location Agent again.
+
+**Fix — Option C: check that you are running the x64 build on an x64 PC.**
+
+The MSI targets Windows x64. ARM64 PCs without x64 emulation may fail to load the bundled DLLs. Contact your administrator.
+
+---
+
 ### App does not start with Windows
 
 - Open the app manually, then close it to the tray. The startup entry is written on the first launch.

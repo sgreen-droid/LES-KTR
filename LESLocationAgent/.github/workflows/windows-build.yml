@@ -105,6 +105,51 @@ jobs:
       # ----------------------------------------------------------------
       # 8. Build MSI with WiX v5
       # ----------------------------------------------------------------
+      # Verify that the Windows App SDK was bundled into the publish output.
+      # WindowsAppSDKSelfContained=true should include Microsoft.ui.xaml.dll;
+      # if it is absent the app will silently fail to start on clean Windows PCs.
+      - name: Verify Windows App SDK DLLs are present
+        shell: pwsh
+        run: |
+          $publishDir = Join-Path (Get-Location) 'publish\x64\Release'
+          $xamlDll = Get-ChildItem -Path $publishDir -Recurse -Filter 'Microsoft.ui.xaml.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
+
+          if (-not $xamlDll) {
+            Write-Error @"
+          ================================================================
+          MISSING: Microsoft.ui.xaml.dll was not found in the publish output.
+          The app will fail to start on any PC that does not already have the
+          Windows App SDK installed.
+
+          Fix options:
+            1. Confirm /p:WindowsAppSDKSelfContained=true is accepted by the
+               SDK version on this runner (check MSBuild output above).
+            2. Switch to a WiX Burn bootstrapper that installs the Windows App
+               SDK Redistributable as an ExePackage prerequisite before the MSI.
+          ================================================================
+          "@
+            exit 1
+          }
+
+          Write-Host "Windows App SDK DLL confirmed: $($xamlDll.FullName)"
+
+          # Also check for a few other core WinAppSDK DLLs for extra confidence.
+          $extraChecks = @(
+            'Microsoft.WindowsAppRuntime.Release.dll',
+            'WinRT.Runtime.dll'
+          )
+          foreach ($name in $extraChecks) {
+            $found = Get-ChildItem -Path $publishDir -Recurse -Filter $name -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) {
+              Write-Host "Confirmed: $name"
+            } else {
+              Write-Warning "$name not found — bundle may be incomplete."
+            }
+          }
+
+          $dllCount = (Get-ChildItem $publishDir -Recurse -Filter '*.dll').Count
+          Write-Host "Total DLLs in publish output: $dllCount"
+
       - name: Build MSI installer
         shell: pwsh
         run: |
