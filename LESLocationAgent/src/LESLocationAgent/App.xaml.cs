@@ -18,9 +18,11 @@ public partial class App : Application
     private static readonly Mutex _instanceMutex =
         new(true, @"Global\LESLocationAgent_{C7A3B2D1-E4F5-6789-ABCD-EF0123456789}");
 
-    // Named event: second instance signals this to tell the first instance to show its window
+    // Named event: second instance signals this to tell the first instance to show its window.
+    // Use Local\ (session-scoped) — Global\ requires SeCreateGlobalPrivilege which non-elevated
+    // processes don't have.  Local\ is sufficient because both instances run in the same session.
     private const string ShowWindowEventName =
-        @"Global\LESLocationAgent_ShowWindow_{C7A3B2D1-E4F5-6789-ABCD-EF0123456789}";
+        @"Local\LESLocationAgent_ShowWindow_{C7A3B2D1-E4F5-6789-ABCD-EF0123456789}";
 
     private MainWindow? _mainWindow;
     private TaskbarIcon? _trayIcon;
@@ -81,19 +83,35 @@ public partial class App : Application
 
     private void StartShowWindowListener()
     {
-        // Create (or open) the named event — auto-reset so each signal is consumed once.
-        var showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowWindowEventName);
+        // Capture the UI-thread dispatcher queue NOW (we're on the UI thread here).
+        // The background thread cannot call GetForCurrentThread() — it would return null.
+        var uiQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
 
+        EventWaitHandle? showEvent = null;
+        try
+        {
+            // Auto-reset: each Set() wakes exactly one waiter and resets automatically.
+            showEvent = new EventWaitHandle(
+                false, EventResetMode.AutoReset, ShowWindowEventName);
+        }
+        catch
+        {
+            // If we can't create the named event (unusual), skip the listener.
+            // The tray right-click menu "Open" still works as a fallback.
+            return;
+        }
+
+        var capturedEvent = showEvent;
         _showWindowListenerThread = new Thread(() =>
         {
             while (true)
             {
-                showEvent.WaitOne(); // blocks until a second instance signals us
-                DispatcherQueue.GetForCurrentThread()?.TryEnqueue(() => ShowMainWindow());
+                capturedEvent.WaitOne(); // blocks until a second instance signals us
+                uiQueue?.TryEnqueue(() => ShowMainWindow());
             }
         })
         {
-            IsBackground = true, // don't keep the process alive on exit
+            IsBackground = true,
             Name = "ShowWindowListener"
         };
         _showWindowListenerThread.Start();
@@ -105,7 +123,12 @@ public partial class App : Application
 
     private void WireTrayMenuHandlers()
     {
-        if (_trayIcon?.ContextFlyout is not MenuFlyout flyout) return;
+        if (_trayIcon is null) return;
+
+        // Single left-click on the tray icon opens the window
+        _trayIcon.TrayMouseDoubleClick += (_, _) => ShowMainWindow();
+
+        if (_trayIcon.ContextFlyout is not MenuFlyout flyout) return;
 
         foreach (var item in flyout.Items)
         {
