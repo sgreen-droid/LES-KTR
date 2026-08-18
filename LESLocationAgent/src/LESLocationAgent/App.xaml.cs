@@ -125,8 +125,8 @@ public partial class App : Application
     {
         if (_trayIcon is null) return;
 
-        // Single left-click on the tray icon opens the window
-        _trayIcon.TrayMouseDoubleClick += (_, _) => ShowMainWindow();
+        // Left-click on the tray icon opens the window
+        _trayIcon.TrayLeftMouseDown += (_, _) => ShowMainWindow();
 
         if (_trayIcon.ContextFlyout is not MenuFlyout flyout) return;
 
