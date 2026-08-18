@@ -77,11 +77,42 @@
     </ComponentGroup>
 
     <!-- ============================================================
+         All-user startup and uninstall protection
+         ============================================================ -->
+    <ComponentGroup Id="SystemSettings" Directory="INSTALLFOLDER">
+
+      <!-- HKLM Run key: launches the agent at sign-in for EVERY user account.
+           The --startup flag tells the app to start minimised to tray.
+           MSI removes this key automatically on uninstall. -->
+      <Component Id="AllUserStartup" Guid="F1E2D3C4-B5A6-9078-FEDC-BA9876543210">
+        <RegistryValue Root="HKLM"
+                       Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+                       Name="LESLocationAgent"
+                       Type="string"
+                       Value="&quot;[INSTALLFOLDER]LESLocationAgent.exe&quot; --startup"
+                       KeyPath="yes" />
+      </Component>
+
+      <!-- Sentinel value so the app knows an HKLM startup entry already exists
+           and can skip writing a duplicate HKCU entry. -->
+      <Component Id="UninstallProtectionFlag" Guid="B2C3D4E5-F6A7-8901-BCDE-F01234567892">
+        <RegistryValue Root="HKLM"
+                       Key="Software\LES\LESLocationAgent"
+                       Name="AllUserStartup"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+
+    </ComponentGroup>
+
+    <!-- ============================================================
          Features
          ============================================================ -->
     <Feature Id="ProductFeature" Title="LES Location Agent" Level="1">
       <ComponentGroupRef Id="ApplicationFiles" />
       <ComponentGroupRef Id="Shortcuts" />
+      <ComponentGroupRef Id="SystemSettings" />
     </Feature>
 
     <!-- ============================================================
@@ -101,6 +132,23 @@
     <InstallExecuteSequence>
       <Custom Action="LaunchApp" After="InstallFinalize" Condition="NOT REMOVE" />
     </InstallExecuteSequence>
+
+    <!-- ============================================================
+         Uninstall password check (UI sequence only — silent uninstalls
+         via Action1/msiexec /quiet bypass this intentionally).
+         The VBScript raises an error to abort MSI if the password is wrong.
+         ============================================================ -->
+    <Binary Id="UninstallPasswordVbs" SourceFile="check-uninstall-password.vbs" />
+
+    <CustomAction Id="CheckUninstallPassword"
+                  BinaryRef="UninstallPasswordVbs"
+                  VBScriptCall="CheckUninstallPassword"
+                  Execute="immediate"
+                  Return="check" />
+
+    <InstallUISequence>
+      <Custom Action="CheckUninstallPassword" Before="AppSearch" Condition='REMOVE="ALL"' />
+    </InstallUISequence>
 
   </Package>
 </Wix>
