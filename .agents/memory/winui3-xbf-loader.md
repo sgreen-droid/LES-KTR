@@ -17,3 +17,12 @@ Pre-grant Windows location permission (no OS dialog) by writing:
 `HKCU\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location` → `Value = "Allow"` (string).
 - Write it at app startup AND in the installer; on multi-user machines write it **before** any single-instance early exit, or second-user sessions never get it.
 - A per-machine MSI's HKCU write only affects the installing identity (often SYSTEM under RMM deployment) — the app-startup write is the reliable path.
+
+## Geolocation numeric values
+Treat every numeric value from `Windows.Devices.Geolocation` as untrusted before JSON serialization. A WiFi/IP position can report `NaN` or positive/negative infinity for optional telemetry (altitude, altitude accuracy, heading, speed) and occasionally accuracy.
+
+**Rule:** At the location-file boundary, retain only finite optional values and omit the rest. Reject non-finite coordinates; map a non-finite accuracy to `0` with `UNKNOWN` quality so a good coordinate update is not discarded.
+
+**Why:** `System.Text.Json` rejects non-finite numbers by default, and one unsupported metadata field otherwise prevents the whole `location.json` update.
+
+**How to apply:** Keep both the Windows mapping guard and the final file-writing guard. The latter is the fail-safe for future location providers or model changes.
