@@ -13,16 +13,7 @@ public sealed class AppConfig
     public const string LocationFilePath = @"C:\ProgramData\LESLocationAgent\location.json";
     public const string StatusFilePath = @"C:\ProgramData\LESLocationAgent\status.json";
     public const int MinRefreshMinutes = 5;
-    /// <summary>Version embedded in the running executable; shown in the window title and JSON output.</summary>
-    public static string AgentVersion
-    {
-        get
-        {
-            var version = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version
-                ?? typeof(AppConfig).Assembly.GetName().Version;
-            return version?.ToString(3) ?? "Unknown";
-        }
-    }
+    public const string AgentVersion = "1.0.0";
 
     // Per-user first-run flag stored in HKCU so every user account gets the
     // location-permission prompt on their first launch, regardless of whether

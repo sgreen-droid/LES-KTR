@@ -43,7 +43,7 @@ public sealed class MainWindow : Window
     private TextBlock LocationSourceText   = null!;
     private TextBlock PositionSourceText   = null!;
     private TextBlock LastUpdatedText      = null!;
-    private TextBox   StatusBarText        = null!;
+    private TextBlock StatusBarText        = null!;
     private Button    EnableLocationButton = null!;
     private Button    GetLocationButton    = null!;
     private Button    OpenSettingsButton   = null!;
@@ -75,7 +75,7 @@ public sealed class MainWindow : Window
 
     private void BuildUi()
     {
-        Title = WindowTitle;
+        Title = "LES Location Agent";
 
         var root = new Grid { Padding = new Thickness(20) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });                       // 0 privacy
@@ -154,24 +154,14 @@ public sealed class MainWindow : Window
         root.Children.Add(buttons);
 
         // ── Status bar ───────────────────────────────────────────────────────
-        // A read-only TextBox gives status messages a reliable wrapped viewport.
-        // The Auto-sized grid row expands for the entire message rather than
-        // clipping a long error at the window edge.
-        StatusBarText = new TextBox
+        StatusBarText = new TextBlock
         {
-            Text                        = "Ready",
-            FontSize                    = 12,
-            IsReadOnly                  = true,
-            IsTabStop                   = false,
-            AcceptsReturn               = true,
-            TextWrapping                = TextWrapping.Wrap,
-            VerticalContentAlignment    = VerticalAlignment.Top,
-            HorizontalAlignment         = HorizontalAlignment.Stretch,
-            MinHeight                   = 44,
-            Padding                     = new Thickness(0),
-            BorderThickness             = new Thickness(0),
-            Background                  = new SolidColorBrush(Colors.Transparent),
-            Foreground                  = new SolidColorBrush(Color.FromArgb(255, 0x66, 0x66, 0x66)),
+            Text              = "Ready",
+            FontSize          = 12,
+            TextWrapping      = TextWrapping.Wrap,
+            TextTrimming      = TextTrimming.None,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Foreground        = new SolidColorBrush(Color.FromArgb(255, 0x66, 0x66, 0x66)),
         };
         var statusBorder = new Border
         {
@@ -227,7 +217,7 @@ public sealed class MainWindow : Window
         var appWindow = GetAppWindow();
         if (appWindow is null) return;
 
-        appWindow.Title = WindowTitle;
+        appWindow.Title = "LES Location Agent";
         appWindow.Resize(new Windows.Graphics.SizeInt32(560, 500));
 
         // Centre on primary monitor
@@ -252,8 +242,6 @@ public sealed class MainWindow : Window
         var windowId  = Win32Interop.GetWindowIdFromWindow(hWnd);
         return AppWindow.GetFromWindowId(windowId);
     }
-
-    private static string WindowTitle => $"LES Location Agent v{AppConfig.AgentVersion}";
 
     // ---------------------------------------------------------------
     // Show / hide (called by App.xaml.cs tray menu)

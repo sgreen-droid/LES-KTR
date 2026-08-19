@@ -48,6 +48,13 @@ jobs:
         run: dotnet restore LESLocationAgent.sln -p:Platform=${{ env.PLATFORM }}
 
       # ----------------------------------------------------------------
+      # 4b. Verify Action1 sync output without requiring an Action1 tenant.
+      # ----------------------------------------------------------------
+      - name: Test Action1 location sync
+        shell: pwsh
+        run: .\tests\Action1-Location-Sync.Tests.ps1
+
+      # ----------------------------------------------------------------
       # 5. Run unit tests
       #    The Core library tests target net8.0 and run on any OS.
       # ----------------------------------------------------------------

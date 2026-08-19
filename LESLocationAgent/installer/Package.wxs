@@ -16,7 +16,7 @@
   <Package
     Name="LES Location Agent"
     Manufacturer="LES"
-    Version="1.0.10.0"
+    Version="1.0.11.0"
     UpgradeCode="A1B2C3D4-E5F6-7890-ABCD-EF1234567890"
     Language="1033"
     InstallerVersion="500"
@@ -142,19 +142,7 @@
                   Impersonate="yes"
                   Return="asyncNoWait" />
 
-    <!-- A tray agent can remain alive after an MSI upgrade, leaving the old
-         executable in memory even though new files were installed. Stop all
-         running copies before files are replaced so the post-install launch
-         always uses the upgraded binary. A missing process is harmless. -->
-    <CustomAction Id="StopRunningAgent"
-                  Directory="SystemFolder"
-                  ExeCommand="taskkill.exe /F /IM LESLocationAgent.exe"
-                  Execute="deferred"
-                  Impersonate="no"
-                  Return="ignore" />
-
     <InstallExecuteSequence>
-      <Custom Action="StopRunningAgent" Before="InstallFiles" Condition="NOT REMOVE" />
       <Custom Action="LaunchApp" After="InstallFinalize" Condition="NOT REMOVE" />
     </InstallExecuteSequence>
 

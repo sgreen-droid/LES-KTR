@@ -5,7 +5,8 @@
 .DESCRIPTION
     Reads C:\ProgramData\LESLocationAgent\location.json and status.json,
     validates all values, calculates staleness, and calls Action1-Set-CustomAttribute
-    with the 9 required attribute names.
+    with the existing location attributes plus Map Link, Location Coordinates,
+    and Location Summary.
 
     Location Status values:
       ACTIVE          — location exists and is <= 30 minutes old
@@ -19,18 +20,23 @@
     Required Action1 Custom Attributes (create these in the Action1 portal):
       Latitude, Longitude, Location Accuracy, Location Quality,
       Location Source, Position Source, Location Permission,
-      Location Updated, Location Status
+      Location Updated, Location Status, Map Link, Location Coordinates,
+      Location Summary
 #>
 
 #Requires -Version 5.1
+param(
+    # Optional overrides make the script testable; Action1 uses the defaults.
+    [string]$LocationFile = 'C:\ProgramData\LESLocationAgent\location.json',
+    [string]$StatusFile   = 'C:\ProgramData\LESLocationAgent\status.json'
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 # ---------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------
-$LocationFile = 'C:\ProgramData\LESLocationAgent\location.json'
-$StatusFile   = 'C:\ProgramData\LESLocationAgent\status.json'
 $StalenessThresholdMinutes = 30
 
 # ---------------------------------------------------------------
@@ -43,12 +49,25 @@ function Set-Attribute {
     Action1-Set-CustomAttribute $Name $displayValue
 }
 
+# New attributes are optional during rollout. If one has not been created in
+# Action1 yet, keep the established location sync successful and log the
+# optional-attribute failure instead of aborting the whole automation.
+function Set-OptionalAttribute {
+    param([string]$Name, $Value)
+    try {
+        Set-Attribute $Name $Value
+    } catch {
+        Write-Warning "Optional attribute '$Name' was not updated: $_"
+    }
+}
+
 # ---------------------------------------------------------------
 # Helper: set all attributes to an error/unknown state
 # ---------------------------------------------------------------
 function Set-ErrorState {
     param([string]$Status, [string]$Reason)
     Write-Warning "Location Sync: $Reason"
+    Write-Warning 'Map Link not updated — valid coordinates unavailable.'
     Set-Attribute 'Latitude'          ''
     Set-Attribute 'Longitude'         ''
     Set-Attribute 'Location Accuracy' ''
@@ -87,14 +106,14 @@ if (Test-Path $StatusFile) {
 if ($permissionStatus -eq 'Denied') {
     Set-Attribute 'Location Permission' 'Denied'
     Set-ErrorState 'PERMISSION DENIED' 'Windows location access is denied on this device'
-    exit 0
+    return
 }
 
 # 3. Validate location.json exists
 if (-not (Test-Path $LocationFile)) {
     Set-Attribute 'Location Permission' $permissionStatus
     Set-ErrorState 'NO LOCATION' "location.json not found at $LocationFile"
-    exit 0
+    return
 }
 
 # 4. Parse location.json
@@ -104,30 +123,38 @@ try {
 } catch {
     Set-Attribute 'Location Permission' $permissionStatus
     Set-ErrorState 'ERROR' "Failed to parse location.json: $_"
-    exit 0
+    return
 }
 
 # 5. Validate required fields exist
 if ($null -eq $data.latitude -or $null -eq $data.longitude) {
     Set-Attribute 'Location Permission' $permissionStatus
     Set-ErrorState 'NO LOCATION' 'location.json is missing latitude or longitude'
-    exit 0
+    return
 }
 
 # 6. Validate coordinate ranges
-$lat = [double]$data.latitude
-$lon = [double]$data.longitude
-
-if ($lat -lt -90 -or $lat -gt 90) {
+try {
+    $lat = [double]$data.latitude
+    $lon = [double]$data.longitude
+} catch {
     Set-Attribute 'Location Permission' $permissionStatus
-    Set-ErrorState 'ERROR' "Invalid latitude value: $lat (must be -90 to 90)"
-    exit 0
+    Set-ErrorState 'ERROR' "Coordinates are not numeric: $_"
+    return
 }
 
-if ($lon -lt -180 -or $lon -gt 180) {
+if ([double]::IsNaN($lat) -or [double]::IsInfinity($lat) -or
+    $lat -lt -90 -or $lat -gt 90) {
+    Set-Attribute 'Location Permission' $permissionStatus
+    Set-ErrorState 'ERROR' "Invalid latitude value: $lat (must be -90 to 90)"
+    return
+}
+
+if ([double]::IsNaN($lon) -or [double]::IsInfinity($lon) -or
+    $lon -lt -180 -or $lon -gt 180) {
     Set-Attribute 'Location Permission' $permissionStatus
     Set-ErrorState 'ERROR' "Invalid longitude value: $lon (must be -180 to 180)"
-    exit 0
+    return
 }
 
 # 7. Calculate staleness
@@ -158,7 +185,37 @@ $locationSource  = if ($data.PSObject.Properties['locationSource'])  { $data.loc
 $positionSource  = if ($data.PSObject.Properties['positionSource'])  { $data.positionSource  } else { '' }
 $permission      = if ($data.PSObject.Properties['permissionStatus']){ $data.permissionStatus } else { $permissionStatus }
 
-# 9. Set all Custom Attributes
+# 9. Generate the optional human-readable location values. Use invariant
+# formatting so the URL is valid regardless of the endpoint's locale.
+$mapLink            = $null
+$locationCoordinates = $null
+$locationSummary    = $null
+try {
+    $latText = $lat.ToString('F6', [System.Globalization.CultureInfo]::InvariantCulture)
+    $lonText = $lon.ToString('F6', [System.Globalization.CultureInfo]::InvariantCulture)
+    $locationCoordinates = "$latText, $lonText"
+    $mapLink = "https://www.google.com/maps/search/?api=1&query=$latText,$lonText"
+
+    $summaryAccuracy = 'unknown'
+    if ($null -ne $accuracyMeters) {
+        try {
+            $summaryAccuracy = ([double]$accuracyMeters).ToString(
+                '0.##', [System.Globalization.CultureInfo]::InvariantCulture)
+        } catch {
+            Write-Warning "Could not format accuracy for Location Summary: $_"
+        }
+    }
+    $summarySource = if ([string]::IsNullOrWhiteSpace("$positionSource")) {
+        'Unknown'
+    } else {
+        "$positionSource"
+    }
+    $locationSummary = "$locationCoordinates | ±$summaryAccuracy m | $summarySource | $locationStatus"
+} catch {
+    Write-Warning "Map Link not updated — could not format valid coordinates: $_"
+}
+
+# 10. Set all Custom Attributes
 Write-Host "`nSetting Action1 Custom Attributes..."
 Set-Attribute 'Latitude'            $lat
 Set-Attribute 'Longitude'           $lon
@@ -169,7 +226,19 @@ Set-Attribute 'Position Source'     $positionSource
 Set-Attribute 'Location Permission' $permission
 Set-Attribute 'Location Updated'    $timestampStr
 Set-Attribute 'Location Status'     $locationStatus
+if ($null -ne $mapLink) {
+    Set-OptionalAttribute 'Map Link'             $mapLink
+    Set-OptionalAttribute 'Location Coordinates' $locationCoordinates
+    Set-OptionalAttribute 'Location Summary'     $locationSummary
+} else {
+    Write-Warning 'Map Link not updated — valid coordinates unavailable.'
+}
 
 Write-Host "`n=== Sync complete ==="
 Write-Output "RESULT: $locationStatus"
 Write-Output "Latitude: $lat  Longitude: $lon  Accuracy: $accuracyMeters m  Quality: $accuracyQuality"
+if ($null -ne $mapLink) {
+    Write-Output "Map: $mapLink"
+} else {
+    Write-Output 'Map Link not updated — valid coordinates unavailable.'
+}
