@@ -46,7 +46,9 @@ try {
 
     $global:LesCapturedAttributes = @{}
     $global:LesOptionalAttributeFailures = @()
-    & $scriptPath -LocationFile $locationFile -StatusFile $statusFile
+    $env:LES_LOCATION_AGENT_LOCATION_FILE = $locationFile
+    $env:LES_LOCATION_AGENT_STATUS_FILE = $statusFile
+    & $scriptPath
 
     $expectedExisting = @{
         'Latitude'            = '40.839466'
@@ -76,7 +78,7 @@ try {
     $global:LesOptionalAttributeFailures = @(
         'Map Link', 'Location Coordinates', 'Location Summary'
     )
-    & $scriptPath -LocationFile $locationFile -StatusFile $statusFile
+    & $scriptPath
     foreach ($name in $expectedExisting.Keys) {
         Assert-Equal "Existing attribute after optional failure: $name" `
             $expectedExisting[$name] $global:LesCapturedAttributes[$name]
@@ -97,7 +99,7 @@ try {
         $invalidLocation | ConvertTo-Json | Set-Content -Path $locationFile -Encoding UTF8
         $global:LesCapturedAttributes = @{}
         $global:LesOptionalAttributeFailures = @()
-        & $scriptPath -LocationFile $locationFile -StatusFile $statusFile
+        & $scriptPath
 
         if ($global:LesCapturedAttributes.ContainsKey('Map Link') -or
             $global:LesCapturedAttributes.ContainsKey('Location Coordinates') -or
@@ -114,5 +116,7 @@ finally {
     Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Variable -Name LesCapturedAttributes -Scope Global -ErrorAction SilentlyContinue
     Remove-Variable -Name LesOptionalAttributeFailures -Scope Global -ErrorAction SilentlyContinue
+    Remove-Item Env:\LES_LOCATION_AGENT_LOCATION_FILE -ErrorAction SilentlyContinue
+    Remove-Item Env:\LES_LOCATION_AGENT_STATUS_FILE -ErrorAction SilentlyContinue
     Remove-Item function:\global:Action1-Set-CustomAttribute -ErrorAction SilentlyContinue
 }

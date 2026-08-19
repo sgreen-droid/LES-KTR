@@ -25,11 +25,6 @@
 #>
 
 #Requires -Version 5.1
-param(
-    # Optional overrides make the script testable; Action1 uses the defaults.
-    [string]$LocationFile = 'C:\ProgramData\LESLocationAgent\location.json',
-    [string]$StatusFile   = 'C:\ProgramData\LESLocationAgent\status.json'
-)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -37,6 +32,24 @@ $ErrorActionPreference = 'Stop'
 # ---------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------
+$LocationFile = if (
+    [string]::IsNullOrWhiteSpace($env:LES_LOCATION_AGENT_LOCATION_FILE)
+) {
+    'C:\ProgramData\LESLocationAgent\location.json'
+}
+else {
+    $env:LES_LOCATION_AGENT_LOCATION_FILE
+}
+
+$StatusFile = if (
+    [string]::IsNullOrWhiteSpace($env:LES_LOCATION_AGENT_STATUS_FILE)
+) {
+    'C:\ProgramData\LESLocationAgent\status.json'
+}
+else {
+    $env:LES_LOCATION_AGENT_STATUS_FILE
+}
+
 $StalenessThresholdMinutes = 30
 
 # ---------------------------------------------------------------
