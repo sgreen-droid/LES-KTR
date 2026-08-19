@@ -154,8 +154,9 @@ public sealed class MainWindow : Window
         root.Children.Add(buttons);
 
         // ── Status bar ───────────────────────────────────────────────────────
-        // A read-only TextBox gives status messages a real viewport. Long errors
-        // wrap to multiple lines and can be scrolled instead of being clipped.
+        // A read-only TextBox gives status messages a reliable wrapped viewport.
+        // The Auto-sized grid row expands for the entire message rather than
+        // clipping a long error at the window edge.
         StatusBarText = new TextBox
         {
             Text                        = "Ready",
@@ -164,12 +165,9 @@ public sealed class MainWindow : Window
             IsTabStop                   = false,
             AcceptsReturn               = true,
             TextWrapping                = TextWrapping.Wrap,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             VerticalContentAlignment    = VerticalAlignment.Top,
             HorizontalAlignment         = HorizontalAlignment.Stretch,
             MinHeight                   = 44,
-            MaxHeight                   = 96,
             Padding                     = new Thickness(0),
             BorderThickness             = new Thickness(0),
             Background                  = new SolidColorBrush(Colors.Transparent),
