@@ -1,0 +1,132 @@
+Upgrade the existing LES Location Agent → Action1 sync. Do not rebuild or replace any working location functionality. Preserve the current Windows Geolocation, Action1 custom attribute syncing, logging, permissions checks, timestamps, accuracy reporting, and existing location fields.
+
+Add the following functionality:
+
+1. Generate a Map Link Automatically
+
+Whenever a valid latitude and longitude are obtained, generate a clickable Google Maps URL in this format:
+
+https://www.google.com/maps/search/?api=1&query={LATITUDE},{LONGITUDE}
+
+Example:
+
+https://www.google.com/maps/search/?api=1&query=40.839466,-73.859357
+
+The URL must always use the most recent valid coordinates returned by Windows Geolocation.
+
+2. Add a New Action1 Custom Attribute
+
+Create/sync a new Action1 custom attribute named:
+
+Map Link
+
+Its value should be the generated Google Maps URL.
+
+Example Action1 output:
+
+Action1-Set-CustomAttribute: Map Link=https://www.google.com/maps/search/?api=1&query=40.839466,-73.859357
+
+Do not modify or remove the existing attributes:
+
+Latitude
+Longitude
+Location Accuracy
+Location Quality
+Location Source
+Position Source
+Location Permission
+Location Updated
+Location Status
+3. Add a Human-Readable Location Field
+
+Also add a custom attribute named:
+
+Location Coordinates
+
+Format:
+
+40.839466, -73.859357
+
+This gives administrators a clean coordinate value separate from the clickable map URL.
+
+4. Update Console/Log Output
+
+At the end of a successful sync, include:
+
+Map: https://www.google.com/maps/search/?api=1&query=LATITUDE,LONGITUDE
+
+Example final output:
+
+=== Sync complete ===
+
+RESULT: ACTIVE
+
+Latitude: 40.839466
+
+Longitude: -73.859357
+
+Accuracy: 109 m
+
+Quality: APPROXIMATE
+
+Map: https://www.google.com/maps/search/?api=1&query=40.839466,-73.859357
+
+5. Error Handling
+
+Only create/update the Map Link when both latitude and longitude are valid numeric coordinates.
+
+Validate:
+
+Latitude must be between -90 and 90.
+Longitude must be between -180 and 180.
+If coordinates are invalid or unavailable:
+
+Do not generate a malformed map URL.
+Preserve the previous valid location if that is how the current agent behaves.
+Log a clear message such as:
+Map Link not updated — valid coordinates unavailable.
+
+Do not allow a failed map-link generation to cause the entire location synchronization to fail.
+
+6. Preserve Existing Behavior
+
+This is an upgrade only.
+
+Do not:
+
+Rewrite the entire application.
+Replace Windows Geolocation.
+Remove existing Action1 integration.
+Change existing custom attribute names.
+Break the current scheduled/background execution.
+Require a browser to be open.
+Require the user to manually interact with the agent.
+Add unnecessary dependencies.
+The agent must remain lightweight and autonomous.
+
+7. Optional Preferred Enhancement
+
+If practical within the existing architecture, also create an Action1 custom attribute called:
+
+Location Summary
+
+Formatted like:
+
+40.839466, -73.859357 | ±109 m | WiFi | ACTIVE
+
+This should provide administrators with a compact overview of the latest location reading.
+
+Goal
+
+After this upgrade, an administrator viewing a managed PC in Action1 should be able to see:
+
+Location Status: ACTIVE
+Latitude: 40.839466
+Longitude: -73.859357
+Location Accuracy: 109
+Position Source: WiFi
+Location Coordinates: 40.839466, -73.859357
+Map Link: https://www.google.com/maps/search/?api=1&query=40.839466,-73.859357
+Location Summary: 40.839466, -73.859357 | ±109 m | WiFi | ACTIVE
+
+Implement this by modifying the existing project with the smallest safe set of changes, then test that all current location fields still synchronize correctly to Action1.
