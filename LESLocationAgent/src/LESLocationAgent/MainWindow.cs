@@ -156,15 +156,18 @@ public sealed class MainWindow : Window
         // ── Status bar ───────────────────────────────────────────────────────
         StatusBarText = new TextBlock
         {
-            Text       = "Ready",
-            FontSize   = 12,
-            Foreground = new SolidColorBrush(Color.FromArgb(255, 0x66, 0x66, 0x66)),
+            Text              = "Ready",
+            FontSize          = 12,
+            TextWrapping      = TextWrapping.Wrap,
+            TextTrimming      = TextTrimming.None,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Foreground        = new SolidColorBrush(Color.FromArgb(255, 0x66, 0x66, 0x66)),
         };
         var statusBorder = new Border
         {
             BorderBrush     = new SolidColorBrush(Color.FromArgb(255, 0xCC, 0xCC, 0xCC)),
             BorderThickness = new Thickness(0, 1, 0, 0),
-            Padding         = new Thickness(0, 8, 0, 0),
+            Padding         = new Thickness(0, 8, 0, 8),
             Child           = StatusBarText,
         };
         Grid.SetRow(statusBorder, 6);
