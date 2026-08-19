@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
-    <AppVersion>1.0.6</AppVersion>
-    <AppVersionWindows>1.0.6.0</AppVersionWindows>
+    <AppVersion>1.0.7</AppVersion>
+    <AppVersionWindows>1.0.7.0</AppVersionWindows>
     <WindowsAppSdkVersion>1.6.250402001</WindowsAppSdkVersion>
     <Company>LES</Company>
     <Product>LES Location Agent</Product>
