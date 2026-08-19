@@ -4,6 +4,7 @@ name: Windows Build
 on:
   push:
     branches: [main]
+    tags: ['v*.*.*']
   workflow_dispatch:
 
 jobs:
@@ -273,3 +274,15 @@ with:
           path: release-artifacts\
           retention-days: 90
           if-no-files-found: error
+
+      # Tags are installable releases: attach the MSI, Action1 scripts, and
+      # checksum manifest directly to a GitHub Release.
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" release-artifacts\* `
+            --title "LES Location Agent ${{ github.ref_name }}" `
+            --generate-notes

@@ -79,6 +79,16 @@ public sealed class LocationFileServiceTests : IDisposable
         action.Should().Throw<JsonException>();
     }
 
+    [Theory]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    [InlineData(double.NaN)]
+    public void AccuracyClassifier_NonFiniteValues_AreUnknown(double accuracy)
+    {
+        LESLocationAgent.Core.Helpers.AccuracyClassifier.Classify(accuracy)
+            .Should().Be("UNKNOWN");
+    }
+
     // ---------------------------------------------------------------
     // Status JSON
     // ---------------------------------------------------------------

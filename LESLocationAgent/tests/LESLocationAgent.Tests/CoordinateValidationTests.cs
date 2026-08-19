@@ -32,4 +32,26 @@ public sealed class CoordinateValidationTests
 
         reading.IsValid.Should().Be(expected);
     }
+
+    [Fact]
+    public void IsValid_RejectsNonFiniteCoordinates()
+    {
+        var nanLatitude = new LocationReading
+        {
+            Latitude = double.NaN,
+            Longitude = -73.941502,
+            AccuracyMeters = 50.0,
+            Timestamp = DateTimeOffset.UtcNow
+        };
+        var infiniteLongitude = new LocationReading
+        {
+            Latitude = 40.817391,
+            Longitude = double.PositiveInfinity,
+            AccuracyMeters = 50.0,
+            Timestamp = DateTimeOffset.UtcNow
+        };
+
+        nanLatitude.IsValid.Should().BeFalse();
+        infiniteLongitude.IsValid.Should().BeFalse();
+    }
 }

@@ -17,6 +17,8 @@ public sealed class LocationReading
     public string PositionSource { get; init; } = "Unknown";
 
     public bool IsValid =>
+        double.IsFinite(Latitude) &&
+        double.IsFinite(Longitude) &&
         Latitude >= -90 && Latitude <= 90 &&
         Longitude >= -180 && Longitude <= 180;
 }

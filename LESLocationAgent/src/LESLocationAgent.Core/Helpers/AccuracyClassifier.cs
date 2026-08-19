@@ -15,7 +15,7 @@ public static class AccuracyClassifier
     /// </summary>
     public static string Classify(double? accuracyMeters)
     {
-        if (accuracyMeters is null || double.IsNaN(accuracyMeters.Value) || accuracyMeters.Value < 0)
+        if (accuracyMeters is null || !double.IsFinite(accuracyMeters.Value) || accuracyMeters.Value < 0)
             return "UNKNOWN";
 
         return accuracyMeters.Value switch

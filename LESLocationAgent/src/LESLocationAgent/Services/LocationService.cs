@@ -169,7 +169,7 @@ public sealed class LocationService
         catch { /* Property unavailable on this Windows version */ }
 
         double? altitude = null;
-        try { if (!double.IsNaN(point.Altitude)) altitude = point.Altitude; }
+        try { if (double.IsFinite(point.Altitude)) altitude = point.Altitude; }
         catch { }
 
         double? altitudeAccuracy = null;

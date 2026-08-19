@@ -28,14 +28,21 @@ public sealed class LocationFileService
 
             var locationJson = new LocationJson
             {
-                Latitude = reading.Latitude,
-                Longitude = reading.Longitude,
-                AccuracyMeters = reading.AccuracyMeters,
-                AccuracyQuality = AccuracyClassifier.Classify(reading.AccuracyMeters),
-                AltitudeMeters = reading.AltitudeMeters,
-                AltitudeAccuracyMeters = reading.AltitudeAccuracyMeters,
-                HeadingDegrees = reading.HeadingDegrees,
-                SpeedMetersPerSecond = reading.SpeedMetersPerSecond,
+                // Windows can return NaN or Infinity for optional values,
+                // especially when a WiFi/IP fix has no altitude/speed data.
+                // JSON does not allow those values, so remove them before
+                // serialisation rather than losing the entire location update.
+                Latitude = RequireFinite(reading.Latitude, nameof(reading.Latitude)),
+                Longitude = RequireFinite(reading.Longitude, nameof(reading.Longitude)),
+                AccuracyMeters = FiniteNonNegativeOrZero(reading.AccuracyMeters),
+                AccuracyQuality = AccuracyClassifier.Classify(
+                    double.IsFinite(reading.AccuracyMeters) && reading.AccuracyMeters >= 0
+                        ? reading.AccuracyMeters
+                        : null),
+                AltitudeMeters = FiniteOrNull(reading.AltitudeMeters),
+                AltitudeAccuracyMeters = FiniteOrNull(reading.AltitudeAccuracyMeters),
+                HeadingDegrees = FiniteOrNull(reading.HeadingDegrees),
+                SpeedMetersPerSecond = FiniteOrNull(reading.SpeedMetersPerSecond),
                 PositionSource = reading.PositionSource,
                 LocationSource = "Windows Geolocation",
                 PermissionStatus = permissionStatus,
@@ -137,6 +144,20 @@ public sealed class LocationFileService
                 $"Cannot create data directory {AppConfig.DataDirectory}: {ex.Message}", ex);
         }
     }
+
+    private static double RequireFinite(double value, string fieldName)
+    {
+        if (!double.IsFinite(value))
+            throw new InvalidOperationException($"{fieldName} was not a finite number.");
+
+        return value;
+    }
+
+    private static double FiniteNonNegativeOrZero(double value) =>
+        double.IsFinite(value) && value >= 0 ? value : 0.0;
+
+    private static double? FiniteOrNull(double? value) =>
+        value.HasValue && double.IsFinite(value.Value) ? value : null;
 
     private static void WriteJsonAtomic<T>(string destinationPath, T value)
     {
