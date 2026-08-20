@@ -6,6 +6,8 @@ import {
 } from "node:crypto";
 
 const SESSION_DURATION_MS = 4 * 60 * 60 * 1000;
+const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_ATTEMPT_LIMIT = 5;
 
 interface SessionPayload {
   exp: number;
@@ -106,19 +108,31 @@ export function getLoginAttemptState(clientId: string): {
   retryAfterSeconds: number;
 } {
   const attempt = attemptsByClient.get(clientId);
-  if (!attempt || attempt.blockedUntil <= Date.now()) {
-    if (attempt) {
-      attemptsByClient.delete(clientId);
-    }
+  if (!attempt) {
     return { allowed: true, retryAfterSeconds: 0 };
   }
 
+  const now = Date.now();
+  if (attempt.blockedUntil > now) {
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(
+        1,
+        Math.ceil((attempt.blockedUntil - now) / 1000),
+      ),
+    };
+  }
+
+  if (
+    attempt.blockedUntil > 0 ||
+    now - attempt.windowStartedAt >= LOGIN_ATTEMPT_WINDOW_MS
+  ) {
+    attemptsByClient.delete(clientId);
+  }
+
   return {
-    allowed: false,
-    retryAfterSeconds: Math.max(
-      1,
-      Math.ceil((attempt.blockedUntil - Date.now()) / 1000),
-    ),
+    allowed: true,
+    retryAfterSeconds: 0,
   };
 }
 
@@ -126,13 +140,13 @@ export function recordFailedLogin(clientId: string): number {
   const now = Date.now();
   const existing = attemptsByClient.get(clientId);
   const withinWindow =
-    existing && now - existing.windowStartedAt < 15 * 60 * 1000;
+    existing && now - existing.windowStartedAt < LOGIN_ATTEMPT_WINDOW_MS;
   const next: LoginAttempt = withinWindow
     ? { ...existing, attempts: existing.attempts + 1 }
     : { attempts: 1, blockedUntil: 0, windowStartedAt: now };
 
-  if (next.attempts >= 5) {
-    next.blockedUntil = now + 15 * 60 * 1000;
+  if (next.attempts >= LOGIN_ATTEMPT_LIMIT) {
+    next.blockedUntil = now + LOGIN_ATTEMPT_WINDOW_MS;
   }
   attemptsByClient.set(clientId, next);
   return next.attempts;
