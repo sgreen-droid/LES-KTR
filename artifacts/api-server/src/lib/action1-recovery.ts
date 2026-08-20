@@ -248,8 +248,8 @@ function normalizeEndpoint(
 }
 
 function getAction1Credentials(): { clientId: string; clientSecret: string } {
-  const clientId = process.env["ACTION1_CLIENT_ID"];
-  const clientSecret = process.env["ACTION1_CLIENT_SECRET"];
+  const clientId = process.env["ACTION1_CLIENT_ID"]?.trim();
+  const clientSecret = process.env["ACTION1_CLIENT_SECRET"]?.trim();
   if (!clientId || !clientSecret) {
     throw new Action1UnavailableError(
       "Action1 API credentials are not configured.",
