@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Recovery Operations Console"
+description = "A protected operations console for authorized organization administrators to review Action1 device recovery status, clearly labeled location details, and embedded maps in one place."
+version = "1.0.0"
+id = "artifacts/recovery-console"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21047
+
+[services.development]
+run = "pnpm --filter @workspace/recovery-console run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/recovery-console", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/recovery-console/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21047"
+BASE_PATH = "/"

@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: recovery-auth
+    description: Recovery console session operations
+  - name: recovery
+    description: Read-only recovery operations
 paths:
   /healthz:
     get:
@@ -24,13 +28,326 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /recovery/auth/session:
+    get:
+      operationId: getRecoverySession
+      tags: [recovery-auth]
+      summary: Check the current recovery console session
+      responses:
+        "200":
+          description: Session state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoverySession"
+    post:
+      operationId: createRecoverySession
+      tags: [recovery-auth]
+      summary: Unlock the recovery console
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecoveryLogin"
+      responses:
+        "200":
+          description: Authenticated session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoverySession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+    delete:
+      operationId: deleteRecoverySession
+      tags: [recovery-auth]
+      summary: Lock the recovery console
+      responses:
+        "204":
+          description: Session cleared
+  /recovery/summary:
+    get:
+      operationId: getRecoverySummary
+      tags: [recovery]
+      summary: Get recovery fleet status totals
+      responses:
+        "200":
+          description: Fleet summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoverySummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          $ref: "#/components/responses/Action1Unavailable"
+  /recovery/devices:
+    get:
+      operationId: listRecoveryDevices
+      tags: [recovery]
+      summary: List Action1 endpoints with recovery data
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+        - name: recoveryStatus
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 50
+        - name: agentHealth
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 80
+        - name: integrity
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 30
+        - name: freshness
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ACTIVE, STALE, ALL]
+      responses:
+        "200":
+          description: Matching endpoint records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryDeviceList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          $ref: "#/components/responses/Action1Unavailable"
+  /recovery/devices/{endpointId}:
+    get:
+      operationId: getRecoveryDevice
+      tags: [recovery]
+      summary: Get one recovery endpoint with labeled location details
+      parameters:
+        - name: endpointId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 160
+      responses:
+        "200":
+          description: Endpoint record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryDevice"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Endpoint not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "502":
+          $ref: "#/components/responses/Action1Unavailable"
 components:
+  responses:
+    Unauthorized:
+      description: An authorized recovery console session is required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    RateLimited:
+      description: Too many failed login attempts
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    Action1Unavailable:
+      description: Action1 could not be reached or did not accept the API credentials
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
+      required: [status]
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required: [error, message]
+    RecoveryLogin:
+      type: object
+      properties:
+        password:
+          type: string
+          minLength: 1
+          maxLength: 1024
+      required: [password]
+    RecoverySession:
+      type: object
+      properties:
+        authenticated:
+          type: boolean
+        expiresAt:
+          type: ["string", "null"]
+          format: date-time
+      required: [authenticated, expiresAt]
+    RecoveryDevice:
+      type: object
+      properties:
+        endpointId:
+          type: string
+        computerName:
+          type: string
+        organizationId:
+          type: string
+        organizationName:
+          type: string
+        endpointStatus:
+          type: string
+        operatingSystem:
+          type: string
+        lastSeen:
+          type: ["string", "null"]
+        deviceId:
+          type: ["string", "null"]
+        agentVersion:
+          type: ["string", "null"]
+        agentHealth:
+          type: ["string", "null"]
+        recoveryStatus:
+          type: ["string", "null"]
+        locationStatus:
+          type: ["string", "null"]
+        locationIntegrity:
+          type: ["string", "null"]
+        locationAgeMinutes:
+          type: ["string", "null"]
+        locationPermission:
+          type: ["string", "null"]
+        locationUpdated:
+          type: ["string", "null"]
+        lastAttempt:
+          type: ["string", "null"]
+        lastSuccess:
+          type: ["string", "null"]
+        locationSequence:
+          type: ["string", "null"]
+        latitude:
+          type: ["number", "null"]
+        longitude:
+          type: ["number", "null"]
+        accuracy:
+          type: ["string", "null"]
+        locationQuality:
+          type: ["string", "null"]
+        locationSource:
+          type: ["string", "null"]
+        positionSource:
+          type: ["string", "null"]
+        locationError:
+          type: ["string", "null"]
+        mapLink:
+          type: ["string", "null"]
+        mapEmbedUrl:
+          type: ["string", "null"]
+        locationCoordinates:
+          type: ["string", "null"]
+        locationSummary:
+          type: ["string", "null"]
+        isMapSafe:
+          type: boolean
       required:
-        - status
-
+        - endpointId
+        - computerName
+        - organizationId
+        - organizationName
+        - endpointStatus
+        - operatingSystem
+        - lastSeen
+        - deviceId
+        - agentVersion
+        - agentHealth
+        - recoveryStatus
+        - locationStatus
+        - locationIntegrity
+        - locationAgeMinutes
+        - locationPermission
+        - locationUpdated
+        - lastAttempt
+        - lastSuccess
+        - locationSequence
+        - latitude
+        - longitude
+        - accuracy
+        - locationQuality
+        - locationSource
+        - positionSource
+        - locationError
+        - mapLink
+        - mapEmbedUrl
+        - locationCoordinates
+        - locationSummary
+        - isMapSafe
+    RecoveryDeviceList:
+      type: object
+      properties:
+        devices:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecoveryDevice"
+        refreshedAt:
+          type: string
+          format: date-time
+        source:
+          type: string
+      required: [devices, refreshedAt, source]
+    RecoverySummary:
+      type: object
+      properties:
+        totalDevices:
+          type: number
+          minimum: 0
+        activeLocations:
+          type: number
+          minimum: 0
+        staleLocations:
+          type: number
+          minimum: 0
+        attentionRequired:
+          type: number
+          minimum: 0
+        integrityIssues:
+          type: number
+          minimum: 0
+        refreshedAt:
+          type: string
+          format: date-time
+      required:
+        - totalDevices
+        - activeLocations
+        - staleLocations
+        - attentionRequired
+        - integrityIssues
+        - refreshedAt

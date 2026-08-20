@@ -1,10 +1,12 @@
 import express, { type Express } from "express";
-import cors from "cors";
+import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
 
 app.use(
   pinoHttp({
@@ -25,8 +27,8 @@ app.use(
     },
   }),
 );
-app.use(cors());
-app.use(express.json());
+app.use(cookieParser());
+app.use(express.json({ limit: "8kb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
