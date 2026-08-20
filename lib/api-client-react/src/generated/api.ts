@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  Action1Readiness,
   Action1UnavailableResponse,
   ApiError,
   HealthStatus,
@@ -422,6 +423,84 @@ export function useGetRecoverySummary<TData = Awaited<ReturnType<typeof getRecov
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetRecoverySummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAction1ReadinessUrl = () => {
+
+
+
+
+  return `/api/recovery/readiness`
+}
+
+/**
+ * Confirms Action1 authentication and recovery read access without returning recovery records
+ * @summary Check Action1 recovery data readiness
+ */
+export const getAction1Readiness = async ( options?: Parameters<typeof customFetch>[1]): Promise<Action1Readiness> => {
+
+  return customFetch<Action1Readiness>(getGetAction1ReadinessUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAction1ReadinessQueryKey = () => {
+    return [
+    `/api/recovery/readiness`
+    ] as const;
+    }
+
+
+export const getGetAction1ReadinessQueryOptions = <TData = Awaited<ReturnType<typeof getAction1Readiness>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAction1Readiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAction1ReadinessQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAction1Readiness>>> = ({ signal }) => getAction1Readiness({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAction1Readiness>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAction1ReadinessQueryResult = NonNullable<Awaited<ReturnType<typeof getAction1Readiness>>>
+export type GetAction1ReadinessQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Check Action1 recovery data readiness
+ */
+
+export function useGetAction1Readiness<TData = Awaited<ReturnType<typeof getAction1Readiness>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAction1Readiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAction1ReadinessQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

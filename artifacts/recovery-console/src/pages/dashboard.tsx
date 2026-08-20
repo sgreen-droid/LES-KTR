@@ -1,6 +1,6 @@
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { Link } from "wouter";
-import { useGetRecoverySummary, useListRecoveryDevices } from "@/hooks/api";
+import { useGetAction1Readiness, useGetRecoverySummary, useListRecoveryDevices } from "@/hooks/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,9 @@ import {
   Filter,
   MonitorSmartphone,
   ServerCrash,
-  Loader2
+  Loader2,
+  RefreshCw,
+  CheckCircle2
 } from "lucide-react";
 import { useState } from "react";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -103,6 +105,61 @@ function SummaryCards() {
   );
 }
 
+function Action1ReadinessBanner() {
+  const {
+    data: readiness,
+    isError,
+    isFetching,
+    isLoading,
+    refetch,
+  } = useGetAction1Readiness({ request: { credentials: "include" } });
+  const isReady = readiness?.status === "READY" && !isError;
+
+  return (
+    <Card
+      data-testid="action1-readiness"
+      className={isReady ? "border-green-600/30 bg-green-600/5" : "border-destructive/40 bg-destructive/5"}
+    >
+      <CardContent className="p-4 flex items-start gap-3">
+        {isLoading ? (
+          <Loader2 className="h-5 w-5 mt-0.5 text-muted-foreground animate-spin" />
+        ) : isReady ? (
+          <CheckCircle2 className="h-5 w-5 mt-0.5 text-green-600 dark:text-green-500" />
+        ) : (
+          <ServerCrash className="h-5 w-5 mt-0.5 text-destructive" />
+        )}
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-semibold">Action1 recovery readiness</p>
+            <Badge variant={isReady ? "success" : "destructive"}>
+              {isLoading ? "Checking" : isReady ? "Ready" : "Action required"}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {isLoading
+              ? "Verifying authentication and recovery read access..."
+              : isReady
+                ? "Authentication and recovery read access are ready."
+                : "Update the Action1 API credentials to grant recovery read access, then retry the readiness check."}
+          </p>
+        </div>
+        {!isReady && (
+          <Button
+            aria-label="Retry Action1 readiness check"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+            size="sm"
+            variant="outline"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
+            Retry
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Dashboard() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
@@ -123,6 +180,7 @@ export default function Dashboard() {
         <p className="text-muted-foreground">Monitor and assess endpoint recovery status across the organization.</p>
       </div>
 
+      <Action1ReadinessBanner />
       <SummaryCards />
 
       <Card>

@@ -106,6 +106,20 @@ export interface RecoverySummary {
   refreshedAt: string;
 }
 
+export type Action1ReadinessStatus = typeof Action1ReadinessStatus[keyof typeof Action1ReadinessStatus];
+
+
+export const Action1ReadinessStatus = {
+  READY: 'READY',
+  NOT_READY: 'NOT_READY',
+} as const;
+
+export interface Action1Readiness {
+  status: Action1ReadinessStatus;
+  checkedAt: string;
+  message: string;
+}
+
 /**
  * An authorized recovery console session is required
  */

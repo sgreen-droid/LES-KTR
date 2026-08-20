@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import {
   CreateRecoverySessionBody,
   CreateRecoverySessionResponse,
+  GetAction1ReadinessResponse,
   GetRecoveryDeviceParams,
   GetRecoveryDeviceResponse,
   GetRecoverySessionResponse,
@@ -13,6 +14,7 @@ import {
   Action1UnavailableError,
   buildRecoverySummary,
   filterRecoveryDevices,
+  getAction1Readiness,
   getRecoverySnapshot,
 } from "../lib/action1-recovery";
 import {
@@ -154,6 +156,18 @@ router.delete(
     res.set("Cache-Control", "no-store");
     req.log.info("Recovery console locked");
     res.sendStatus(204);
+  },
+);
+
+router.get(
+  "/recovery/readiness",
+  async (req, res): Promise<void> => {
+    if (!requireRecoverySession(req, res)) {
+      return;
+    }
+    const readiness = await getAction1Readiness();
+    res.set("Cache-Control", "no-store");
+    res.json(GetAction1ReadinessResponse.parse(readiness));
   },
 );
 

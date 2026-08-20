@@ -52,6 +52,12 @@ interface RecoverySnapshot {
   source: string;
 }
 
+export interface Action1Readiness {
+  checkedAt: string;
+  message: string;
+  status: "NOT_READY" | "READY";
+}
+
 interface TokenCache {
   accessToken: string;
   expiresAt: number;
@@ -252,8 +258,8 @@ function getAction1Credentials(): { clientId: string; clientSecret: string } {
   return { clientId, clientSecret };
 }
 
-async function getAccessToken(): Promise<string> {
-  if (tokenCache && tokenCache.expiresAt > Date.now() + 45_000) {
+async function getAccessToken(forceRefresh = false): Promise<string> {
+  if (!forceRefresh && tokenCache && tokenCache.expiresAt > Date.now() + 45_000) {
     return tokenCache.accessToken;
   }
 
@@ -297,8 +303,11 @@ async function getAccessToken(): Promise<string> {
   return accessToken;
 }
 
-async function getAction1Json(path: string, retry = true): Promise<unknown> {
-  const token = await getAccessToken();
+async function getAction1Json(
+  path: string,
+  options: { forceRefresh?: boolean; retry?: boolean } = {},
+): Promise<unknown> {
+  const token = await getAccessToken(options.forceRefresh);
   let response: Response;
   try {
     response = await fetch(`${ACTION1_BASE_URL}${path}`, {
@@ -310,9 +319,9 @@ async function getAction1Json(path: string, retry = true): Promise<unknown> {
     throw new Action1UnavailableError("Action1 could not be reached.");
   }
 
-  if (response.status === 401 && retry) {
+  if (response.status === 401 && options.retry !== false) {
     tokenCache = null;
-    return getAction1Json(path, false);
+    return getAction1Json(path, { forceRefresh: true, retry: false });
   }
   if (!response.ok) {
     throw new Action1UnavailableError(
@@ -364,7 +373,12 @@ async function getPaginatedItems(path: string): Promise<UnknownRecord[]> {
   );
 }
 
-async function collectSnapshot(): Promise<RecoverySnapshot> {
+async function collectSnapshot(forceFreshAuthentication = false): Promise<RecoverySnapshot> {
+  if (forceFreshAuthentication) {
+    tokenCache = null;
+    await getAccessToken(true);
+  }
+
   const organizations = (await getPaginatedItems("/organizations"))
     .map((organization): Action1Organization | null => {
       const id = getString(organization["id"]);
@@ -423,6 +437,32 @@ export async function getRecoverySnapshot(): Promise<RecoverySnapshot> {
       });
   }
   return snapshotPromise;
+}
+
+export async function getAction1Readiness(): Promise<Action1Readiness> {
+  const checkedAt = new Date().toISOString();
+  try {
+    await collectSnapshot(true);
+    return {
+      checkedAt,
+      message: "Action1 authentication and recovery read access are ready.",
+      status: "READY",
+    };
+  } catch (error) {
+    logger.warn(
+      {
+        failureType:
+          error instanceof Action1UnavailableError ? "unavailable" : "unexpected",
+      },
+      "Action1 recovery readiness check failed",
+    );
+    return {
+      checkedAt,
+      message:
+        "Update the Action1 API credentials to grant recovery read access, then retry the readiness check.",
+      status: "NOT_READY",
+    };
+  }
 }
 
 export function filterRecoveryDevices(

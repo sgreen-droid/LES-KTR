@@ -84,6 +84,21 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "502":
           $ref: "#/components/responses/Action1Unavailable"
+  /recovery/readiness:
+    get:
+      operationId: getAction1Readiness
+      tags: [recovery]
+      summary: Check Action1 recovery data readiness
+      description: Confirms Action1 authentication and recovery read access without returning recovery records
+      responses:
+        "200":
+          description: Safe readiness status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Action1Readiness"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /recovery/devices:
     get:
       operationId: listRecoveryDevices
@@ -351,3 +366,18 @@ components:
         - attentionRequired
         - integrityIssues
         - refreshedAt
+    Action1Readiness:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [READY, NOT_READY]
+        checkedAt:
+          type: string
+          format: date-time
+        message:
+          type: string
+      required:
+        - status
+        - checkedAt
+        - message

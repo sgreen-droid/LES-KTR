@@ -75,6 +75,17 @@ export const GetRecoverySummaryResponse = zod.object({
 
 
 /**
+ * Confirms Action1 authentication and recovery read access without returning recovery records
+ * @summary Check Action1 recovery data readiness
+ */
+export const GetAction1ReadinessResponse = zod.object({
+  "status": zod.enum(['READY', 'NOT_READY']),
+  "checkedAt": zod.coerce.date(),
+  "message": zod.string()
+})
+
+
+/**
  * @summary List Action1 endpoints with recovery data
  */
 export const listRecoveryDevicesQuerySearchMax = 100;
