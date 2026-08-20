@@ -140,7 +140,8 @@ function Action1ReadinessBanner() {
               ? "Verifying authentication and recovery read access..."
               : isReady
                 ? "Authentication and recovery read access are ready."
-                : "Update the Action1 API credentials to grant recovery read access, then retry the readiness check."}
+                : readiness?.message ??
+                  "Action1 recovery data is temporarily unavailable. Retry the readiness check shortly."}
           </p>
         </div>
         {!isReady && (

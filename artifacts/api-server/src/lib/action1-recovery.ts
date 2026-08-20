@@ -1,7 +1,9 @@
+import { createHash } from "node:crypto";
 import { logger } from "./logger";
 
 const DEFAULT_ACTION1_BASE_URL = "https://app.action1.com/api/3.0";
 const CACHE_TTL_MS = 60 * 1000;
+const DEFAULT_RATE_LIMIT_RETRY_SECONDS = 60;
 const PAGE_SIZE = 100;
 const MAX_PAGES_PER_ORGANIZATION = 100;
 
@@ -60,7 +62,13 @@ export interface Action1Readiness {
 
 interface TokenCache {
   accessToken: string;
+  credentialFingerprint: string;
   expiresAt: number;
+}
+
+interface CredentialScopedPromise<T> {
+  credentialFingerprint: string;
+  promise: Promise<T>;
 }
 
 class Action1UnavailableError extends Error {
@@ -70,10 +78,20 @@ class Action1UnavailableError extends Error {
   }
 }
 
+class Action1RateLimitedError extends Action1UnavailableError {
+  constructor(readonly retryAfterSeconds: number) {
+    super("Action1 is temporarily rate limiting API requests.");
+    this.name = "Action1RateLimitedError";
+  }
+}
+
 let tokenCache: TokenCache | null = null;
+let tokenPromise: CredentialScopedPromise<string> | null = null;
+let tokenRateLimitedUntil = 0;
 let snapshotCache: RecoverySnapshot | null = null;
+let snapshotCredentialFingerprint: string | null = null;
 let snapshotExpiresAt = 0;
-let snapshotPromise: Promise<RecoverySnapshot> | null = null;
+let snapshotPromise: CredentialScopedPromise<RecoverySnapshot> | null = null;
 
 function getAction1BaseUrl(): string {
   const configuredUrl = process.env["ACTION1_BASE_URL"]?.trim();
@@ -292,12 +310,55 @@ function getAction1Credentials(): { clientId: string; clientSecret: string } {
   return { clientId, clientSecret };
 }
 
-async function getAccessToken(forceRefresh = false): Promise<string> {
-  if (!forceRefresh && tokenCache && tokenCache.expiresAt > Date.now() + 45_000) {
-    return tokenCache.accessToken;
+function getCredentialFingerprint(credentials: {
+  clientId: string;
+  clientSecret: string;
+}): string {
+  return createHash("sha256")
+    .update(credentials.clientId)
+    .update("\0")
+    .update(credentials.clientSecret)
+    .digest("hex");
+}
+
+function getCurrentCredentialFingerprint(): string {
+  return getCredentialFingerprint(getAction1Credentials());
+}
+
+function getRetryAfterSeconds(response: Response): number {
+  const retryAfter = response.headers.get("retry-after")?.trim();
+  if (!retryAfter) {
+    return DEFAULT_RATE_LIMIT_RETRY_SECONDS;
   }
 
-  const { clientId, clientSecret } = getAction1Credentials();
+  const delaySeconds = Number(retryAfter);
+  if (Number.isFinite(delaySeconds) && delaySeconds > 0) {
+    return Math.ceil(delaySeconds);
+  }
+
+  const retryAt = Date.parse(retryAfter);
+  if (Number.isFinite(retryAt) && retryAt > Date.now()) {
+    return Math.ceil((retryAt - Date.now()) / 1000);
+  }
+
+  return DEFAULT_RATE_LIMIT_RETRY_SECONDS;
+}
+
+function formatRetryDelay(retryAfterSeconds: number): string {
+  if (retryAfterSeconds < 90) {
+    return "about a minute";
+  }
+  if (retryAfterSeconds < 60 * 60) {
+    return `about ${Math.ceil(retryAfterSeconds / 60)} minutes`;
+  }
+  return `about ${Math.ceil(retryAfterSeconds / (60 * 60))} hours`;
+}
+
+async function requestAccessToken(
+  credentials: { clientId: string; clientSecret: string },
+  credentialFingerprint: string,
+): Promise<string> {
+  const { clientId, clientSecret } = credentials;
   const action1BaseUrl = getAction1BaseUrl();
   let response: Response;
   try {
@@ -316,7 +377,21 @@ async function getAccessToken(forceRefresh = false): Promise<string> {
     );
   }
 
+  if (response.status === 429) {
+    const retryAfterSeconds = getRetryAfterSeconds(response);
+    tokenRateLimitedUntil = Date.now() + retryAfterSeconds * 1000;
+    logger.warn(
+      { retryAfterSeconds },
+      "Action1 OAuth token request was rate limited",
+    );
+    throw new Action1RateLimitedError(retryAfterSeconds);
+  }
+
   if (!response.ok) {
+    logger.warn(
+      { statusCode: response.status },
+      "Action1 OAuth token request was rejected",
+    );
     throw new Action1UnavailableError(
       "Action1 did not accept the configured API credentials.",
     );
@@ -331,11 +406,48 @@ async function getAccessToken(forceRefresh = false): Promise<string> {
     );
   }
 
-  tokenCache = {
-    accessToken,
-    expiresAt: Date.now() + expiresIn * 1000,
-  };
+  if (getCurrentCredentialFingerprint() === credentialFingerprint) {
+    tokenRateLimitedUntil = 0;
+    tokenCache = {
+      accessToken,
+      credentialFingerprint,
+      expiresAt: Date.now() + expiresIn * 1000,
+    };
+  }
   return accessToken;
+}
+
+async function getAccessToken(forceRefresh = false): Promise<string> {
+  const now = Date.now();
+  if (tokenRateLimitedUntil > now) {
+    throw new Action1RateLimitedError(
+      Math.max(1, Math.ceil((tokenRateLimitedUntil - now) / 1000)),
+    );
+  }
+
+  const credentials = getAction1Credentials();
+  const credentialFingerprint = getCredentialFingerprint(credentials);
+  if (
+    !forceRefresh &&
+    tokenCache &&
+    tokenCache.credentialFingerprint === credentialFingerprint &&
+    tokenCache.expiresAt > Date.now() + 45_000
+  ) {
+    return tokenCache.accessToken;
+  }
+
+  if (
+    !tokenPromise ||
+    tokenPromise.credentialFingerprint !== credentialFingerprint
+  ) {
+    const promise = requestAccessToken(credentials, credentialFingerprint).finally(() => {
+      if (tokenPromise?.credentialFingerprint === credentialFingerprint) {
+        tokenPromise = null;
+      }
+    });
+    tokenPromise = { credentialFingerprint, promise };
+  }
+  return tokenPromise.promise;
 }
 
 async function getAction1Json(
@@ -358,6 +470,15 @@ async function getAction1Json(
   if (response.status === 401 && options.retry !== false) {
     tokenCache = null;
     return getAction1Json(path, { forceRefresh: true, retry: false });
+  }
+  if (response.status === 429) {
+    const retryAfterSeconds = getRetryAfterSeconds(response);
+    tokenRateLimitedUntil = Date.now() + retryAfterSeconds * 1000;
+    logger.warn(
+      { retryAfterSeconds },
+      "Action1 API request was rate limited",
+    );
+    throw new Action1RateLimitedError(retryAfterSeconds);
   }
   if (!response.ok) {
     throw new Action1UnavailableError(
@@ -457,34 +578,67 @@ async function collectSnapshot(forceFreshAuthentication = false): Promise<Recove
   return snapshot;
 }
 
-export async function getRecoverySnapshot(): Promise<RecoverySnapshot> {
-  if (snapshotCache && snapshotExpiresAt > Date.now()) {
-    return snapshotCache;
-  }
-  if (!snapshotPromise) {
-    snapshotPromise = collectSnapshot()
+function collectAndCacheSnapshot(): Promise<RecoverySnapshot> {
+  const credentialFingerprint = getCurrentCredentialFingerprint();
+  if (
+    !snapshotPromise ||
+    snapshotPromise.credentialFingerprint !== credentialFingerprint
+  ) {
+    const promise = collectSnapshot()
       .then((snapshot) => {
-        snapshotCache = snapshot;
-        snapshotExpiresAt = Date.now() + CACHE_TTL_MS;
+        if (getCurrentCredentialFingerprint() === credentialFingerprint) {
+          snapshotCache = snapshot;
+          snapshotCredentialFingerprint = credentialFingerprint;
+          snapshotExpiresAt = Date.now() + CACHE_TTL_MS;
+        }
         return snapshot;
       })
       .finally(() => {
-        snapshotPromise = null;
+        if (snapshotPromise?.credentialFingerprint === credentialFingerprint) {
+          snapshotPromise = null;
+        }
       });
+    snapshotPromise = { credentialFingerprint, promise };
   }
-  return snapshotPromise;
+  return snapshotPromise.promise;
+}
+
+export async function getRecoverySnapshot(): Promise<RecoverySnapshot> {
+  const credentialFingerprint = getCurrentCredentialFingerprint();
+  if (snapshotPromise?.credentialFingerprint === credentialFingerprint) {
+    return snapshotPromise.promise;
+  }
+  if (
+    snapshotCache &&
+    snapshotCredentialFingerprint === credentialFingerprint &&
+    snapshotExpiresAt > Date.now()
+  ) {
+    return snapshotCache;
+  }
+  return collectAndCacheSnapshot();
+}
+
+function getFreshReadinessSnapshot(): Promise<RecoverySnapshot> {
+  return collectAndCacheSnapshot();
 }
 
 export async function getAction1Readiness(): Promise<Action1Readiness> {
   const checkedAt = new Date().toISOString();
   try {
-    await collectSnapshot(true);
+    await getFreshReadinessSnapshot();
     return {
       checkedAt,
       message: "Action1 authentication and recovery read access are ready.",
       status: "READY",
     };
   } catch (error) {
+    if (error instanceof Action1RateLimitedError) {
+      return {
+        checkedAt,
+        message: `Action1 is temporarily rate limiting recovery requests. Wait ${formatRetryDelay(error.retryAfterSeconds)}, then retry.`,
+        status: "NOT_READY",
+      };
+    }
     logger.warn(
       {
         failureType:

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { request, type Server } from "node:http";
 import { test } from "node:test";
 import app from "../app";
-import { getAction1Readiness } from "./action1-recovery";
+import { getAction1Readiness, getRecoverySnapshot } from "./action1-recovery";
 import { createRecoverySession } from "./recovery-session";
 
 function requestReadiness(
@@ -187,6 +187,206 @@ test("readiness route stays safe when Action1 read access is denied", async () =
       delete process.env["SESSION_SECRET"];
     } else {
       process.env["SESSION_SECRET"] = originalSessionSecret;
+    }
+  }
+});
+
+test("readiness joins an in-flight fleet snapshot instead of duplicating Action1 reads", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalClientId = process.env["ACTION1_CLIENT_ID"];
+  const originalClientSecret = process.env["ACTION1_CLIENT_SECRET"];
+  let endpointRequests = 0;
+  let organizationRequests = 0;
+  let releaseOrganizations: ((response: Response) => void) | undefined;
+
+  process.env["ACTION1_CLIENT_ID"] = "concurrent-client-id";
+  process.env["ACTION1_CLIENT_SECRET"] = "concurrent-client-secret";
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.includes("/oauth2/token")) {
+      return new Response(
+        JSON.stringify({ access_token: "concurrent-access-token", expires_in: 3600 }),
+        { headers: { "Content-Type": "application/json" }, status: 200 },
+      );
+    }
+    if (url.includes("/organizations")) {
+      organizationRequests += 1;
+      return new Promise<Response>((resolve) => {
+        releaseOrganizations = resolve;
+      });
+    }
+    endpointRequests += 1;
+    return new Response(
+      JSON.stringify({
+        items: [{ id: "endpoint-1", name: "Test endpoint", OS: "Windows" }],
+        total_items: 1,
+      }),
+      { headers: { "Content-Type": "application/json" }, status: 200 },
+    );
+  };
+
+  try {
+    const snapshot = getRecoverySnapshot();
+    await new Promise((resolve) => setImmediate(resolve));
+    const readiness = getAction1Readiness();
+
+    assert.equal(organizationRequests, 1);
+    assert.ok(releaseOrganizations);
+    releaseOrganizations(
+      new Response(
+        JSON.stringify({
+          items: [{ id: "organization-1", name: "Test organization" }],
+          total_items: 1,
+        }),
+        { headers: { "Content-Type": "application/json" }, status: 200 },
+      ),
+    );
+
+    const [result, readinessResult] = await Promise.all([snapshot, readiness]);
+    assert.equal(result.devices.length, 1);
+    assert.equal(readinessResult.status, "READY");
+    assert.equal(organizationRequests, 1);
+    assert.equal(endpointRequests, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalClientId === undefined) {
+      delete process.env["ACTION1_CLIENT_ID"];
+    } else {
+      process.env["ACTION1_CLIENT_ID"] = originalClientId;
+    }
+    if (originalClientSecret === undefined) {
+      delete process.env["ACTION1_CLIENT_SECRET"];
+    } else {
+      process.env["ACTION1_CLIENT_SECRET"] = originalClientSecret;
+    }
+  }
+});
+
+test("readiness uses the new credential pair during an in-flight credential rotation", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalClientId = process.env["ACTION1_CLIENT_ID"];
+  const originalClientSecret = process.env["ACTION1_CLIENT_SECRET"];
+  const tokenRequests: string[] = [];
+  const authorizationHeaders: string[] = [];
+  let releaseOldToken: ((response: Response) => void) | undefined;
+
+  process.env["ACTION1_CLIENT_ID"] = "racing-old-client-id";
+  process.env["ACTION1_CLIENT_SECRET"] = "racing-old-client-secret";
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    if (url.includes("/oauth2/token")) {
+      const requestBody = String(init?.body);
+      tokenRequests.push(requestBody);
+      if (requestBody.includes("racing-old-client-id")) {
+        return new Promise<Response>((resolve) => {
+          releaseOldToken = resolve;
+        });
+      }
+      return new Response(
+        JSON.stringify({ access_token: "racing-new-access-token", expires_in: 3600 }),
+        { headers: { "Content-Type": "application/json" }, status: 200 },
+      );
+    }
+
+    const headers = new Headers(init?.headers);
+    authorizationHeaders.push(headers.get("authorization") ?? "");
+    if (url.includes("/organizations")) {
+      return new Response(
+        JSON.stringify({
+          items: [{ id: "organization-1", name: "Test organization" }],
+          total_items: 1,
+        }),
+        { headers: { "Content-Type": "application/json" }, status: 200 },
+      );
+    }
+    return new Response(
+      JSON.stringify({
+        items: [{ id: "endpoint-1", name: "Test endpoint", OS: "Windows" }],
+        total_items: 1,
+      }),
+      { headers: { "Content-Type": "application/json" }, status: 200 },
+    );
+  };
+
+  try {
+    const oldReadiness = getAction1Readiness();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    process.env["ACTION1_CLIENT_ID"] = "racing-new-client-id";
+    process.env["ACTION1_CLIENT_SECRET"] = "racing-new-client-secret";
+    const newReadiness = await getAction1Readiness();
+
+    assert.equal(newReadiness.status, "READY");
+    assert.equal(tokenRequests.length, 2);
+    assert.match(tokenRequests[1] ?? "", /racing-new-client-id/);
+    assert.equal(authorizationHeaders.at(-1), "Bearer racing-new-access-token");
+
+    assert.ok(releaseOldToken);
+    releaseOldToken(
+      new Response(
+        JSON.stringify({ access_token: "racing-old-access-token", expires_in: 3600 }),
+        { headers: { "Content-Type": "application/json" }, status: 200 },
+      ),
+    );
+    await oldReadiness;
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalClientId === undefined) {
+      delete process.env["ACTION1_CLIENT_ID"];
+    } else {
+      process.env["ACTION1_CLIENT_ID"] = originalClientId;
+    }
+    if (originalClientSecret === undefined) {
+      delete process.env["ACTION1_CLIENT_SECRET"];
+    } else {
+      process.env["ACTION1_CLIENT_SECRET"] = originalClientSecret;
+    }
+  }
+});
+
+test("readiness respects an Action1 retry window before reusing a cached token", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalClientId = process.env["ACTION1_CLIENT_ID"];
+  const originalClientSecret = process.env["ACTION1_CLIENT_SECRET"];
+  let fetchCount = 0;
+
+  process.env["ACTION1_CLIENT_ID"] = "rate-limit-client-id";
+  process.env["ACTION1_CLIENT_SECRET"] = "rate-limit-client-secret";
+  globalThis.fetch = async (input) => {
+    fetchCount += 1;
+    const url = String(input);
+    if (url.includes("/oauth2/token")) {
+      return new Response(
+        JSON.stringify({ access_token: "cached-access-token", expires_in: 3600 }),
+        { headers: { "Content-Type": "application/json" }, status: 200 },
+      );
+    }
+    return new Response(null, {
+      headers: { "Retry-After": "600" },
+      status: 429,
+    });
+  };
+
+  try {
+    const firstReadiness = await getAction1Readiness();
+    assert.equal(firstReadiness.status, "NOT_READY");
+    assert.equal(fetchCount, 2);
+
+    const secondReadiness = await getAction1Readiness();
+    assert.equal(secondReadiness.status, "NOT_READY");
+    assert.match(secondReadiness.message, /rate limiting/i);
+    assert.equal(fetchCount, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalClientId === undefined) {
+      delete process.env["ACTION1_CLIENT_ID"];
+    } else {
+      process.env["ACTION1_CLIENT_ID"] = originalClientId;
+    }
+    if (originalClientSecret === undefined) {
+      delete process.env["ACTION1_CLIENT_SECRET"];
+    } else {
+      process.env["ACTION1_CLIENT_SECRET"] = originalClientSecret;
     }
   }
 });
