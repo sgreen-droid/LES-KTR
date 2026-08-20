@@ -225,7 +225,7 @@ Open `location.json`. It should look like:
   "permissionStatus": "Allowed",
   "timestampUtc": "2026-08-11T18:35:42Z",
   "computerName": "LES-LAPTOP-001",
-  "agentVersion": "1.1.2",
+  "agentVersion": "1.1.3",
   "deviceId": "d2719f71-a1cb-4ae2-b2fb-4ee88a008620",
   "recordSequence": 42,
   "integrityAlgorithm": "HMAC-SHA256-IEEE754LE",
@@ -469,7 +469,7 @@ Signed installers show your publisher name in Windows SmartScreen instead of "Un
 
 ### App won't start after installation
 
-If the installer completes but double-clicking the EXE (or the Start Menu shortcut) does nothing, or the app crashes immediately, the most likely cause is a missing or incompatible Windows App SDK runtime.
+If the installer completes but double-clicking the EXE (or the Start Menu shortcut) does nothing, or the app crashes immediately, the most likely cause is a missing or incompatible Windows App SDK runtime. Windows 11 already meets the agent's minimum operating-system requirement, so this message does **not** mean that a Windows 11 PC needs an OS upgrade.
 
 **What you will see (starting with current builds):**
 
@@ -493,9 +493,9 @@ The entry contains:
 - The exact DLL name or type that failed to load
 - A full stack trace for deeper diagnosis
 
-**Fix — Option A (preferred): re-download the installer from the latest GitHub Actions build.**
+**Fix — Option A (preferred): reinstall the latest MSI and launch it from its Start Menu shortcut.**
 
-The CI pipeline verifies that `Microsoft.ui.xaml.dll` is bundled in every build. A build that passed CI is guaranteed to be self-contained. If you downloaded the MSI before this check was added, rebuild from `main`.
+The CI pipeline verifies that `Microsoft.ui.xaml.dll` is bundled in every build. A build that passed CI includes the required WinUI runtime DLL. Do not copy only `LESLocationAgent.exe` to another folder; it must run with the files installed beside it. If you downloaded the MSI before this check was added, rebuild from `main`.
 
 **Fix — Option B: install the Windows App SDK runtime manually.**
 
@@ -538,8 +538,8 @@ When you are ready to deploy to endpoints, publish a tagged GitHub Release so Ac
 Run these commands locally (or in any terminal with git access):
 
 ```powershell
-git tag v1.1.2
-git push origin v1.1.2
+git tag v1.1.3
+git push origin v1.1.3
 ```
 
 That's it. GitHub Actions detects the `v*.*.*` tag, builds the MSI, and automatically creates a GitHub Release with the following files attached:

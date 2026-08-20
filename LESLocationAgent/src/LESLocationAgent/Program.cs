@@ -93,8 +93,13 @@ internal static class Program
                 "LES Location Agent could not start because a required Windows " +
                 "App SDK component failed to load." +
                 dllHint +
-                $"\n\nThis application requires {MinWindowsVersion} or later." +
-                "\n\nTo fix this, download and run the Windows App SDK runtime " +
+                $"\n\nThe application requires {MinWindowsVersion} or later. " +
+                "Windows 11 already meets this operating-system requirement." +
+                "\n\nThis usually means the installation is incomplete, the " +
+                "application was launched outside its install folder, or the " +
+                "Windows App SDK runtime is unavailable." +
+                "\n\nFirst reinstall the latest LES Location Agent MSI. If the " +
+                "problem persists, download and run the Windows App SDK runtime " +
                 "installer on this PC, then try again:" +
                 $"\n\n{DownloadLink}" +
                 "\n\nIf the problem persists, check the Windows Event Log " +
@@ -170,19 +175,19 @@ internal static class Program
     private static void HandleWindowsVersionError(string reason, string? detail)
     {
         string message =
-            "LES Location Agent could not start because this version of Windows " +
-            "does not meet the minimum requirements for the Windows App SDK." +
-            $"\n\nRequired: {MinWindowsVersion} or later." +
-            "\n\nTo resolve this issue, please upgrade Windows or contact your " +
-            "IT administrator." +
-            "\n\nIf you believe your Windows version is up to date, download and " +
-            "run the Windows App SDK runtime installer, then try again:" +
+            "LES Location Agent could not complete the Windows App SDK " +
+            "requirements check." +
+            $"\n\nRequired operating system: {MinWindowsVersion} or later. " +
+            "Windows 11 meets this requirement." +
+            "\n\nIf this PC runs Windows 10 version 1809 or later, reinstall the " +
+            "latest LES Location Agent MSI, then download and run the Windows App " +
+            "SDK runtime installer if the problem continues:" +
             $"\n\n{DownloadLink}" +
             "\n\nCheck the Windows Event Log (Event Viewer → Windows Logs → " +
             "Application) for an entry from \"LESLocationAgent\" with full details.";
 
         string logMessage =
-            $"Startup failed — Windows version does not meet SDK requirements.\n" +
+            $"Startup failed — Windows App SDK requirements check did not succeed.\n" +
             $"Cause: {reason}\n" +
             $"Minimum required OS: {MinWindowsVersion}\n" +
             (detail is not null ? $"\n{detail}\n" : string.Empty) +

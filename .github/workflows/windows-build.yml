@@ -98,6 +98,19 @@ jobs:
           $n = (Get-ChildItem $publishDir -Recurse -File).Count
           Write-Host "Published $n files to $publishDir"
 
+          # The agent calls XamlCheckProcessRequirements from Microsoft.ui.xaml.dll
+          # before creating its WinUI window. Fail the release build if that runtime
+          # DLL is absent instead of producing an MSI that cannot start on endpoints.
+          $requiredFiles = @(
+            'LESLocationAgent.exe',
+            'Microsoft.ui.xaml.dll'
+          )
+          foreach ($file in $requiredFiles) {
+            if (-not (Test-Path (Join-Path $publishDir $file))) {
+              throw "Self-contained publish is missing required file: $file"
+            }
+          }
+
       - name: Build MSI installer
         shell: pwsh
         run: |
