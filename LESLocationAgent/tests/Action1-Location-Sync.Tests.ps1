@@ -39,7 +39,7 @@ try {
         [BitConverter]::GetBytes([double]-73.859357)).Replace('-', '')
     $accuracyBits = [BitConverter]::ToString(
         [BitConverter]::GetBytes([double]109)).Replace('-', '')
-    $integrityPayload = "$deviceId|7|$timestamp|$latBits|$lonBits|$accuracyBits|Allowed|1.1.0"
+    $integrityPayload = "$deviceId|7|$timestamp|$latBits|$lonBits|$accuracyBits|Allowed|1.1.1"
     $hmac = [System.Security.Cryptography.HMACSHA256]::new($integrityKeyBytes)
     try {
         $integrityHmac = [BitConverter]::ToString(
@@ -60,7 +60,7 @@ try {
         timestampUtc      = $timestamp
         deviceId          = $deviceId
         recordSequence    = 7
-        agentVersion      = '1.1.0'
+        agentVersion      = '1.1.1'
         integrityAlgorithm= 'HMAC-SHA256-IEEE754LE'
         integrityHmac     = $integrityHmac
     }
@@ -111,7 +111,7 @@ try {
     Assert-Equal 'Location Sequence' '7' $global:LesCapturedAttributes['Location Sequence']
     Assert-Equal 'Location Integrity' 'VALID' $global:LesCapturedAttributes['Location Integrity']
     Assert-Equal 'Agent Health' 'HEALTHY' $global:LesCapturedAttributes['Agent Health']
-    Assert-Equal 'Agent Version' '1.1.0' $global:LesCapturedAttributes['Agent Version']
+    Assert-Equal 'Agent Version' '1.1.1' $global:LesCapturedAttributes['Agent Version']
     Assert-Equal 'Last Attempt' $timestamp $global:LesCapturedAttributes['Last Attempt']
     Assert-Equal 'Last Success' $timestamp $global:LesCapturedAttributes['Last Success']
     Assert-Equal 'Recovery Status' 'ACTIVE' $global:LesCapturedAttributes['Recovery Status']
@@ -140,7 +140,7 @@ try {
         timestampUtc      = $timestamp
         deviceId          = $deviceId
         recordSequence    = 7
-        agentVersion      = '1.1.0'
+        agentVersion      = '1.1.1'
         integrityAlgorithm= 'HMAC-SHA256-IEEE754LE'
         integrityHmac     = $integrityHmac
     }
@@ -158,6 +158,44 @@ try {
         $global:LesCapturedAttributes.ContainsKey('Location Coordinates') -or
         $global:LesCapturedAttributes.ContainsKey('Location Summary')) {
         throw 'An integrity failure must not update map-related attributes.'
+    }
+
+    # Tampering that also makes a coordinate invalid must be distinguished from
+    # a normal bad reading: it is an integrity failure, not merely ERROR input.
+    $signedInvalidRecords = @(
+        @{ Label = 'out-of-range signed latitude'; Latitude = 91; Longitude = -73.859357 },
+        @{ Label = 'nonnumeric signed latitude'; Latitude = 'not-a-coordinate'; Longitude = -73.859357 }
+    )
+    foreach ($invalid in $signedInvalidRecords) {
+        $signedInvalidLocation = [pscustomobject]@{
+            latitude          = $invalid.Latitude
+            longitude         = $invalid.Longitude
+            accuracyMeters    = 109
+            accuracyQuality   = 'APPROXIMATE'
+            locationSource    = 'Windows Geolocation'
+            positionSource    = 'WiFi'
+            permissionStatus  = 'Allowed'
+            timestampUtc      = $timestamp
+            deviceId          = $deviceId
+            recordSequence    = 7
+            agentVersion      = '1.1.1'
+            integrityAlgorithm= 'HMAC-SHA256-IEEE754LE'
+            integrityHmac     = $integrityHmac
+        }
+        $signedInvalidLocation | ConvertTo-Json | Set-Content -Path $locationFile -Encoding UTF8
+        $global:LesCapturedAttributes = @{}
+        $global:LesOptionalAttributeFailures = @()
+        & $scriptPath
+
+        Assert-Equal "Location Integrity after $($invalid.Label)" 'INVALID' `
+            $global:LesCapturedAttributes['Location Integrity']
+        Assert-Equal "Recovery Status after $($invalid.Label)" 'ERROR' `
+            $global:LesCapturedAttributes['Recovery Status']
+        if ($global:LesCapturedAttributes.ContainsKey('Map Link') -or
+            $global:LesCapturedAttributes.ContainsKey('Location Coordinates') -or
+            $global:LesCapturedAttributes.ContainsKey('Location Summary')) {
+            throw "$($invalid.Label) must not update map-related attributes."
+        }
     }
 
     # Invalid numeric, NaN, and infinite coordinates must never set map fields.

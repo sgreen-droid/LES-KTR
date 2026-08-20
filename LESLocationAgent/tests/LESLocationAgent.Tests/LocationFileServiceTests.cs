@@ -149,7 +149,7 @@ public sealed class LocationFileServiceTests : IDisposable
             AccuracyMeters = 109,
             PermissionStatus = "Allowed",
             TimestampUtc = "2026-08-11T18:35:42Z",
-            AgentVersion = "1.1.0",
+            AgentVersion = "1.1.1",
             DeviceId = identity.DeviceId,
             RecordSequence = identity.LastRecordSequence,
             IntegrityAlgorithm = DeviceIdentityService.IntegrityAlgorithm

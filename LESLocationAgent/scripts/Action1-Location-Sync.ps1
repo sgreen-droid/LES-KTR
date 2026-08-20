@@ -111,13 +111,19 @@ function Get-LocationIntegrityStatus {
     $deviceId = [string](Get-PropertyValue $LocationData 'deviceId' '')
     $signature = [string](Get-PropertyValue $LocationData 'integrityHmac' '')
     $algorithm = [string](Get-PropertyValue $LocationData 'integrityAlgorithm' '')
-    if ([string]::IsNullOrWhiteSpace($deviceId) -or
-        [string]::IsNullOrWhiteSpace($signature)) {
+    $hasRecoveryFields = $null -ne $LocationData.PSObject.Properties['deviceId'] -or
+        $null -ne $LocationData.PSObject.Properties['integrityHmac'] -or
+        $null -ne $LocationData.PSObject.Properties['integrityAlgorithm'] -or
+        $null -ne $LocationData.PSObject.Properties['recordSequence']
+    if (-not $hasRecoveryFields) {
         # Existing files from before recovery telemetry remain usable after upgrade.
         return 'LEGACY'
     }
 
-    if ($algorithm -cne 'HMAC-SHA256-IEEE754LE' -or -not (Test-Path $IdentityStateFile)) {
+    if ([string]::IsNullOrWhiteSpace($deviceId) -or
+        [string]::IsNullOrWhiteSpace($signature) -or
+        $algorithm -cne 'HMAC-SHA256-IEEE754LE' -or
+        -not (Test-Path $IdentityStateFile)) {
         return 'INVALID'
     }
 
@@ -284,6 +290,13 @@ try {
 }
 
 $script:locationData = $data
+$script:integrityStatus = Get-LocationIntegrityStatus $data $StateFile
+if ($script:integrityStatus -eq 'INVALID') {
+    Set-ErrorState 'ERROR' `
+        'Location integrity verification failed; map fields were not updated.' `
+        $permissionStatus
+    return
+}
 
 # 5. Validate required fields exist
 if ($null -eq $data.latitude -or $null -eq $data.longitude) {
@@ -315,14 +328,6 @@ if ([double]::IsNaN($lon) -or [double]::IsInfinity($lon) -or
     $lon -lt -180 -or $lon -gt 180) {
     $script:locationData = $data
     Set-ErrorState 'ERROR' "Invalid longitude value: $lon (must be -180 to 180)" `
-        $permissionStatus
-    return
-}
-
-$script:integrityStatus = Get-LocationIntegrityStatus $data $StateFile
-if ($script:integrityStatus -eq 'INVALID') {
-    Set-ErrorState 'ERROR' `
-        'Location integrity verification failed; map fields were not updated.' `
         $permissionStatus
     return
 }

@@ -225,7 +225,7 @@ Open `location.json`. It should look like:
   "permissionStatus": "Allowed",
   "timestampUtc": "2026-08-11T18:35:42Z",
   "computerName": "LES-LAPTOP-001",
-  "agentVersion": "1.1.0",
+  "agentVersion": "1.1.1",
   "deviceId": "d2719f71-a1cb-4ae2-b2fb-4ee88a008620",
   "recordSequence": 42,
   "integrityAlgorithm": "HMAC-SHA256-IEEE754LE",
