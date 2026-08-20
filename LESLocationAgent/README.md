@@ -225,7 +225,11 @@ Open `location.json`. It should look like:
   "permissionStatus": "Allowed",
   "timestampUtc": "2026-08-11T18:35:42Z",
   "computerName": "LES-LAPTOP-001",
-  "agentVersion": "1.0.0"
+  "agentVersion": "1.1.0",
+  "deviceId": "d2719f71-a1cb-4ae2-b2fb-4ee88a008620",
+  "recordSequence": 42,
+  "integrityAlgorithm": "HMAC-SHA256-IEEE754LE",
+  "integrityHmac": "..."
 }
 ```
 
@@ -237,7 +241,13 @@ Also check `status.json`:
   "lastSuccessUtc": "2026-08-11T18:35:42Z",
   "permissionStatus": "Allowed",
   "locationStatus": "Success",
-  "error": null
+  "error": null,
+  "lastHeartbeatUtc": "2026-08-11T18:35:42Z",
+  "deviceId": "d2719f71-a1cb-4ae2-b2fb-4ee88a008620",
+  "agentVersion": "1.1.0",
+  "recordSequence": 42,
+  "integrityStatus": "VALID",
+  "agentHealth": "HEALTHY"
 }
 ```
 
@@ -258,6 +268,19 @@ In the **Action1 portal**, create these Custom Attributes (exact names, case-sen
 | Location Permission | Text |
 | Location Updated | Text |
 | Location Status | Text |
+| Map Link | Text |
+| Location Coordinates | Text |
+| Location Summary | Text |
+| Device ID | Text |
+| Location Sequence | Text |
+| Location Integrity | Text |
+| Agent Health | Text |
+| Agent Version | Text |
+| Last Attempt | Text |
+| Last Success | Text |
+| Location Age Minutes | Text |
+| Recovery Status | Text |
+| Location Error | Text |
 
 ---
 
@@ -266,7 +289,7 @@ In the **Action1 portal**, create these Custom Attributes (exact names, case-sen
 1. In the Action1 portal, go to **Automation → Scripts → Add Script**.
 2. Upload `Action1-Location-Sync.ps1` (from the downloaded artifact).
 3. Run it against your test PC.
-4. Confirm the 9 Custom Attributes populate on the endpoint record.
+4. Confirm the location and recovery Custom Attributes populate on the endpoint record.
 
 **Location Status values:**
 
@@ -277,6 +300,19 @@ In the **Action1 portal**, create these Custom Attributes (exact names, case-sen
 | NO LOCATION | No location has ever been acquired |
 | PERMISSION DENIED | Windows location access is denied |
 | ERROR | Missing file, bad JSON, or invalid coordinates |
+
+**Recovery attributes**
+
+- `Device ID` is a random installation identity. It is not derived from a
+  serial number, MAC address, or user account.
+- `Location Sequence` only increases for new successful location records. A
+  gap is safer than reusing a record number after an interrupted write.
+- `Location Integrity` is `VALID` when the agent can verify the current
+  record, `LEGACY` for pre-1.1 records, `MISSING` before the first fix, and
+  `INVALID` when the current file does not verify. It is an
+  unexpected-change indicator, not proof against the active local user.
+- `Agent Health`, `Last Attempt`, `Last Success`, `Location Age Minutes`, and
+  `Recovery Status` are the recommended fields for Action1 alert policies.
 
 ---
 
@@ -315,21 +351,18 @@ Minimum permitted refresh interval: **5 minutes**.
 Use `Action1-Install-LESLocationAgent.ps1` to deploy silently to many PCs:
 
 1. Host `LESLocationAgent.msi` on an internal HTTPS server (or GitHub Releases).
-2. Open `Action1-Install-LESLocationAgent.ps1` in a text editor.
-3. Update these two lines:
-
-```powershell
-$InstallerUrl   = 'https://your-host.example.com/releases/LESLocationAgent.msi'
-$ExpectedSha256 = 'PASTE_SHA256_FROM_SHA256-MANIFEST.txt'
-```
-
+2. For a tagged GitHub release, download the included
+   `Action1-Install-LESLocationAgent.ps1` without editing it. It is already
+   pinned to that release and its exact SHA-256 hash.
+3. For a privately hosted MSI, set both the trusted HTTPS URL and the
+   SHA-256 value in the script before uploading it to Action1.
 4. Upload the script to Action1 and run it as a software deployment task.
 
 The script will:
 - Download the MSI from your URL
 - Verify the SHA-256 hash (prevents tampered installers from running)
 - Install silently
-- Launch the app visibly for the logged-in user so Windows can prompt for location permission
+- Start the agent at the next interactive user sign-in
 - Report SUCCESS or FAILURE
 
 ---
@@ -344,6 +377,42 @@ Run `Action1-LESLocationAgent-Health.ps1` on any endpoint to report:
 - Location age
 - Permission status
 - Latitude, longitude, accuracy, quality
+
+---
+
+## Recovery Operations
+
+Use Action1 to create alert policies from the recovery attributes:
+
+| Condition | Recommended Action1 response |
+|---|---|
+| `Recovery Status = STALE` or `Location Age Minutes > 30` | Investigate connectivity, power state, and whether the device is still assigned. |
+| `Recovery Status = NO LOCATION` | Confirm Windows Location Services and the device's Wi-Fi/GPS capability. |
+| `Location Permission = Denied` | Contact the assigned user or apply the organization-approved Windows location policy. |
+| `Location Integrity = INVALID` | Treat the displayed coordinates as untrusted. Preserve the endpoint record and investigate the device. |
+| `Agent Health = ERROR` or missing agent fields | Run the health check, confirm the agent version, then reinstall through the approved Action1 deployment if necessary. |
+
+For a missing or stolen device:
+
+1. Search Action1 using `Device ID`, device serial number, and computer name.
+2. Review `Last Success`, `Location Updated`, and `Map Link` as the **last
+   known** location—not a live guarantee.
+3. Preserve the Action1 record and associated IT/security case information.
+4. Follow your organization’s incident-response, legal, and law-enforcement
+   procedures. Do not attempt recovery based solely on location data.
+
+The agent can report only while Windows is running, the endpoint can execute
+the Action1 task, and Windows can obtain a usable location. It cannot locate a
+powered-off, offline, wiped, or otherwise unreachable device.
+
+### Privacy and access policy
+
+Deploy this only to organization-owned devices under a written device-management
+notice. Limit Action1 location access to authorized IT/security staff, document
+retention and deletion periods, and collect only the fields needed for recovery.
+The agent does not provide remote control, lock/wipe, keystroke capture,
+webcam/microphone access, or location collection outside Windows Location
+Services.
 
 ---
 
@@ -465,8 +534,8 @@ When you are ready to deploy to endpoints, publish a tagged GitHub Release so Ac
 Run these commands locally (or in any terminal with git access):
 
 ```powershell
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
 That's it. GitHub Actions detects the `v*.*.*` tag, builds the MSI, and automatically creates a GitHub Release with the following files attached:
@@ -479,20 +548,16 @@ That's it. GitHub Actions detects the `v*.*.*` tag, builds the MSI, and automati
 | `Action1-Location-Sync.ps1` | Action1 location sync script |
 | `Action1-LESLocationAgent-Health.ps1` | Action1 health check script |
 
-### Step 2 — Copy the SHA-256
+### Step 2 — Use the preconfigured installer script
 
-Open `SHA256-MANIFEST.txt` from the release assets. Copy the long hash next to `SHA-256`.
+For a tagged release, download `Action1-Install-LESLocationAgent.ps1` from the
+release assets and paste it directly into Action1 → Automation → Scripts. The
+release build injects the exact release URL and the **final** SHA-256 after any
+optional code signing.
 
-### Step 3 — Update the install script
-
-Open `Action1-Install-LESLocationAgent.ps1` and edit the two lines at the top:
-
-```powershell
-$InstallerUrl   = 'https://github.com/sgreen-droid/LES-KTR/releases/download/v1.0.0/LESLocationAgent.msi'
-$ExpectedSha256 = 'PASTE-YOUR-HASH-HERE'
-```
-
-Then paste this updated script into Action1 → Automation → Scripts.
+For private hosting, use `SHA256-MANIFEST.txt` and update both the installer URL
+and hash together. The installer deliberately fails if either value is missing
+or the hash does not match.
 
 ### For future releases
 
@@ -538,6 +603,7 @@ LESLocationAgent/
 | `C:\ProgramData\LESLocationAgent\location.json` | Latest successful coordinates |
 | `C:\ProgramData\LESLocationAgent\status.json` | Status of every attempt |
 | `C:\ProgramData\LESLocationAgent\config.json` | Configuration (refresh interval, etc.) |
+| `C:\ProgramData\LESLocationAgent\agent-state.json` | Machine-local recovery identity, sequence counter, and integrity key. Do not edit or copy between devices; it detects unexpected changes but is not a defense against a user who can read and replace this file. |
 
 All writes are **atomic** (written to a temp file, then renamed) to prevent Action1 from reading a partially-written file.
 

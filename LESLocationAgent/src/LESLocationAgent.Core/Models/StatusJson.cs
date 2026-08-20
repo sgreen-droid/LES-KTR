@@ -22,4 +22,22 @@ public sealed class StatusJson
 
     [JsonPropertyName("error")]
     public string? Error { get; set; }
+
+    [JsonPropertyName("lastHeartbeatUtc")]
+    public string LastHeartbeatUtc { get; set; } = "";
+
+    [JsonPropertyName("deviceId")]
+    public string DeviceId { get; set; } = "";
+
+    [JsonPropertyName("agentVersion")]
+    public string AgentVersion { get; set; } = AppConfig.AgentVersion;
+
+    [JsonPropertyName("recordSequence")]
+    public long RecordSequence { get; set; }
+
+    [JsonPropertyName("integrityStatus")]
+    public string IntegrityStatus { get; set; } = "MISSING";
+
+    [JsonPropertyName("agentHealth")]
+    public string AgentHealth { get; set; } = "UNKNOWN";
 }

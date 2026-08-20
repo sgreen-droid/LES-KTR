@@ -12,8 +12,9 @@ public sealed class AppConfig
     public const string ConfigFilePath = @"C:\ProgramData\LESLocationAgent\config.json";
     public const string LocationFilePath = @"C:\ProgramData\LESLocationAgent\location.json";
     public const string StatusFilePath = @"C:\ProgramData\LESLocationAgent\status.json";
+    public const string DeviceIdentityFilePath = @"C:\ProgramData\LESLocationAgent\agent-state.json";
     public const int MinRefreshMinutes = 5;
-    public const string AgentVersion = "1.0.0";
+    public const string AgentVersion = "1.1.0";
 
     // Per-user first-run flag stored in HKCU so every user account gets the
     // location-permission prompt on their first launch, regardless of whether

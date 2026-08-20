@@ -49,4 +49,16 @@ public sealed class LocationJson
 
     [JsonPropertyName("agentVersion")]
     public string AgentVersion { get; set; } = AppConfig.AgentVersion;
+
+    [JsonPropertyName("deviceId")]
+    public string DeviceId { get; set; } = "";
+
+    [JsonPropertyName("recordSequence")]
+    public long RecordSequence { get; set; }
+
+    [JsonPropertyName("integrityAlgorithm")]
+    public string IntegrityAlgorithm { get; set; } = "";
+
+    [JsonPropertyName("integrityHmac")]
+    public string IntegrityHmac { get; set; } = "";
 }

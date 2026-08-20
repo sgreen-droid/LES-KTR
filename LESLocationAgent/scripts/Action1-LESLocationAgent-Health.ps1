@@ -57,14 +57,24 @@ $permissionStatus = 'Unknown'
 $locationStatus   = 'Unknown'
 $lastAttempt      = 'Never'
 $lastSuccess      = 'Never'
+$lastHeartbeat    = 'Never'
+$deviceId         = 'Unknown'
+$recordSequence   = 'Unknown'
+$integrityStatus  = 'MISSING'
+$agentHealth      = 'UNKNOWN'
 
 if (Test-Path $StatusFile) {
     try {
         $statusData = Get-Content $StatusFile -Raw -Encoding UTF8 | ConvertFrom-Json
-        $permissionStatus = if ($statusData.permissionStatus) { $statusData.permissionStatus } else { 'Unknown' }
-        $locationStatus   = if ($statusData.locationStatus)   { $statusData.locationStatus   } else { 'Unknown' }
-        $lastAttempt      = if ($statusData.lastAttemptUtc)   { $statusData.lastAttemptUtc   } else { 'Never' }
-        $lastSuccess      = if ($statusData.lastSuccessUtc)   { $statusData.lastSuccessUtc   } else { 'Never' }
+        $permissionStatus = if ($statusData.PSObject.Properties['permissionStatus']) { $statusData.permissionStatus } else { 'Unknown' }
+        $locationStatus   = if ($statusData.PSObject.Properties['locationStatus'])   { $statusData.locationStatus   } else { 'Unknown' }
+        $lastAttempt      = if ($statusData.PSObject.Properties['lastAttemptUtc'])   { $statusData.lastAttemptUtc   } else { 'Never' }
+        $lastSuccess      = if ($statusData.PSObject.Properties['lastSuccessUtc'])   { $statusData.lastSuccessUtc   } else { 'Never' }
+        $lastHeartbeat    = if ($statusData.PSObject.Properties['lastHeartbeatUtc']) { $statusData.lastHeartbeatUtc } else { 'Never' }
+        $deviceId         = if ($statusData.PSObject.Properties['deviceId'])         { $statusData.deviceId         } else { 'Unknown' }
+        $recordSequence   = if ($statusData.PSObject.Properties['recordSequence'])   { $statusData.recordSequence   } else { 'Unknown' }
+        $integrityStatus  = if ($statusData.PSObject.Properties['integrityStatus'])  { $statusData.integrityStatus  } else { 'MISSING' }
+        $agentHealth      = if ($statusData.PSObject.Properties['agentHealth'])      { $statusData.agentHealth      } else { 'UNKNOWN' }
     } catch {
         Write-Warning "Could not read status.json: $_"
     }
@@ -73,6 +83,11 @@ if (Test-Path $StatusFile) {
 Write-Host "Permission       : $permissionStatus"
 Write-Host "Last Attempt     : $lastAttempt"
 Write-Host "Last Success     : $lastSuccess"
+Write-Host "Last Heartbeat   : $lastHeartbeat"
+Write-Host "Device ID        : $deviceId"
+Write-Host "Record Sequence  : $recordSequence"
+Write-Host "Integrity        : $integrityStatus"
+Write-Host "Agent Health     : $agentHealth"
 
 # ---------------------------------------------------------------
 # 4. Location age
@@ -101,10 +116,12 @@ $quality  = 'N/A'
 if (Test-Path $LocationFile) {
     try {
         $locData  = Get-Content $LocationFile -Raw -Encoding UTF8 | ConvertFrom-Json
-        $lat      = if ($locData.latitude)       { $locData.latitude      } else { 'N/A' }
-        $lon      = if ($locData.longitude)      { $locData.longitude     } else { 'N/A' }
-        $accuracy = if ($locData.accuracyMeters) { "$($locData.accuracyMeters) meters" } else { 'N/A' }
-        $quality  = if ($locData.accuracyQuality){ $locData.accuracyQuality } else { 'N/A' }
+        $lat      = if ($locData.PSObject.Properties['latitude'])       { $locData.latitude      } else { 'N/A' }
+        $lon      = if ($locData.PSObject.Properties['longitude'])      { $locData.longitude     } else { 'N/A' }
+        $accuracy = if ($locData.PSObject.Properties['accuracyMeters']) { "$($locData.accuracyMeters) meters" } else { 'N/A' }
+        $quality  = if ($locData.PSObject.Properties['accuracyQuality']){ $locData.accuracyQuality } else { 'N/A' }
+        if ($locData.PSObject.Properties['deviceId']) { $deviceId = $locData.deviceId }
+        if ($locData.PSObject.Properties['recordSequence']) { $recordSequence = $locData.recordSequence }
     } catch {
         Write-Warning "Could not read location.json: $_"
     }
@@ -125,6 +142,8 @@ Write-Host "Location Status  : $locationStatus"
 Write-Host ''
 if (-not $installed) {
     Write-Host 'RESULT: NOT INSTALLED'
+} elseif ($integrityStatus -eq 'INVALID') {
+    Write-Host 'RESULT: INTEGRITY FAILED'
 } elseif ($permissionStatus -eq 'Denied') {
     Write-Host 'RESULT: PERMISSION DENIED'
 } elseif ($lat -eq 'N/A') {

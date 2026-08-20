@@ -11,6 +11,8 @@ namespace LESLocationAgent.Core.Services;
 /// </summary>
 public sealed class LocationFileService
 {
+    private readonly DeviceIdentityService _deviceIdentityService = new();
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true
@@ -26,6 +28,7 @@ public sealed class LocationFileService
         {
             EnsureDataDirectory();
 
+            var identity = _deviceIdentityService.ReserveNextLocationRecord();
             var locationJson = new LocationJson
             {
                 // Windows can return NaN or Infinity for optional values,
@@ -48,8 +51,13 @@ public sealed class LocationFileService
                 PermissionStatus = permissionStatus,
                 TimestampUtc = reading.Timestamp.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                 ComputerName = Environment.MachineName,
-                AgentVersion = AppConfig.AgentVersion
+                AgentVersion = AppConfig.AgentVersion,
+                DeviceId = identity.DeviceId,
+                RecordSequence = identity.LastRecordSequence,
+                IntegrityAlgorithm = DeviceIdentityService.IntegrityAlgorithm
             };
+            locationJson.IntegrityHmac =
+                _deviceIdentityService.CreateLocationIntegrityHmac(identity, locationJson);
 
             WriteJsonAtomic(AppConfig.LocationFilePath, locationJson);
         }
@@ -98,13 +106,21 @@ public sealed class LocationFileService
                 }
             }
 
+            var identity = _deviceIdentityService.GetOrCreate();
+            var integrityStatus = GetLocationIntegrityStatus();
             var statusJson = new StatusJson
             {
                 LastAttemptUtc = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                 LastSuccessUtc = effectiveLastSuccess?.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                 PermissionStatus = permissionStatus,
                 LocationStatus = locationStatus,
-                Error = error
+                Error = error,
+                LastHeartbeatUtc = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                DeviceId = identity.DeviceId,
+                AgentVersion = AppConfig.AgentVersion,
+                RecordSequence = identity.LastRecordSequence,
+                IntegrityStatus = integrityStatus,
+                AgentHealth = GetAgentHealth(locationStatus, integrityStatus)
             };
 
             WriteJsonAtomic(AppConfig.StatusFilePath, statusJson);
@@ -126,6 +142,44 @@ public sealed class LocationFileService
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Records that the interactive agent is alive without discarding the
+    /// last-known location result.
+    /// </summary>
+    public void TouchHeartbeat(string permissionStatus)
+    {
+        var existing = ReadStatus();
+        WriteStatus(
+            existing?.LocationStatus ?? "Starting",
+            permissionStatus,
+            existing?.Error);
+    }
+
+    /// <summary>
+    /// New records include a machine-local integrity marker. Files created
+    /// before recovery telemetry are explicitly treated as LEGACY so upgrades
+    /// preserve existing Action1 map reporting.
+    /// </summary>
+    public string GetLocationIntegrityStatus()
+    {
+        if (!File.Exists(AppConfig.LocationFilePath))
+            return "MISSING";
+
+        var location = ReadLocation();
+        if (location is null)
+            return "INVALID";
+
+        if (string.IsNullOrWhiteSpace(location.DeviceId)
+            || string.IsNullOrWhiteSpace(location.IntegrityHmac))
+        {
+            return "LEGACY";
+        }
+
+        return _deviceIdentityService.VerifyLocationIntegrity(location)
+            ? "VALID"
+            : "INVALID";
     }
 
     // ---------------------------------------------------------------
@@ -161,12 +215,36 @@ public sealed class LocationFileService
 
     private static void WriteJsonAtomic<T>(string destinationPath, T value)
     {
-        var tempPath = destinationPath + ".tmp";
+        var tempPath = $"{destinationPath}.{Guid.NewGuid():N}.tmp";
 
         var json = JsonSerializer.Serialize(value, JsonOptions);
-        File.WriteAllText(tempPath, json);
+        try
+        {
+            File.WriteAllText(tempPath, json);
 
-        // Replace atomically — if destination exists, File.Move overwrites it
-        File.Move(tempPath, destinationPath, overwrite: true);
+            // Replace atomically — if destination exists, File.Move overwrites it
+            File.Move(tempPath, destinationPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+                File.Delete(tempPath);
+        }
+    }
+
+    private static string GetAgentHealth(string locationStatus, string integrityStatus)
+    {
+        if (integrityStatus == "INVALID")
+            return "INTEGRITY FAILED";
+
+        return locationStatus switch
+        {
+            "Success" => "HEALTHY",
+            "Starting" => "STARTING",
+            "PermissionDenied" => "PERMISSION DENIED",
+            "NoLocation" => "NO LOCATION",
+            "Error" => "ERROR",
+            _ => string.IsNullOrWhiteSpace(locationStatus) ? "UNKNOWN" : locationStatus.ToUpperInvariant()
+        };
     }
 }

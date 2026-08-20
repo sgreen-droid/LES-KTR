@@ -114,6 +114,55 @@ public sealed class LocationFileServiceTests : IDisposable
     }
 
     // ---------------------------------------------------------------
+    // Recovery identity and integrity
+    // ---------------------------------------------------------------
+
+    [Fact]
+    public void DeviceIdentity_IsStableAndRecordSequenceOnlyIncreases()
+    {
+        var statePath = Path.Combine(_tempDir, "agent-state.json");
+        var service = new DeviceIdentityService(statePath);
+
+        var first = service.GetOrCreate();
+        var firstRecord = service.ReserveNextLocationRecord();
+        var secondRecord = service.ReserveNextLocationRecord();
+        var afterRestart = new DeviceIdentityService(statePath).GetOrCreate();
+
+        first.DeviceId.Should().NotBeNullOrWhiteSpace();
+        firstRecord.DeviceId.Should().Be(first.DeviceId);
+        firstRecord.LastRecordSequence.Should().Be(1);
+        secondRecord.LastRecordSequence.Should().Be(2);
+        afterRestart.DeviceId.Should().Be(first.DeviceId);
+        afterRestart.LastRecordSequence.Should().Be(2);
+    }
+
+    [Fact]
+    public void LocationIntegrity_DetectsTamperedRecoveryRecord()
+    {
+        var statePath = Path.Combine(_tempDir, "agent-state.json");
+        var service = new DeviceIdentityService(statePath);
+        var identity = service.ReserveNextLocationRecord();
+        var location = new LocationJson
+        {
+            Latitude = 40.839466,
+            Longitude = -73.859357,
+            AccuracyMeters = 109,
+            PermissionStatus = "Allowed",
+            TimestampUtc = "2026-08-11T18:35:42Z",
+            AgentVersion = "1.1.0",
+            DeviceId = identity.DeviceId,
+            RecordSequence = identity.LastRecordSequence,
+            IntegrityAlgorithm = DeviceIdentityService.IntegrityAlgorithm
+        };
+        location.IntegrityHmac = service.CreateLocationIntegrityHmac(identity, location);
+
+        service.VerifyLocationIntegrity(location).Should().BeTrue();
+
+        location.Latitude = 41.0;
+        service.VerifyLocationIntegrity(location).Should().BeFalse();
+    }
+
+    // ---------------------------------------------------------------
     // Staleness logic (mirrors Action1 sync script logic)
     // ---------------------------------------------------------------
 

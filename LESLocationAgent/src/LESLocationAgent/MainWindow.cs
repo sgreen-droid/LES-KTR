@@ -26,6 +26,7 @@ public sealed class MainWindow : Window
     private readonly LocationService _locationService;
     private readonly LocationFileService _fileService;
     private readonly StartupService _startupService;
+    private readonly SemaphoreSlim _locationOperation = new(1, 1);
 
     // Not readonly — assigned in StartRefreshTimer() which is called from ctor
     private DispatcherTimer _refreshTimer = null!;
@@ -273,6 +274,7 @@ public sealed class MainWindow : Window
         {
             var status = await Geolocator.RequestAccessAsync();
             UpdatePermissionDisplay(status);
+            _fileService.TouchHeartbeat(_currentPermissionStatus);
         }
         catch (Exception ex)
         {
@@ -314,6 +316,12 @@ public sealed class MainWindow : Window
 
     public async Task GetLocationAsync()
     {
+        if (!await _locationOperation.WaitAsync(0))
+        {
+            App.StartupLog("Skipped overlapping location request.");
+            return;
+        }
+
         SetStatus("Requesting location…");
         SetButtonsEnabled(false);
         UpdateWindowsLocationStatus("Requesting location…");
@@ -353,6 +361,7 @@ public sealed class MainWindow : Window
         finally
         {
             SetButtonsEnabled(true);
+            _locationOperation.Release();
         }
     }
 

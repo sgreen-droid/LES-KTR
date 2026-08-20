@@ -7,8 +7,7 @@
     2. Verifies the SHA-256 hash before installation.
     3. Installs silently.
     4. Confirms program files exist.
-    5. Launches the app visibly for the logged-in user so Windows can prompt
-       for location permission.
+    5. Leaves the agent registered for the next interactive user sign-in.
     6. Reports SUCCESS or FAILURE.
 
 .PARAMETER InstallerUrl
@@ -31,16 +30,14 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 # ---------------------------------------------------------------
-# CONFIGURATION — update these for each release
+# RELEASE CONFIGURATION
 #
-# InstallerUrl pattern (replace {tag} with the release tag, e.g. v1.0.0):
-#   https://github.com/sgreen-droid/LES-KTR/releases/download/{tag}/LESLocationAgent.msi
-#
-# ExpectedSha256: copy from SHA256-MANIFEST.txt attached to the same release,
-#   or from the Actions build log (uppercase hex, no dashes).
+# Tagged GitHub releases replace these placeholders automatically. For a
+# privately hosted MSI, replace BOTH values before putting this script in
+# Action1. The script intentionally refuses an unpinned installer.
 # ---------------------------------------------------------------
-$InstallerUrl   = 'https://github.com/sgreen-droid/LES-KTR/releases/download/v1.0.0/LESLocationAgent.msi'
-$ExpectedSha256 = 'REPLACE_WITH_SHA256_FROM_RELEASE_MANIFEST'  # uppercase hex, no dashes
+$InstallerUrl   = '__INSTALLER_URL__'
+$ExpectedSha256 = '__INSTALLER_SHA256__'
 # ---------------------------------------------------------------
 
 $TempDir       = Join-Path $env:TEMP 'LESLocationAgent_Install'
@@ -56,6 +53,14 @@ Write-Host '=== LES Location Agent — Action1 Installer ==='
 Write-Host "Computer : $env:COMPUTERNAME"
 Write-Host "Run as   : $($env:USERNAME)"
 Write-Host "Time     : $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
+
+if ($InstallerUrl -notmatch '^https://') {
+    Fail 'InstallerUrl must be an HTTPS URL. Use the preconfigured script from a tagged release or set a trusted HTTPS URL.'
+}
+
+if ($ExpectedSha256 -notmatch '^[0-9A-Fa-f]{64}$') {
+    Fail 'ExpectedSha256 must be the 64-character SHA-256 hash for this exact MSI. Integrity verification cannot be skipped.'
+}
 
 # ---------------------------------------------------------------
 # Step 1: Create temp directory
@@ -85,19 +90,13 @@ try {
 # Step 3: Verify SHA-256
 # ---------------------------------------------------------------
 Write-Step 'Verifying SHA-256 hash...'
-# A real SHA-256 hash is exactly 64 hexadecimal characters.
-# If $ExpectedSha256 is still the placeholder, skip verification and warn.
-if ($ExpectedSha256 -match '^[0-9A-Fa-f]{64}$') {
-    $actualHash = (Get-FileHash -Path $InstallerPath -Algorithm SHA256).Hash
+$actualHash = (Get-FileHash -Path $InstallerPath -Algorithm SHA256).Hash
 
-    if ($actualHash -ne $ExpectedSha256.ToUpper()) {
-        Remove-Item $InstallerPath -Force -ErrorAction SilentlyContinue
-        Fail "SHA-256 mismatch!`n  Expected: $($ExpectedSha256.ToUpper())`n  Actual  : $actualHash"
-    }
-    Pass "SHA-256 verified: $actualHash"
-} else {
-    Write-Warning 'SHA-256 verification skipped — replace $ExpectedSha256 with the 64-character hash from SHA256-MANIFEST.txt before deploying.'
+if ($actualHash -ne $ExpectedSha256.ToUpper()) {
+    Remove-Item $InstallerPath -Force -ErrorAction SilentlyContinue
+    Fail "SHA-256 mismatch!`n  Expected: $($ExpectedSha256.ToUpper())`n  Actual  : $actualHash"
 }
+Pass "SHA-256 verified: $actualHash"
 
 # ---------------------------------------------------------------
 # Step 4: Install silently
@@ -129,40 +128,11 @@ $runKey  = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run'
 Pass 'Installation file check passed'
 
 # ---------------------------------------------------------------
-# Step 6: Launch for logged-in user (for location permission prompt)
+# Step 6: Interactive-user consent
 # ---------------------------------------------------------------
-Write-Step 'Launching application for logged-in user...'
-try {
-    # Find the active console session (logged-in user)
-    $sessions = query session 2>&1
-    $activeSession = $sessions | Where-Object { $_ -match 'Active' } | Select-Object -First 1
-
-    if ($activeSession) {
-        # Launch via scheduled task so it runs in the user context (not SYSTEM)
-        $taskAction   = New-ScheduledTaskAction -Execute $ExePath
-        $taskTrigger  = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(5)
-        $taskSettings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
-        $taskName     = 'LESLocationAgent_FirstRun'
-
-        # Remove if exists
-        Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
-
-        Register-ScheduledTask -TaskName $taskName `
-            -Action $taskAction -Trigger $taskTrigger -Settings $taskSettings `
-            -RunLevel Limited -Force | Out-Null
-
-        Start-ScheduledTask -TaskName $taskName
-        Pass 'Application scheduled to launch in the user context'
-
-        # Clean up the one-shot task after a short delay
-        Start-Sleep -Seconds 10
-        Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
-    } else {
-        Write-Warning 'No active user session found — app will launch on next user login.'
-    }
-} catch {
-    Write-Warning "Could not launch app automatically: $_ — user can launch manually."
-}
+Write-Step 'Recording interactive-user consent requirement...'
+Write-Warning 'Action1 runs this installer outside the interactive user session.'
+Write-Warning 'LES Location Agent starts at the next user sign-in. An authorized user must then review Windows Location Services under the organization-approved policy.'
 
 # ---------------------------------------------------------------
 # Clean up temp files
@@ -175,5 +145,5 @@ Remove-Item $TempDir -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "`n============================================"
 Write-Host 'RESULT: SUCCESS'
 Write-Host "LES Location Agent installed at: $InstallDir"
-Write-Host 'The application will prompt the user for location permission on first launch.'
+Write-Host 'The agent starts at the next interactive user sign-in.'
 Write-Host '============================================'
