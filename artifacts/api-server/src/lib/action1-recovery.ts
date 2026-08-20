@@ -1,6 +1,6 @@
 import { logger } from "./logger";
 
-const ACTION1_BASE_URL = "https://app.action1.com/api/3.0";
+const DEFAULT_ACTION1_BASE_URL = "https://app.action1.com/api/3.0";
 const CACHE_TTL_MS = 60 * 1000;
 const PAGE_SIZE = 100;
 const MAX_PAGES_PER_ORGANIZATION = 100;
@@ -74,6 +74,40 @@ let tokenCache: TokenCache | null = null;
 let snapshotCache: RecoverySnapshot | null = null;
 let snapshotExpiresAt = 0;
 let snapshotPromise: Promise<RecoverySnapshot> | null = null;
+
+function getAction1BaseUrl(): string {
+  const configuredUrl = process.env["ACTION1_BASE_URL"]?.trim();
+  if (!configuredUrl) {
+    return DEFAULT_ACTION1_BASE_URL;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(configuredUrl);
+  } catch {
+    throw new Action1UnavailableError(
+      "ACTION1_BASE_URL must be a valid Action1 API URL.",
+    );
+  }
+
+  const isAction1Host =
+    parsed.hostname === "app.action1.com" ||
+    parsed.hostname.endsWith(".action1.com");
+  const normalizedPath = parsed.pathname.replace(/\/+$/, "");
+  if (
+    parsed.protocol !== "https:" ||
+    !isAction1Host ||
+    normalizedPath !== "/api/3.0" ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Action1UnavailableError(
+      "ACTION1_BASE_URL must use HTTPS and point to an Action1 /api/3.0 endpoint.",
+    );
+  }
+
+  return `${parsed.origin}${normalizedPath}`;
+}
 
 function asRecord(value: unknown): UnknownRecord | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -264,9 +298,10 @@ async function getAccessToken(forceRefresh = false): Promise<string> {
   }
 
   const { clientId, clientSecret } = getAction1Credentials();
+  const action1BaseUrl = getAction1BaseUrl();
   let response: Response;
   try {
-    response = await fetch(`${ACTION1_BASE_URL}/oauth2/token`, {
+    response = await fetch(`${action1BaseUrl}/oauth2/token`, {
       body: new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -308,9 +343,10 @@ async function getAction1Json(
   options: { forceRefresh?: boolean; retry?: boolean } = {},
 ): Promise<unknown> {
   const token = await getAccessToken(options.forceRefresh);
+  const action1BaseUrl = getAction1BaseUrl();
   let response: Response;
   try {
-    response = await fetch(`${ACTION1_BASE_URL}${path}`, {
+    response = await fetch(`${action1BaseUrl}${path}`, {
       headers: { Authorization: `Bearer ${token}` },
       method: "GET",
       signal: AbortSignal.timeout(20_000),
