@@ -125,12 +125,27 @@ jobs:
           $mb = [Math]::Round((Get-Item 'installer\LESLocationAgent.msi').Length / 1MB, 2)
           Write-Host "MSI built ($mb MB)."
 
-      - name: Compute SHA-256
+      - name: Verify MSI package version
         shell: pwsh
         run: |
-          $hash = (Get-FileHash 'installer\LESLocationAgent.msi' -Algorithm SHA256).Hash
-          Write-Host "SHA-256: $hash"
-          "INSTALLER_SHA256=$hash" | Out-File $env:GITHUB_ENV -Append
+          $packageNode = Select-Xml -Path 'installer\Package.wxs' -XPath "//*[local-name()='Package']" |
+            Select-Object -First 1 -ExpandProperty Node
+          $expectedVersion = $packageNode.GetAttribute('Version')
+          if (-not $expectedVersion) {
+            throw 'Package.wxs does not declare an MSI version.'
+          }
+
+          $installer = New-Object -ComObject WindowsInstaller.Installer
+          $database = $installer.OpenDatabase((Resolve-Path 'installer\LESLocationAgent.msi').Path, 0)
+          $view = $database.OpenView('SELECT `Value` FROM `Property` WHERE `Property` = ''ProductVersion''')
+          $view.Execute()
+          $record = $view.Fetch()
+          $actualVersion = $record.StringData(1)
+
+          if ($actualVersion -ne $expectedVersion) {
+            throw "MSI ProductVersion mismatch. Expected $expectedVersion; found $actualVersion."
+          }
+          Write-Host "Verified MSI ProductVersion: $actualVersion"
 
       # CODE SIGNING — runs automatically when CODE_SIGN_PFX is set as a
       # GitHub Actions secret.  Development builds that lack the secret are
@@ -186,6 +201,34 @@ jobs:
             throw "Signature verification failed (exit $LASTEXITCODE)."
           }
           Write-Host 'MSI signed and verified successfully.'
+
+      # Hash the finished MSI after optional signing so the Action1 pin always
+      # matches the exact file published in the release.
+      - name: Compute final MSI SHA-256
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash 'installer\LESLocationAgent.msi' -Algorithm SHA256).Hash
+          Write-Host "Final MSI SHA-256: $hash"
+          "INSTALLER_SHA256=$hash" | Out-File $env:GITHUB_ENV -Append
+
+      - name: Configure Action1 installer script
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $scriptPath = Resolve-Path 'scripts\Action1-Install-LESLocationAgent.ps1'
+          $installerUrl = 'https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/LESLocationAgent.msi'
+          $scriptContent = [IO.File]::ReadAllText($scriptPath)
+          $scriptContent = $scriptContent.Replace('__INSTALLER_URL__', $installerUrl).Replace('__INSTALLER_SHA256__', $env:INSTALLER_SHA256)
+
+          if ($scriptContent.Contains('__INSTALLER_')) {
+            throw 'Action1 installer script still contains an unconfigured release placeholder.'
+          }
+
+          [IO.File]::WriteAllText(
+            $scriptPath,
+            $scriptContent,
+            [System.Text.UTF8Encoding]::new($false))
+          Write-Host "Pinned Action1 installer script to $installerUrl"
 
       - name: Collect release artifacts
         shell: pwsh
