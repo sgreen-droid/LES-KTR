@@ -225,7 +225,7 @@ Open `location.json`. It should look like:
   "permissionStatus": "Allowed",
   "timestampUtc": "2026-08-11T18:35:42Z",
   "computerName": "LES-LAPTOP-001",
-  "agentVersion": "1.1.1",
+  "agentVersion": "1.1.2",
   "deviceId": "d2719f71-a1cb-4ae2-b2fb-4ee88a008620",
   "recordSequence": 42,
   "integrityAlgorithm": "HMAC-SHA256-IEEE754LE",
@@ -405,6 +405,10 @@ The agent can report only while Windows is running, the endpoint can execute
 the Action1 task, and Windows can obtain a usable location. It cannot locate a
 powered-off, offline, wiped, or otherwise unreachable device.
 
+The MSI registers the agent for every user at sign-in, but the agent keeps a
+machine-wide file lease so only one active tray process writes the shared
+recovery files at a time.
+
 ### Privacy and access policy
 
 Deploy this only to organization-owned devices under a written device-management
@@ -534,8 +538,8 @@ When you are ready to deploy to endpoints, publish a tagged GitHub Release so Ac
 Run these commands locally (or in any terminal with git access):
 
 ```powershell
-git tag v1.1.0
-git push origin v1.1.0
+git tag v1.1.2
+git push origin v1.1.2
 ```
 
 That's it. GitHub Actions detects the `v*.*.*` tag, builds the MSI, and automatically creates a GitHub Release with the following files attached:

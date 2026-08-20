@@ -9,6 +9,8 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $installerPath = Join-Path $repoRoot 'scripts\Action1-Install-LESLocationAgent.ps1'
 $healthPath = Join-Path $repoRoot 'scripts\Action1-LESLocationAgent-Health.ps1'
 $workflowPath = Join-Path $repoRoot '.github\workflows\windows-build.yml'
+$installerPackagePath = Join-Path $repoRoot 'installer\Package.wxs'
+$programPath = Join-Path $repoRoot 'src\LESLocationAgent\Program.cs'
 
 function Assert-Contains {
     param([string]$Name, [string]$Text, [string]$Expected)
@@ -21,6 +23,8 @@ function Assert-Contains {
 $installer = Get-Content $installerPath -Raw -Encoding UTF8
 $health = Get-Content $healthPath -Raw -Encoding UTF8
 $workflow = Get-Content $workflowPath -Raw -Encoding UTF8
+$installerPackage = Get-Content $installerPackagePath -Raw -Encoding UTF8
+$program = Get-Content $programPath -Raw -Encoding UTF8
 
 Assert-Contains 'Installer template' $installer "__INSTALLER_URL__"
 Assert-Contains 'Installer template' $installer "__INSTALLER_SHA256__"
@@ -42,5 +46,11 @@ foreach ($field in @(
 )) {
     Assert-Contains 'Health script' $health $field
 }
+
+if ($installerPackage -match 'LaunchApp|CustomAction') {
+    throw 'The MSI must not launch the interactive agent from the installer service context.'
+}
+Assert-Contains 'Application startup guard' $program 'TryAcquireMachineInstanceLock'
+Assert-Contains 'Application startup guard' $program 'FileShare.None'
 
 Write-Host 'Action1 deployment script tests passed.'

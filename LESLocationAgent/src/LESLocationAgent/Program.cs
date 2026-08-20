@@ -4,6 +4,7 @@
 
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using LESLocationAgent.Core.Models;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using WinRT;
@@ -32,6 +33,7 @@ internal static class Program
     private const string DownloadLink     =
         "https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe";
     private const string MinWindowsVersion = "Windows 10 version 1809 (October 2018 Update)";
+    private static FileStream? _machineInstanceLock;
 
     [STAThread]
     private static void Main(string[] args)
@@ -42,6 +44,12 @@ internal static class Program
 
         try
         {
+            if (!TryAcquireMachineInstanceLock())
+            {
+                App.StartupLog("Another LES Location Agent instance owns the machine recovery files; exiting.");
+                return;
+            }
+
             App.StartupLog("Calling XamlCheckProcessRequirements");
             // Verify WinUI 3 runtime requirements are met on this Windows version.
             // This call loads Microsoft.ui.xaml.dll; if the DLL is missing or
@@ -121,6 +129,36 @@ internal static class Program
             HandleWindowsVersionError(
                 reason: "unmanaged exception from XamlCheckProcessRequirements()",
                 detail: $"{ex.GetType().Name}: {ex.Message}\n\nStack trace:\n{ex.StackTrace}");
+        }
+    }
+
+    /// <summary>
+    /// Keeps one tray agent active per machine, including when HKLM Run starts
+    /// apps in different interactive sessions. A file handle is used instead of
+    /// a global named event because it is visible across sessions without
+    /// requiring a global-object security descriptor.
+    /// </summary>
+    private static bool TryAcquireMachineInstanceLock()
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(AppConfig.LocationFilePath)
+                ?? throw new InvalidOperationException("The application data path is invalid.");
+            Directory.CreateDirectory(directory);
+            _machineInstanceLock = new FileStream(
+                Path.Combine(directory, "agent.instance.lock"),
+                FileMode.OpenOrCreate,
+                FileAccess.ReadWrite,
+                FileShare.None);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
         }
     }
 

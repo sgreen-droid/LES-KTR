@@ -39,7 +39,7 @@ try {
         [BitConverter]::GetBytes([double]-73.859357)).Replace('-', '')
     $accuracyBits = [BitConverter]::ToString(
         [BitConverter]::GetBytes([double]109)).Replace('-', '')
-    $integrityPayload = "$deviceId|7|$timestamp|$latBits|$lonBits|$accuracyBits|Allowed|1.1.1"
+    $integrityPayload = "$deviceId|7|$timestamp|$latBits|$lonBits|$accuracyBits|Allowed|1.1.2"
     $hmac = [System.Security.Cryptography.HMACSHA256]::new($integrityKeyBytes)
     try {
         $integrityHmac = [BitConverter]::ToString(
@@ -60,7 +60,7 @@ try {
         timestampUtc      = $timestamp
         deviceId          = $deviceId
         recordSequence    = 7
-        agentVersion      = '1.1.1'
+        agentVersion      = '1.1.2'
         integrityAlgorithm= 'HMAC-SHA256-IEEE754LE'
         integrityHmac     = $integrityHmac
     }
@@ -111,7 +111,7 @@ try {
     Assert-Equal 'Location Sequence' '7' $global:LesCapturedAttributes['Location Sequence']
     Assert-Equal 'Location Integrity' 'VALID' $global:LesCapturedAttributes['Location Integrity']
     Assert-Equal 'Agent Health' 'HEALTHY' $global:LesCapturedAttributes['Agent Health']
-    Assert-Equal 'Agent Version' '1.1.1' $global:LesCapturedAttributes['Agent Version']
+    Assert-Equal 'Agent Version' '1.1.2' $global:LesCapturedAttributes['Agent Version']
     Assert-Equal 'Last Attempt' $timestamp $global:LesCapturedAttributes['Last Attempt']
     Assert-Equal 'Last Success' $timestamp $global:LesCapturedAttributes['Last Success']
     Assert-Equal 'Recovery Status' 'ACTIVE' $global:LesCapturedAttributes['Recovery Status']
@@ -140,7 +140,7 @@ try {
         timestampUtc      = $timestamp
         deviceId          = $deviceId
         recordSequence    = 7
-        agentVersion      = '1.1.1'
+        agentVersion      = '1.1.2'
         integrityAlgorithm= 'HMAC-SHA256-IEEE754LE'
         integrityHmac     = $integrityHmac
     }
@@ -178,7 +178,7 @@ try {
             timestampUtc      = $timestamp
             deviceId          = $deviceId
             recordSequence    = 7
-            agentVersion      = '1.1.1'
+            agentVersion      = '1.1.2'
             integrityAlgorithm= 'HMAC-SHA256-IEEE754LE'
             integrityHmac     = $integrityHmac
         }

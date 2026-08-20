@@ -14,42 +14,28 @@ public sealed class DeviceIdentityService
 {
     public const string IntegrityAlgorithm = "HMAC-SHA256-IEEE754LE";
 
-    private static readonly object StateLock = new();
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true
     };
     private readonly string _stateFilePath;
     private readonly string _dataDirectory;
+    private readonly string _lockFilePath;
 
     public DeviceIdentityService(string? stateFilePath = null)
     {
         _stateFilePath = stateFilePath ?? AppConfig.DeviceIdentityFilePath;
         _dataDirectory = Path.GetDirectoryName(_stateFilePath)
             ?? throw new ArgumentException("A device identity path must include a directory.", nameof(stateFilePath));
+        _lockFilePath = $"{_stateFilePath}.lock";
     }
 
     public DeviceIdentity GetOrCreate()
     {
-        lock (StateLock)
+        return WithStateLock(() =>
         {
-            Directory.CreateDirectory(_dataDirectory);
-
-            var existing = TryRead();
-            if (IsValid(existing))
-                return existing!;
-
-            var identity = new DeviceIdentity
-            {
-                DeviceId = Guid.NewGuid().ToString("D"),
-                CreatedUtc = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                LastRecordSequence = 0,
-                IntegrityKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
-            };
-
-            Write(identity);
-            return identity;
-        }
+            return GetOrCreateUnsafe();
+        });
     }
 
     /// <summary>
@@ -58,13 +44,13 @@ public sealed class DeviceIdentityService
     /// </summary>
     public DeviceIdentity ReserveNextLocationRecord()
     {
-        lock (StateLock)
+        return WithStateLock(() =>
         {
-            var identity = GetOrCreate();
+            var identity = GetOrCreateUnsafe();
             identity.LastRecordSequence++;
             Write(identity);
             return identity;
-        }
+        });
     }
 
     public string CreateLocationIntegrityHmac(DeviceIdentity identity, LocationJson location)
@@ -119,6 +105,50 @@ public sealed class DeviceIdentityService
 
     private static string GetIeee754LittleEndianHex(double value) =>
         Convert.ToHexString(BitConverter.GetBytes(value));
+
+    private DeviceIdentity GetOrCreateUnsafe()
+    {
+        var existing = TryRead();
+        if (IsValid(existing))
+            return existing!;
+
+        var identity = new DeviceIdentity
+        {
+            DeviceId = Guid.NewGuid().ToString("D"),
+            CreatedUtc = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+            LastRecordSequence = 0,
+            IntegrityKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+        };
+
+        Write(identity);
+        return identity;
+    }
+
+    private T WithStateLock<T>(Func<T> action)
+    {
+        Directory.CreateDirectory(_dataDirectory);
+
+        const int maxAttempts = 100;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            try
+            {
+                using var lockHandle = new FileStream(
+                    _lockFilePath,
+                    FileMode.OpenOrCreate,
+                    FileAccess.ReadWrite,
+                    FileShare.None);
+                return action();
+            }
+            catch (IOException) when (attempt < maxAttempts - 1)
+            {
+                Thread.Sleep(100);
+            }
+        }
+
+        throw new TimeoutException(
+            "Timed out waiting for exclusive access to the recovery identity state.");
+    }
 
     private DeviceIdentity? TryRead()
     {

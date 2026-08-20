@@ -137,6 +137,23 @@ public sealed class LocationFileServiceTests : IDisposable
     }
 
     [Fact]
+    public void DeviceIdentity_ParallelReservations_AreUniqueAndMonotonic()
+    {
+        var statePath = Path.Combine(_tempDir, "agent-state.json");
+        var sequences = new System.Collections.Concurrent.ConcurrentBag<long>();
+
+        Parallel.For(0, 20, _ =>
+        {
+            var identity = new DeviceIdentityService(statePath).ReserveNextLocationRecord();
+            sequences.Add(identity.LastRecordSequence);
+        });
+
+        sequences.Should().HaveCount(20);
+        sequences.Distinct().Should().HaveCount(20);
+        sequences.Order().Should().Equal(Enumerable.Range(1, 20).Select(value => (long)value));
+    }
+
+    [Fact]
     public void LocationIntegrity_DetectsTamperedRecoveryRecord()
     {
         var statePath = Path.Combine(_tempDir, "agent-state.json");
@@ -149,7 +166,7 @@ public sealed class LocationFileServiceTests : IDisposable
             AccuracyMeters = 109,
             PermissionStatus = "Allowed",
             TimestampUtc = "2026-08-11T18:35:42Z",
-            AgentVersion = "1.1.1",
+            AgentVersion = "1.1.2",
             DeviceId = identity.DeviceId,
             RecordSequence = identity.LastRecordSequence,
             IntegrityAlgorithm = DeviceIdentityService.IntegrityAlgorithm
