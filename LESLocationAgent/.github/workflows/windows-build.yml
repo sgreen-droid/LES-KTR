@@ -122,26 +122,34 @@ jobs:
         shell: pwsh
         run: |
           $publishDir = Join-Path (Get-Location) 'publish\x64\Release'
-          $xamlDll = Get-ChildItem -Path $publishDir -Recurse -Filter 'Microsoft.ui.xaml.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
+          $requiredRuntimeFiles = @(
+            'Microsoft.ui.xaml.dll',
+            'Microsoft.WindowsAppRuntime.dll'
+          )
 
-          if (-not $xamlDll) {
+          foreach ($name in $requiredRuntimeFiles) {
+            $runtimeFile = Join-Path $publishDir $name
+            if (Test-Path -LiteralPath $runtimeFile -PathType Leaf) {
+              Write-Host "Windows App SDK DLL confirmed beside the app: $runtimeFile"
+              continue
+            }
+
             Write-Error @"
           ================================================================
-          MISSING: Microsoft.ui.xaml.dll was not found in the publish output.
-          The app will fail to start on any PC that does not already have the
-          Windows App SDK installed.
+          MISSING: $name was not found beside LESLocationAgent.exe.
+          The self-contained MSI would be incomplete and the app could fail to
+          start on the target PC.
 
           Fix options:
             1. Confirm /p:WindowsAppSDKSelfContained=true is accepted by the
                SDK version on this runner (check MSBuild output above).
-            2. Switch to a WiX Burn bootstrapper that installs the Windows App
-               SDK Redistributable as an ExePackage prerequisite before the MSI.
+            2. Inspect the publish output before building the MSI. The required
+               DLL must be beside LESLocationAgent.exe, not in a subfolder.
           ================================================================
           "@
             exit 1
           }
-
-          Write-Host "Windows App SDK DLL confirmed: $($xamlDll.FullName)"
+          }
 
           # Also check for a few other core WinAppSDK DLLs for extra confidence.
           $extraChecks = @(

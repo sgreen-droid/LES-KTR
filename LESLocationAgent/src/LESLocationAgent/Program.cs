@@ -26,8 +26,6 @@ internal static class Program
 
     // ── Event Log source name (written to Windows Logs → Application) ────────
     private const string EventSourceName  = "LESLocationAgent";
-    private const string DownloadLink     =
-        "https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe";
     private const string MinWindowsVersion = "Windows 11 version 21H2 (build 22000)";
     private const uint MinimumWindows11Build = 22000;
     private const byte VerNtWorkstation = 1;
@@ -184,12 +182,6 @@ internal static class Program
         StartupDiagnosticResult diagnostic)
     {
         var diagnosticDetail = BuildDiagnosticDetail(inspection);
-        var remediationLink = diagnostic.FailureKind switch
-        {
-            StartupFailureKind.WindowsAppSdkRequirementsFailed =>
-                $"\n\nWindows App SDK Runtime (x64):\n{DownloadLink}",
-            _ => string.Empty
-        };
         var specificityNote = diagnostic.IsSpecific
             ? "Windows provided enough evidence to identify this failure."
             : "Windows did not identify one specific missing dependency; the checks below show exactly what was found.";
@@ -201,7 +193,6 @@ internal static class Program
             $"\n\n{diagnosticDetail}" +
             $"\n\n{specificityNote}" +
             $"\n\nWhat to do: {diagnostic.RecommendedAction}" +
-            remediationLink +
             "\n\nThe complete non-sensitive diagnostic was written to the LESLocationAgent startup log and Windows Application Event Log.";
 
         WriteEventLogEntry(
@@ -237,7 +228,7 @@ internal static class Program
                 : "XamlCheckProcessRequirements found")}" +
             $"\nVisual C++ x64 runtime: {(inspection.Evidence.VisualCppRuntimeDetected ? "detected" : "not detected")}" +
             $"\nWindows App SDK readiness: {(inspection.Evidence.XamlRequirementsSatisfied.HasValue
-                ? inspection.Evidence.XamlRequirementsSatisfied.Value ? "passed" : "returned false"
+                ? inspection.Evidence.XamlRequirementsSatisfied.Value ? "passed" : "failed"
                 : "not called")}" +
             (inspection.NativeProbeException is null
                 ? string.Empty

@@ -12,6 +12,9 @@
     <UseWinUI>true</UseWinUI>
     <!-- Unpackaged app: no MSIX, deploys as plain exe via MSI -->
     <WindowsPackageType>None</WindowsPackageType>
+    <!-- The MSI carries the Windows App SDK files; target PCs do not need a
+         separate Windows App SDK Runtime installation. -->
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <!-- Suppress the XAML-generated Main so Program.cs is the sole entry point -->
     <DefineConstants>DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <Nullable>enable</Nullable>

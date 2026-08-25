@@ -31,14 +31,12 @@ public static class StartupDiagnosticClassifier
         }
 
         if (!evidence.Is64BitOperatingSystem || !evidence.Is64BitProcess ||
-            !string.Equals(evidence.XamlDllArchitecture, "x64", StringComparison.OrdinalIgnoreCase) ||
-            evidence.NativeLoaderErrorCode is ErrorBadExeFormat or ErrorExeMachineTypeMismatch)
+            !string.Equals(evidence.XamlDllArchitecture, "x64", StringComparison.OrdinalIgnoreCase))
         {
             var explicitMismatch =
                 !evidence.Is64BitOperatingSystem ||
                 !evidence.Is64BitProcess ||
-                string.Equals(evidence.XamlDllArchitecture, "x86", StringComparison.OrdinalIgnoreCase) ||
-                evidence.NativeLoaderErrorCode is ErrorBadExeFormat or ErrorExeMachineTypeMismatch;
+                string.Equals(evidence.XamlDllArchitecture, "x86", StringComparison.OrdinalIgnoreCase);
 
             return new StartupDiagnosticResult(
                 StartupFailureKind.IncompatibleArchitecture,
@@ -71,8 +69,8 @@ public static class StartupDiagnosticClassifier
         {
             return new StartupDiagnosticResult(
                 StartupFailureKind.WindowsAppSdkRequirementsFailed,
-                "Microsoft.ui.xaml.dll loaded, but the Windows App SDK readiness check returned false.",
-                "Install or repair the Windows App SDK Runtime (x64), then restart Windows.",
+                "Microsoft.ui.xaml.dll loaded, but its startup requirement check did not complete successfully.",
+                "Reinstall the latest LES Location Agent MSI, then review the startup diagnostic record.",
                 IsSpecific: false);
         }
 
