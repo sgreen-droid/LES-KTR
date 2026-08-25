@@ -11,12 +11,13 @@
   Variable injected by the build command (-d flag):
     PublishDir — absolute path to the dotnet publish output folder
 -->
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
   <Package
     Name="LES Location Agent"
     Manufacturer="LES"
-    Version="1.1.4.0"
+    Version="1.1.5.0"
     UpgradeCode="A1B2C3D4-E5F6-7890-ABCD-EF1234567890"
     Language="1033"
     InstallerVersion="500"
@@ -102,6 +103,17 @@
                        Type="integer"
                        Value="1"
                        KeyPath="yes" />
+      </Component>
+
+      <!-- Register the Application-log source during elevated MSI setup, so
+           standard-user startup failures can be recorded without trying to
+           create a machine-wide event source at runtime. -->
+      <Component Id="ApplicationEventSource" Guid="A3B4C5D6-E7F8-9012-ABCD-345678901234">
+        <util:EventSource
+          Name="LESLocationAgent"
+          Log="Application"
+          EventMessageFile="[INSTALLFOLDER]System.Diagnostics.EventLog.Messages.dll"
+          KeyPath="yes" />
       </Component>
 
       <!-- Pre-grant Windows location consent for the installing user, so the

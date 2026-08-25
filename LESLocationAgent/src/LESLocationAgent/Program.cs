@@ -4,6 +4,7 @@
 
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using LESLocationAgent.Core.Helpers;
 using LESLocationAgent.Core.Models;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
@@ -22,11 +23,6 @@ internal static class Program
     private const uint MB_OK              = 0x00000000u;
     private const uint MB_ICONERROR       = 0x00000010u;
     private const uint MB_SETFOREGROUND   = 0x00010000u;
-
-    // ── Windows App SDK entry-point requirement ──────────────────────────────
-    [DllImport("Microsoft.ui.xaml.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool XamlCheckProcessRequirements();
 
     // ── Event Log source name (written to Windows Logs → Application) ────────
     private const string EventSourceName  = "LESLocationAgent";
@@ -100,19 +96,17 @@ internal static class Program
                 return;
             }
 
-            StartupLogger.Write("Calling XamlCheckProcessRequirements");
-            // Verify WinUI 3 runtime requirements are met on this Windows version.
-            // This call loads Microsoft.ui.xaml.dll; if the DLL is missing or
-            // incompatible it throws DllNotFoundException / TypeLoadException here,
-            // which we catch below before any WinUI type is touched.
-            // A runtime or deployment incompatibility can return false rather than
-            // throwing, so surface that as a Windows App SDK failure.
-            if (!XamlCheckProcessRequirements())
+            var startupInspection = StartupDiagnosticProbe.InspectAndCheckRequirements();
+            var startupDiagnostic = StartupDiagnosticClassifier.Classify(startupInspection.Evidence);
+            StartupLogger.Write(startupInspection.ToLogText(startupDiagnostic));
+
+            if (!startupInspection.RequirementsSatisfied)
             {
-                HandleWindowsAppSdkRequirementsError(
-                    reason: "XamlCheckProcessRequirements() returned false",
-                    detail: windowsVersion.DisplayName);
-                return; // HandleWindowsAppSdkRequirementsError calls Environment.Exit; belt-and-braces.
+                HandleStartupDiagnosticFailure(
+                    windowsVersion,
+                    startupInspection,
+                    startupDiagnostic);
+                return; // HandleStartupDiagnosticFailure calls Environment.Exit; belt-and-braces.
             }
 
             // Required for WinUI 3 unpackaged apps
@@ -129,60 +123,9 @@ internal static class Program
                 _ = new App();
             });
         }
-        catch (Exception ex) when (ex is DllNotFoundException or TypeLoadException)
+        catch (Exception ex)
         {
-            // The Windows App SDK runtime (or a self-contained DLL) failed to
-            // load.  Surface a clear, actionable error rather than silently
-            // crashing so that end users and IT staff can self-diagnose.
-
-            string dllHint = ex is DllNotFoundException dne
-                ? $"\n\nMissing DLL: {dne.Message}"
-                : $"\n\nType load failure: {ex.Message}";
-
-            string message =
-                "LES Location Agent could not start because a required Windows " +
-                "App SDK component failed to load." +
-                dllHint +
-                "\n\nWindows 11 was detected, so the operating-system requirement " +
-                "is met." +
-                "\n\nThis usually means the installation is incomplete, the " +
-                "application was launched outside its install folder, or the " +
-                "Windows App SDK runtime is unavailable." +
-                "\n\nFirst reinstall the latest LES Location Agent MSI. If the " +
-                "problem persists, download and run the Windows App SDK runtime " +
-                "installer on this PC, then try again:" +
-                $"\n\n{DownloadLink}" +
-                "\n\nIf the problem persists, check the Windows Event Log " +
-                "(Event Viewer → Windows Logs → Application) for an entry " +
-                "from \"LESLocationAgent\" with full details.";
-
-            // 1. Write to the Windows Application Event Log so IT staff can
-            //    investigate without needing to reproduce the crash interactively.
-            WriteEventLogEntry(
-                $"Startup failed — Windows App SDK component could not be loaded.\n" +
-                $"{ex.GetType().Name}: {ex.Message}\n\n" +
-                "Windows 11 was detected before the WinUI startup check.\n\n" +
-                $"Stack trace:\n{ex.StackTrace}\n\n" +
-                $"Download the runtime from: {DownloadLink}",
-                EventLogEntryType.Error);
-
-            // 2. Show a user-visible dialog.  We use the Win32 MessageBox API
-            //    directly because WinUI may not be available at this point.
-            MessageBox(
-                nint.Zero,
-                message,
-                "LES Location Agent — Startup Error",
-                MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
-
-            Environment.Exit(1);
-        }
-        catch (Exception ex) when (ex is System.Runtime.InteropServices.SEHException)
-        {
-            // XamlCheckProcessRequirements() can raise an unmanaged structured
-            // exception. Catch it here before it becomes an unhandled crash.
-            HandleWindowsAppSdkRequirementsError(
-                reason: "unmanaged exception from XamlCheckProcessRequirements()",
-                detail: $"{ex.GetType().Name}: {ex.Message}\n\nStack trace:\n{ex.StackTrace}");
+            HandleUnexpectedStartupFailure(ex);
         }
     }
 
@@ -235,26 +178,35 @@ internal static class Program
         Environment.Exit(1);
     }
 
-    private static void HandleWindowsAppSdkRequirementsError(string reason, string? detail)
+    private static void HandleStartupDiagnosticFailure(
+        WindowsVersionInfo windowsVersion,
+        StartupDiagnosticInspection inspection,
+        StartupDiagnosticResult diagnostic)
     {
-        var windowsVersion = GetActualWindowsVersion();
+        var diagnosticDetail = BuildDiagnosticDetail(inspection);
+        var remediationLink = diagnostic.FailureKind switch
+        {
+            StartupFailureKind.WindowsAppSdkRequirementsFailed =>
+                $"\n\nWindows App SDK Runtime (x64):\n{DownloadLink}",
+            _ => string.Empty
+        };
+        var specificityNote = diagnostic.IsSpecific
+            ? "Windows provided enough evidence to identify this failure."
+            : "Windows did not identify one specific missing dependency; the checks below show exactly what was found.";
         var message =
-            "LES Location Agent could not complete its Windows App SDK " +
-            "startup check." +
+            "LES Location Agent could not start." +
             $"\n\n{windowsVersion.DisplayName}. " +
             $"This meets the {MinWindowsVersion} requirement." +
-            "\n\nThe issue is likely an unavailable, incompatible, or incomplete " +
-            "Windows App SDK installation—not an unsupported Windows version." +
-            "\n\nReinstall the latest LES Location Agent MSI. If the problem " +
-            "continues, install the Windows App SDK runtime and check the " +
-            "Windows Application Event Log for the full error.";
+            $"\n\nProblem: {diagnostic.Summary}" +
+            $"\n\n{diagnosticDetail}" +
+            $"\n\n{specificityNote}" +
+            $"\n\nWhat to do: {diagnostic.RecommendedAction}" +
+            remediationLink +
+            "\n\nThe complete non-sensitive diagnostic was written to the LESLocationAgent startup log and Windows Application Event Log.";
 
         WriteEventLogEntry(
-            $"Startup failed — Windows App SDK requirements check did not succeed.\n" +
-            $"Cause: {reason}\n" +
-            $"Detected: {windowsVersion.DisplayName}\n" +
-            (detail is not null ? $"\n{detail}\n" : string.Empty) +
-            $"\nDownload the runtime from: {DownloadLink}",
+            $"Startup failed — {windowsVersion.DisplayName}\n\n" +
+            inspection.ToLogText(diagnostic),
             EventLogEntryType.Error);
 
         MessageBox(
@@ -263,6 +215,53 @@ internal static class Program
             "LES Location Agent — Startup Error",
             MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
 
+        Environment.Exit(1);
+    }
+
+    private static string BuildDiagnosticDetail(StartupDiagnosticInspection inspection)
+    {
+        var loaderResult = !inspection.Evidence.XamlDllExists
+            ? "not attempted because Microsoft.ui.xaml.dll is missing."
+            : inspection.Evidence.NativeLoaderErrorCode.HasValue
+                ? $"Windows loader error {inspection.Evidence.NativeLoaderErrorCode}: " +
+                  inspection.Evidence.NativeLoaderErrorMessage
+                : "Windows loaded Microsoft.ui.xaml.dll for inspection.";
+
+        return
+            $"Microsoft.ui.xaml.dll: {(inspection.Evidence.XamlDllExists ? "present" : "missing")} " +
+            $"({inspection.Evidence.XamlDllArchitecture})" +
+            $"\nMicrosoft.WindowsAppRuntime.dll: {(inspection.Evidence.WindowsAppRuntimeDllExists ? "present" : "missing")}" +
+            $"\nWindows loader: {loaderResult}" +
+            $"\nXAML startup export: {(inspection.Evidence.XamlRequirementsExportErrorCode.HasValue
+                ? $"Windows error {inspection.Evidence.XamlRequirementsExportErrorCode}: {inspection.Evidence.XamlRequirementsExportErrorMessage}"
+                : "XamlCheckProcessRequirements found")}" +
+            $"\nVisual C++ x64 runtime: {(inspection.Evidence.VisualCppRuntimeDetected ? "detected" : "not detected")}" +
+            $"\nWindows App SDK readiness: {(inspection.Evidence.XamlRequirementsSatisfied.HasValue
+                ? inspection.Evidence.XamlRequirementsSatisfied.Value ? "passed" : "returned false"
+                : "not called")}" +
+            (inspection.NativeProbeException is null
+                ? string.Empty
+                : $"\nNative startup exception: {inspection.NativeProbeException}");
+    }
+
+    private static void HandleUnexpectedStartupFailure(Exception exception)
+    {
+        var message =
+            "LES Location Agent could not complete startup." +
+            "\n\nAn unexpected error occurred after the dependency checks." +
+            $"\n\n{exception.GetType().Name}: {exception.Message}" +
+            "\n\nThe error was written to the LESLocationAgent startup log and Windows Application Event Log.";
+
+        StartupLogger.Write(
+            $"Unexpected startup failure:\n{exception.GetType().Name}: {exception.Message}\n{exception.StackTrace}");
+        WriteEventLogEntry(
+            $"Unexpected startup failure:\n{exception.GetType().Name}: {exception.Message}\n{exception.StackTrace}",
+            EventLogEntryType.Error);
+        MessageBox(
+            nint.Zero,
+            message,
+            "LES Location Agent — Startup Error",
+            MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
         Environment.Exit(1);
     }
 
@@ -305,18 +304,20 @@ internal static class Program
     {
         try
         {
-            // CreateEventSource requires elevation the first time; skip silently
-            // if we cannot register.  The log is still visible from a prior run
-            // that did have access (e.g. the MSI install step runs as admin and
-            // could pre-register the source via a custom action if desired).
             if (!EventLog.SourceExists(EventSourceName))
-                EventLog.CreateEventSource(EventSourceName, "Application");
+            {
+                StartupLogger.Write(
+                    "Windows Application Event Log source is not registered. " +
+                    "Reinstall the LES Location Agent MSI to restore it.");
+                return;
+            }
 
             EventLog.WriteEntry(EventSourceName, message, type, eventID: 1000);
         }
-        catch
+        catch (Exception ex)
         {
-            // Best-effort — do not throw.
+            StartupLogger.Write(
+                $"Windows Application Event Log write failed: {ex.GetType().Name}: {ex.Message}");
         }
     }
 }

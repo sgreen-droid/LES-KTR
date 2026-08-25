@@ -225,7 +225,7 @@ Open `location.json`. It should look like:
   "permissionStatus": "Allowed",
   "timestampUtc": "2026-08-11T18:35:42Z",
   "computerName": "LES-LAPTOP-001",
-  "agentVersion": "1.1.4",
+  "agentVersion": "1.1.5",
   "deviceId": "d2719f71-a1cb-4ae2-b2fb-4ee88a008620",
   "recordSequence": 42,
   "integrityAlgorithm": "HMAC-SHA256-IEEE754LE",
@@ -469,47 +469,40 @@ Signed installers show your publisher name in Windows SmartScreen instead of "Un
 
 ### App won't start after installation
 
-The agent supports Windows 11 version 21H2 (build 22000) and later. If the installer completes but double-clicking the EXE (or the Start Menu shortcut) does nothing, or the app crashes immediately, the most likely cause is a missing or incompatible Windows App SDK runtime. Windows 11 PCs are identified by their actual Windows build before the WinUI startup check, so a Windows 11 runtime problem is not reported as an operating-system version failure.
+The agent supports Windows 11 version 21H2 (build 22000) and later. Starting with agent version **1.1.5**, the startup dialog first inspects the installed self-contained files and asks Windows to load the exact `Microsoft.ui.xaml.dll` beside the agent. It then reports the evidence it found rather than guessing.
 
-**What you will see (starting with current builds):**
+The dialog can distinguish these cases:
 
-When the app detects a load failure it shows a dialog like:
+| What it reports | What to do |
+|---|---|
+| **`Microsoft.ui.xaml.dll` is missing** | Reinstall the latest MSI. Do not launch a copied EXE outside `C:\Program Files\LES Location Agent`. |
+| **The XAML DLL does not provide the required startup export** | Reinstall the latest MSI. The installed XAML runtime is incomplete or incompatible. |
+| **x64 architecture mismatch** | Use the x64 MSI on a 64-bit Windows 11 PC. |
+| **Windows could not load the XAML DLL or a native dependency** | Reinstall the MSI first. If the diagnostic also says the x64 Visual C++ runtime is not detected, repair that runtime next. Windows error 126 does not name the missing transitive DLL, so the agent does not claim Visual C++ is definitely the cause. |
+| **Windows App SDK readiness check returned false** | Install or repair the Windows App SDK Runtime (x64), then restart Windows. |
+| **Windows did not identify one specific missing dependency** | Reinstall the MSI first. The dialog and log show the Windows loader error and the files the agent found; do not install unrelated software at random. |
 
-> *LES Location Agent could not start because a required Windows App SDK component failed to load.*
-> *Missing DLL: Unable to load DLL 'Microsoft.ui.xaml.dll' …*
-> *To fix this, download and run the Windows App SDK runtime installer on this PC …*
+Use only these official Microsoft installers when the dialog identifies the matching problem:
 
-The same information is written to the **Windows Application Event Log** so IT staff can investigate without needing to reproduce the crash interactively.
-
-**How to read the Event Log entry:**
-
-1. Open **Event Viewer** (press `Win + R`, type `eventvwr`, press Enter).
-2. Expand **Windows Logs → Application**.
-3. Filter by **Source = LESLocationAgent** (Action pane → Filter Current Log…).
-4. Look for **Event ID 1000** with Level = Error.
-
-The entry contains:
-- The exception type (`DllNotFoundException` or `TypeLoadException`)
-- The exact DLL name or type that failed to load
-- A full stack trace for deeper diagnosis
-
-**Fix — Option A (preferred): reinstall the latest MSI and launch it from its Start Menu shortcut.**
-
-The CI pipeline verifies that `Microsoft.ui.xaml.dll` is bundled in every build. A build that passed CI includes the required WinUI runtime DLL. Do not copy only `LESLocationAgent.exe` to another folder; it must run with the files installed beside it. If you downloaded the MSI before this check was added, rebuild from `main`.
-
-**Fix — Option B: install the Windows App SDK runtime manually.**
-
-Download and run the Windows App SDK runtime installer from Microsoft:
-
-```
+```text
+Windows App SDK Runtime (x64)
 https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe
+
+Visual C++ Redistributable 2015–2022 (x64)
+https://aka.ms/vs/17/release/vc_redist.x64.exe
 ```
 
-Run it once on the affected PC, then launch LES Location Agent again.
+The MSI pre-registers the event source while it is elevated. After an MSI
+install or repair, the complete non-sensitive diagnostic is written to both:
 
-**Fix — Option C: check that you are running the x64 build on an x64 PC.**
+```text
+C:\ProgramData\LESLocationAgent\startup.log
+Event Viewer → Windows Logs → Application → Source: LESLocationAgent → Event ID 1000
+```
 
-The MSI targets Windows x64. ARM64 PCs without x64 emulation may fail to load the bundled DLLs. Contact your administrator.
+It includes the installed application directory, presence/version/architecture of `Microsoft.ui.xaml.dll`, Windows loader error number and message when one is available, process and OS architecture, Visual C++ x64 runtime evidence, and the Windows App SDK readiness result. It does not include location data, passwords, tokens, or recovery data.
+
+The CI pipeline verifies that the published self-contained package includes the agent executable, its .NET runtime files, `Microsoft.ui.xaml.dll`, `Microsoft.WindowsAppRuntime.dll`, and the event-message resource required for Application-log diagnostics.
 
 ---
 
@@ -538,8 +531,8 @@ When you are ready to deploy to endpoints, publish a tagged GitHub Release so Ac
 Run these commands locally (or in any terminal with git access):
 
 ```powershell
-git tag v1.1.4
-git push origin v1.1.4
+git tag v1.1.5
+git push origin v1.1.5
 ```
 
 That's it. GitHub Actions detects the `v*.*.*` tag, builds the MSI, and automatically creates a GitHub Release with the following files attached:
