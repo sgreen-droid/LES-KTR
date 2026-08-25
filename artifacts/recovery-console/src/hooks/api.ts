@@ -6,13 +6,15 @@ import {
   useGetRecoverySummary, 
   useListRecoveryDevices, 
   useGetRecoveryDevice,
+  useGetRecoveryDeviceLocationHistory,
   useListRecoveryIncidents,
   useCreateRecoveryIncident,
   useGetRecoveryIncident,
   useUpdateRecoveryIncident,
   useExportRecoveryIncident,
   getListRecoveryIncidentsQueryKey,
-  getGetRecoveryIncidentQueryKey
+  getGetRecoveryIncidentQueryKey,
+  getGetRecoveryDeviceLocationHistoryQueryKey
 } from "@workspace/api-client-react"
 
 export {
@@ -23,11 +25,13 @@ export {
   useGetRecoverySummary,
   useListRecoveryDevices,
   useGetRecoveryDevice,
+  useGetRecoveryDeviceLocationHistory,
   useListRecoveryIncidents,
   useCreateRecoveryIncident,
   useGetRecoveryIncident,
   useUpdateRecoveryIncident,
   useExportRecoveryIncident,
   getListRecoveryIncidentsQueryKey,
-  getGetRecoveryIncidentQueryKey
+  getGetRecoveryIncidentQueryKey,
+  getGetRecoveryDeviceLocationHistoryQueryKey
 }

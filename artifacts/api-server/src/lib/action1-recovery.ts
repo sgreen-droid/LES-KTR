@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { logger } from "./logger";
+import { recordRecoverySnapshot } from "./recovery-history";
 
 const DEFAULT_ACTION1_BASE_URL = "https://app.action1.com/api/3.0";
 const CACHE_TTL_MS = 60 * 1000;
@@ -41,11 +42,15 @@ export interface RecoveryDevice {
   longitude: number | null;
   mapEmbedUrl: string | null;
   mapLink: string | null;
+  manufacturer: string | null;
+  model: string | null;
   operatingSystem: string;
   organizationId: string;
   organizationName: string;
   positionSource: string | null;
   recoveryStatus: string | null;
+  serialNumber: string | null;
+  isDuplicateComputerName: boolean;
 }
 
 interface RecoverySnapshot {
@@ -254,7 +259,10 @@ function normalizeEndpoint(
       getString(endpoint["name"]) ??
       pick(attributes, ["Computer Name"]) ??
       endpointId,
-    deviceId: pick(attributes, ["Device ID"]),
+    deviceId:
+      getString(endpoint["device_id"]) ??
+      getString(endpoint["deviceId"]) ??
+      pick(attributes, ["Device ID", "Device Identifier"]),
     endpointId,
     endpointStatus:
       getString(endpoint["status"]) ??
@@ -287,6 +295,12 @@ function normalizeEndpoint(
     mapLink: mapQuery
       ? `https://www.google.com/maps/search/?api=1&query=${mapQuery}`
       : null,
+    manufacturer:
+      getString(endpoint["manufacturer"]) ??
+      pick(attributes, ["Manufacturer", "System Manufacturer"]),
+    model:
+      getString(endpoint["model"]) ??
+      pick(attributes, ["Model", "System Model", "Device Model"]),
     operatingSystem:
       getString(endpoint["OS"]) ??
       getString(endpoint["os"]) ??
@@ -296,7 +310,27 @@ function normalizeEndpoint(
     organizationName: organization.name,
     positionSource: pick(attributes, ["Position Source"]),
     recoveryStatus: pick(attributes, ["Recovery Status"]),
+    serialNumber:
+      getString(endpoint["serial_number"]) ??
+      getString(endpoint["serialNumber"]) ??
+      pick(attributes, ["Serial Number", "Serial", "Bios Serial Number"]),
+    isDuplicateComputerName: false,
   };
+}
+
+function markDuplicateComputerNames(devices: RecoveryDevice[]): RecoveryDevice[] {
+  const names = new Map<string, number>();
+  for (const device of devices) {
+    const key = device.computerName.trim().toLocaleLowerCase();
+    if (key) {
+      names.set(key, (names.get(key) ?? 0) + 1);
+    }
+  }
+  return devices.map((device) => ({
+    ...device,
+    isDuplicateComputerName:
+      (names.get(device.computerName.trim().toLocaleLowerCase()) ?? 0) > 1,
+  }));
 }
 
 function getAction1Credentials(): { clientId: string; clientSecret: string } {
@@ -559,11 +593,11 @@ async function collectSnapshot(forceFreshAuthentication = false): Promise<Recove
       organization,
     })),
   );
-  const devices = endpointPages.flatMap(({ endpoints, organization }) =>
+  const devices = markDuplicateComputerNames(endpointPages.flatMap(({ endpoints, organization }) =>
     endpoints
       .map((endpoint) => normalizeEndpoint(endpoint, organization))
       .filter((device): device is RecoveryDevice => device !== null),
-  );
+  ));
   const snapshot = {
     devices: devices.sort((left, right) =>
       left.computerName.localeCompare(right.computerName),
@@ -585,7 +619,15 @@ function collectAndCacheSnapshot(): Promise<RecoverySnapshot> {
     snapshotPromise.credentialFingerprint !== credentialFingerprint
   ) {
     const promise = collectSnapshot()
-      .then((snapshot) => {
+      .then(async (snapshot) => {
+        try {
+          await recordRecoverySnapshot(snapshot);
+        } catch (error) {
+          logger.warn(
+            { error },
+            "Action1 recovery snapshot was available but history capture failed",
+          );
+        }
         if (getCurrentCredentialFingerprint() === credentialFingerprint) {
           snapshotCache = snapshot;
           snapshotCredentialFingerprint = credentialFingerprint;
@@ -673,7 +715,10 @@ export function filterRecoveryDevices(
         device.computerName,
         device.deviceId,
         device.endpointId,
+        device.manufacturer,
+        device.model,
         device.organizationName,
+        device.serialNumber,
       ]
         .filter(Boolean)
         .some((value) => value?.toLowerCase().includes(search))

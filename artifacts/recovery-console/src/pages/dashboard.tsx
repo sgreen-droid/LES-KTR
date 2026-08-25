@@ -20,17 +20,24 @@ import {
   ServerCrash,
   Loader2,
   CheckCircle2,
-  Crosshair
+  Crosshair,
+  FileJson,
+  FileText,
+  History
 } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatRecoveryDate, formatRecoveryDistance } from "@/lib/recovery-dates";
+import { exportRecoveryLocationHistory, type RecoveryHistoryExportFormat } from "@/lib/recovery-history-export";
+import { toast } from "sonner";
 
 export default function Dashboard() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [freshness, setFreshness] = useState<"ALL" | "ACTIVE" | "STALE">("ALL");
   const [selectedEndpoints, setSelectedEndpoints] = useState<Set<string>>(new Set());
+  const [historyFrom, setHistoryFrom] = useState("");
+  const [historyTo, setHistoryTo] = useState("");
   
   const [isIncidentDialogOpen, setIsIncidentDialogOpen] = useState(false);
   const [incidentTitle, setIncidentTitle] = useState("");
@@ -98,6 +105,25 @@ export default function Dashboard() {
     setIsIncidentDialogOpen(true);
   };
 
+  const handleHistoryExport = async (
+    format: RecoveryHistoryExportFormat,
+    scope: "fleet" | "selected",
+  ) => {
+    try {
+      await exportRecoveryLocationHistory({
+        endpointIds: scope === "selected" ? selectedEndpoints : undefined,
+        from: historyFrom || undefined,
+        to: historyTo || undefined,
+        format,
+      });
+      toast.success(
+        `${scope === "fleet" ? "Fleet" : "Selected endpoint"} history exported as ${format.toUpperCase()}.`,
+      );
+    } catch {
+      toast.error("Could not create the location history export.");
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-24">
       <div className="space-y-2">
@@ -114,6 +140,40 @@ export default function Dashboard() {
               Action1 snapshot refreshed {formatRecoveryDate(deviceList?.refreshedAt, "PP p", "when available")}.
               Location timestamps come from the endpoint; a powered-off or disconnected PC cannot be located.
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-none border-t-4 border-t-secondary shadow-none">
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-2">
+            <History className="h-5 w-5 text-primary" />
+            <div>
+              <CardTitle className="uppercase tracking-widest text-sm">Location History Export</CardTitle>
+              <CardDescription className="mt-1">
+                Export persisted last-known observations. History begins when this console captures an Action1 refresh; it is not live tracking.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-col lg:flex-row lg:items-end gap-3">
+          <div className="grid grid-cols-2 gap-3 w-full lg:max-w-md">
+            <div className="space-y-1">
+              <Label htmlFor="history-from" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">From (UTC)</Label>
+              <Input id="history-from" type="date" value={historyFrom} onChange={(event) => setHistoryFrom(event.target.value)} className="rounded-none font-mono text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="history-to" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">To (UTC)</Label>
+              <Input id="history-to" type="date" value={historyTo} onChange={(event) => setHistoryTo(event.target.value)} className="rounded-none font-mono text-xs" />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => void handleHistoryExport("json", "fleet")} className="rounded-none uppercase text-[10px] font-bold tracking-widest">
+              <FileJson className="mr-2 h-3 w-3" /> Fleet JSON
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => void handleHistoryExport("csv", "fleet")} className="rounded-none uppercase text-[10px] font-bold tracking-widest">
+              <FileText className="mr-2 h-3 w-3" /> Fleet CSV
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -224,7 +284,14 @@ export default function Dashboard() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="font-bold text-foreground">{device.computerName}</div>
-                          <div className="text-[10px] text-muted-foreground">{device.operatingSystem}</div>
+                          <div className="text-[10px] text-muted-foreground">Action1 endpoint: {device.endpointId}</div>
+                          <div className="text-[10px] text-muted-foreground">Device ID: {device.deviceId || "Not reported"}</div>
+                          <div className="text-[10px] text-muted-foreground">{device.serialNumber ? `Serial: ${device.serialNumber}` : device.operatingSystem}</div>
+                          {device.isDuplicateComputerName && (
+                            <div className="mt-1 text-[10px] text-orange-600 flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3" /> Duplicate computer name — use Action1 endpoint ID
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">
                           {device.organizationName}
@@ -289,12 +356,20 @@ export default function Dashboard() {
               </div>
               <div>
                 <p className="font-bold uppercase tracking-widest text-sm">Targets Selected</p>
-                <p className="text-xs text-muted-foreground font-mono">Ready for incident creation</p>
+                <p className="text-xs text-muted-foreground font-mono">Ready for incident creation or history export</p>
               </div>
             </div>
             <div className="flex gap-4">
               <Button variant="ghost" className="rounded-none uppercase text-xs font-bold tracking-widest" onClick={() => setSelectedEndpoints(new Set())}>
                 Clear
+              </Button>
+              <Button variant="outline" className="rounded-none uppercase text-xs font-bold tracking-widest gap-2" onClick={() => void handleHistoryExport("json", "selected")}>
+                <FileJson className="h-4 w-4" />
+                History JSON
+              </Button>
+              <Button variant="outline" className="rounded-none uppercase text-xs font-bold tracking-widest gap-2" onClick={() => void handleHistoryExport("csv", "selected")}>
+                <FileText className="h-4 w-4" />
+                History CSV
               </Button>
               <Button className="rounded-none uppercase text-xs font-bold tracking-widest gap-2 bg-primary hover:bg-primary/90 text-primary-foreground" onClick={openDialog}>
                 <ShieldAlert className="h-4 w-4" />

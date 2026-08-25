@@ -358,7 +358,11 @@ export function renderRecoveryEvidenceCsv(exportData: RecoveryEvidenceExport): s
     "case_number",
     "incident_status",
     "endpoint_id",
+    "device_id",
     "computer_name",
+    "serial_number",
+    "manufacturer",
+    "model",
     "organization",
     "captured_at_utc",
     "source_refreshed_at_utc",
@@ -383,7 +387,11 @@ export function renderRecoveryEvidenceCsv(exportData: RecoveryEvidenceExport): s
       exportData.incident.caseNumber,
       exportData.incident.status,
       evidence.endpointId,
+      device.deviceId,
       device.computerName,
+      device.serialNumber,
+      device.manufacturer,
+      device.model,
       evidence.organizationName,
       evidence.capturedAt,
       evidence.sourceRefreshedAt,
@@ -419,7 +427,7 @@ export function renderRecoveryEvidencePrintDocument(
   const evidenceRows = incident.evidence
     .map(({ device, capturedAt, sourceRefreshedAt }) => {
       return `<tr>
-        <td>${escapeHtml(device.computerName)}<br><small>${escapeHtml(device.endpointId)}</small></td>
+        <td>${escapeHtml(device.computerName)}<br><small>Endpoint: ${escapeHtml(device.endpointId)}<br>Device ID: ${escapeHtml(device.deviceId ?? "Not reported")}</small></td>
         <td>${escapeHtml(device.organizationName)}</td>
         <td>${escapeHtml(device.locationCoordinates || "Unavailable")}<br><small>${escapeHtml(device.accuracy || "Accuracy unavailable")}</small></td>
         <td>${escapeHtml(device.locationStatus || "Unavailable")}<br><small>Integrity: ${escapeHtml(device.locationIntegrity || "Unknown")}</small></td>

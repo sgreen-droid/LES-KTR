@@ -23,8 +23,12 @@ import type {
   Action1Readiness,
   Action1UnavailableResponse,
   ApiError,
+  ExportRecoveryDeviceLocationHistoryParams,
+  ExportRecoveryLocationHistoryParams,
+  GetRecoveryDeviceLocationHistoryParams,
   HealthStatus,
   ListRecoveryDevicesParams,
+  ListRecoveryLocationHistoryParams,
   RateLimitedResponse,
   RecoveryDevice,
   RecoveryDeviceList,
@@ -34,6 +38,8 @@ import type {
   RecoveryIncidentInput,
   RecoveryIncidentList,
   RecoveryIncidentUpdate,
+  RecoveryLocationHistory,
+  RecoveryLocationHistoryExport,
   RecoveryLogin,
   RecoverySession,
   RecoverySummary,
@@ -668,6 +674,368 @@ export function useGetRecoveryDevice<TData = Awaited<ReturnType<typeof getRecove
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetRecoveryDeviceQueryOptions(endpointId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetRecoveryDeviceLocationHistoryUrl = (endpointId: string,
+    params?: GetRecoveryDeviceLocationHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/recovery/devices/${endpointId}/location-history?${stringifiedParams}` : `/api/recovery/devices/${endpointId}/location-history`
+}
+
+/**
+ * @summary Get time-bounded, last-known observations for one Action1 endpoint
+ */
+export const getRecoveryDeviceLocationHistory = async (endpointId: string,
+    params?: GetRecoveryDeviceLocationHistoryParams, options?: Parameters<typeof customFetch>[1]): Promise<RecoveryLocationHistory> => {
+
+  return customFetch<RecoveryLocationHistory>(getGetRecoveryDeviceLocationHistoryUrl(endpointId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRecoveryDeviceLocationHistoryQueryKey = (endpointId: string,
+    params?: GetRecoveryDeviceLocationHistoryParams,) => {
+    return [
+    `/api/recovery/devices/${endpointId}/location-history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetRecoveryDeviceLocationHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getRecoveryDeviceLocationHistory>>, TError = ErrorType<ApiError | UnauthorizedResponse>>(endpointId: string,
+    params?: GetRecoveryDeviceLocationHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRecoveryDeviceLocationHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRecoveryDeviceLocationHistoryQueryKey(endpointId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRecoveryDeviceLocationHistory>>> = ({ signal }) => getRecoveryDeviceLocationHistory(endpointId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: endpointId !== null && endpointId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRecoveryDeviceLocationHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRecoveryDeviceLocationHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getRecoveryDeviceLocationHistory>>>
+export type GetRecoveryDeviceLocationHistoryQueryError = ErrorType<ApiError | UnauthorizedResponse>
+
+
+/**
+ * @summary Get time-bounded, last-known observations for one Action1 endpoint
+ */
+
+export function useGetRecoveryDeviceLocationHistory<TData = Awaited<ReturnType<typeof getRecoveryDeviceLocationHistory>>, TError = ErrorType<ApiError | UnauthorizedResponse>>(
+ endpointId: string,
+    params?: GetRecoveryDeviceLocationHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRecoveryDeviceLocationHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRecoveryDeviceLocationHistoryQueryOptions(endpointId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExportRecoveryDeviceLocationHistoryUrl = (endpointId: string,
+    params?: ExportRecoveryDeviceLocationHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/recovery/devices/${endpointId}/location-history/export?${stringifiedParams}` : `/api/recovery/devices/${endpointId}/location-history/export`
+}
+
+/**
+ * @summary Export time-bounded, last-known observations for one Action1 endpoint
+ */
+export const exportRecoveryDeviceLocationHistory = async (endpointId: string,
+    params?: ExportRecoveryDeviceLocationHistoryParams, options?: Parameters<typeof customFetch>[1]): Promise<RecoveryLocationHistoryExport | string> => {
+
+  return customFetch<RecoveryLocationHistoryExport | string>(getExportRecoveryDeviceLocationHistoryUrl(endpointId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportRecoveryDeviceLocationHistoryQueryKey = (endpointId: string,
+    params?: ExportRecoveryDeviceLocationHistoryParams,) => {
+    return [
+    `/api/recovery/devices/${endpointId}/location-history/export`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExportRecoveryDeviceLocationHistoryQueryOptions = <TData = Awaited<ReturnType<typeof exportRecoveryDeviceLocationHistory>>, TError = ErrorType<ApiError | UnauthorizedResponse | RateLimitedResponse>>(endpointId: string,
+    params?: ExportRecoveryDeviceLocationHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportRecoveryDeviceLocationHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportRecoveryDeviceLocationHistoryQueryKey(endpointId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportRecoveryDeviceLocationHistory>>> = ({ signal }) => exportRecoveryDeviceLocationHistory(endpointId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: endpointId !== null && endpointId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportRecoveryDeviceLocationHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportRecoveryDeviceLocationHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof exportRecoveryDeviceLocationHistory>>>
+export type ExportRecoveryDeviceLocationHistoryQueryError = ErrorType<ApiError | UnauthorizedResponse | RateLimitedResponse>
+
+
+/**
+ * @summary Export time-bounded, last-known observations for one Action1 endpoint
+ */
+
+export function useExportRecoveryDeviceLocationHistory<TData = Awaited<ReturnType<typeof exportRecoveryDeviceLocationHistory>>, TError = ErrorType<ApiError | UnauthorizedResponse | RateLimitedResponse>>(
+ endpointId: string,
+    params?: ExportRecoveryDeviceLocationHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportRecoveryDeviceLocationHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportRecoveryDeviceLocationHistoryQueryOptions(endpointId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListRecoveryLocationHistoryUrl = (params?: ListRecoveryLocationHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    const explodeParameters = ["endpointIds"];
+
+    if (Array.isArray(value) && explodeParameters.includes(key)) {
+      value.forEach((v) => {
+        normalizedParams.append(key, v === null ? 'null' : String(v));
+      });
+      return;
+    }
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/recovery/location-history?${stringifiedParams}` : `/api/recovery/location-history`
+}
+
+/**
+ * @summary List persisted last-known observations for the fleet or selected Action1 endpoints
+ */
+export const listRecoveryLocationHistory = async (params?: ListRecoveryLocationHistoryParams, options?: Parameters<typeof customFetch>[1]): Promise<RecoveryLocationHistory> => {
+
+  return customFetch<RecoveryLocationHistory>(getListRecoveryLocationHistoryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRecoveryLocationHistoryQueryKey = (params?: ListRecoveryLocationHistoryParams,) => {
+    return [
+    `/api/recovery/location-history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListRecoveryLocationHistoryQueryOptions = <TData = Awaited<ReturnType<typeof listRecoveryLocationHistory>>, TError = ErrorType<ApiError | UnauthorizedResponse>>(params?: ListRecoveryLocationHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRecoveryLocationHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRecoveryLocationHistoryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRecoveryLocationHistory>>> = ({ signal }) => listRecoveryLocationHistory(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRecoveryLocationHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListRecoveryLocationHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof listRecoveryLocationHistory>>>
+export type ListRecoveryLocationHistoryQueryError = ErrorType<ApiError | UnauthorizedResponse>
+
+
+/**
+ * @summary List persisted last-known observations for the fleet or selected Action1 endpoints
+ */
+
+export function useListRecoveryLocationHistory<TData = Awaited<ReturnType<typeof listRecoveryLocationHistory>>, TError = ErrorType<ApiError | UnauthorizedResponse>>(
+ params?: ListRecoveryLocationHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRecoveryLocationHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListRecoveryLocationHistoryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExportRecoveryLocationHistoryUrl = (params?: ExportRecoveryLocationHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    const explodeParameters = ["endpointIds"];
+
+    if (Array.isArray(value) && explodeParameters.includes(key)) {
+      value.forEach((v) => {
+        normalizedParams.append(key, v === null ? 'null' : String(v));
+      });
+      return;
+    }
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/recovery/location-history/export?${stringifiedParams}` : `/api/recovery/location-history/export`
+}
+
+/**
+ * @summary Export persisted last-known observations for the fleet or selected endpoints
+ */
+export const exportRecoveryLocationHistory = async (params?: ExportRecoveryLocationHistoryParams, options?: Parameters<typeof customFetch>[1]): Promise<RecoveryLocationHistoryExport | string> => {
+
+  return customFetch<RecoveryLocationHistoryExport | string>(getExportRecoveryLocationHistoryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportRecoveryLocationHistoryQueryKey = (params?: ExportRecoveryLocationHistoryParams,) => {
+    return [
+    `/api/recovery/location-history/export`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExportRecoveryLocationHistoryQueryOptions = <TData = Awaited<ReturnType<typeof exportRecoveryLocationHistory>>, TError = ErrorType<ApiError | UnauthorizedResponse | RateLimitedResponse>>(params?: ExportRecoveryLocationHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportRecoveryLocationHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportRecoveryLocationHistoryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportRecoveryLocationHistory>>> = ({ signal }) => exportRecoveryLocationHistory(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportRecoveryLocationHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportRecoveryLocationHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof exportRecoveryLocationHistory>>>
+export type ExportRecoveryLocationHistoryQueryError = ErrorType<ApiError | UnauthorizedResponse | RateLimitedResponse>
+
+
+/**
+ * @summary Export persisted last-known observations for the fleet or selected endpoints
+ */
+
+export function useExportRecoveryLocationHistory<TData = Awaited<ReturnType<typeof exportRecoveryLocationHistory>>, TError = ErrorType<ApiError | UnauthorizedResponse | RateLimitedResponse>>(
+ params?: ExportRecoveryLocationHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportRecoveryLocationHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportRecoveryLocationHistoryQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -37,8 +37,18 @@ export interface RecoveryDevice {
   operatingSystem: string;
   /** @nullable */
   lastSeen: string | null;
-  /** @nullable */
+  /**
+     * Action1 device identifier when reported. This is a secondary identifier; endpointId remains the canonical management key.
+     * @nullable
+     */
   deviceId: string | null;
+  /** @nullable */
+  serialNumber: string | null;
+  /** @nullable */
+  manufacturer: string | null;
+  /** @nullable */
+  model: string | null;
+  isDuplicateComputerName: boolean;
   /** @nullable */
   agentVersion: string | null;
   /** @nullable */
@@ -90,6 +100,96 @@ export interface RecoveryDeviceList {
   devices: RecoveryDevice[];
   refreshedAt: string;
   source: string;
+}
+
+export interface RecoveryLocationObservation {
+  id: string;
+  endpointId: string;
+  /** @nullable */
+  deviceId: string | null;
+  computerName: string;
+  organizationId: string;
+  organizationName: string;
+  /** @nullable */
+  serialNumber: string | null;
+  /** @nullable */
+  manufacturer: string | null;
+  /** @nullable */
+  model: string | null;
+  operatingSystem: string;
+  /** @nullable */
+  agentVersion: string | null;
+  capturedAt: string;
+  sourceRefreshedAt: string;
+  /** @nullable */
+  locationObservedAt: string | null;
+  /** @nullable */
+  lastSeenAt: string | null;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  accuracy: string | null;
+  /** @nullable */
+  locationCoordinates: string | null;
+  /** @nullable */
+  locationStatus: string | null;
+  /** @nullable */
+  locationIntegrity: string | null;
+  /** @nullable */
+  locationQuality: string | null;
+  /** @nullable */
+  locationSource: string | null;
+  /** @nullable */
+  positionSource: string | null;
+  /** @nullable */
+  locationPermission: string | null;
+  /** @nullable */
+  locationSequence: string | null;
+  /** @nullable */
+  locationAgeMinutes: string | null;
+  /** @nullable */
+  locationError: string | null;
+  /** @nullable */
+  locationSummary: string | null;
+  isMapSafe: boolean;
+}
+
+export interface RecoveryLocationHistory {
+  observations: RecoveryLocationObservation[];
+  /** @minimum 0 */
+  observationCount: number;
+  /** @nullable */
+  from: string | null;
+  /** @nullable */
+  to: string | null;
+}
+
+export type RecoveryLocationHistoryExportScope = typeof RecoveryLocationHistoryExportScope[keyof typeof RecoveryLocationHistoryExportScope];
+
+
+export const RecoveryLocationHistoryExportScope = {
+  FLEET: 'FLEET',
+  SELECTED: 'SELECTED',
+  SINGLE: 'SINGLE',
+} as const;
+
+export interface RecoveryLocationHistoryExport {
+  exportId: string;
+  schemaVersion: string;
+  generatedAt: string;
+  source: string;
+  scope: RecoveryLocationHistoryExportScope;
+  endpointIds: string[];
+  /** @nullable */
+  from: string | null;
+  /** @nullable */
+  to: string | null;
+  /** @minimum 0 */
+  observationCount: number;
+  observations: RecoveryLocationObservation[];
+  limitations: string[];
 }
 
 export interface RecoverySummary {
@@ -305,5 +405,57 @@ export const ListRecoveryDevicesFreshness = {
   ACTIVE: 'ACTIVE',
   STALE: 'STALE',
   ALL: 'ALL',
+} as const;
+
+export type GetRecoveryDeviceLocationHistoryParams = {
+from?: string;
+to?: string;
+};
+
+export type ExportRecoveryDeviceLocationHistoryParams = {
+from?: string;
+to?: string;
+format?: ExportRecoveryDeviceLocationHistoryFormat;
+};
+
+export type ExportRecoveryDeviceLocationHistoryFormat = typeof ExportRecoveryDeviceLocationHistoryFormat[keyof typeof ExportRecoveryDeviceLocationHistoryFormat];
+
+
+export const ExportRecoveryDeviceLocationHistoryFormat = {
+  json: 'json',
+  csv: 'csv',
+  print: 'print',
+} as const;
+
+export type ListRecoveryLocationHistoryParams = {
+/**
+ * @maxItems 50
+ * @items.minLength 1
+ * @items.maxLength 160
+ */
+endpointIds?: string[];
+from?: string;
+to?: string;
+};
+
+export type ExportRecoveryLocationHistoryParams = {
+/**
+ * @maxItems 50
+ * @items.minLength 1
+ * @items.maxLength 160
+ */
+endpointIds?: string[];
+from?: string;
+to?: string;
+format?: ExportRecoveryLocationHistoryFormat;
+};
+
+export type ExportRecoveryLocationHistoryFormat = typeof ExportRecoveryLocationHistoryFormat[keyof typeof ExportRecoveryLocationHistoryFormat];
+
+
+export const ExportRecoveryLocationHistoryFormat = {
+  json: 'json',
+  csv: 'csv',
+  print: 'print',
 } as const;
 

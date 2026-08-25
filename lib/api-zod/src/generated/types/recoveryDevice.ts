@@ -15,8 +15,18 @@ export interface RecoveryDevice {
   operatingSystem: string;
   /** @nullable */
   lastSeen: string | null;
-  /** @nullable */
+  /**
+     * Action1 device identifier when reported. This is a secondary identifier; endpointId remains the canonical management key.
+     * @nullable
+     */
   deviceId: string | null;
+  /** @nullable */
+  serialNumber: string | null;
+  /** @nullable */
+  manufacturer: string | null;
+  /** @nullable */
+  model: string | null;
+  isDuplicateComputerName: boolean;
   /** @nullable */
   agentVersion: string | null;
   /** @nullable */

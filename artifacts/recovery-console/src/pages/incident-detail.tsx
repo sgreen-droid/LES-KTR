@@ -344,7 +344,7 @@ export default function IncidentDetail() {
                           {ev.device.computerName}
                         </div>
                         <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-widest">
-                          ID: {ev.endpointId} | {ev.organizationName}
+                          Endpoint: {ev.endpointId} | Device ID: {ev.device.deviceId || "Not reported"} | {ev.organizationName}
                         </div>
                       </div>
                       <div className="text-right">

@@ -1,6 +1,7 @@
 import { useParams, Link, useLocation } from "wouter";
-import { useGetRecoveryDevice, useCreateRecoveryIncident, getListRecoveryIncidentsQueryKey } from "@/hooks/api";
+import { useGetRecoveryDevice, useGetRecoveryDeviceLocationHistory, useCreateRecoveryIncident, getGetRecoveryDeviceLocationHistoryQueryKey, getListRecoveryIncidentsQueryKey } from "@/hooks/api";
 import { formatRecoveryDate, formatRecoveryDistance, parseRecoveryDate } from "@/lib/recovery-dates";
+import { exportRecoveryLocationHistory } from "@/lib/recovery-history-export";
 import { getGetRecoveryDeviceQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,8 +25,12 @@ import {
   ExternalLink,
   MapIcon,
   Crosshair,
-  Loader2
+  Loader2,
+  FileJson,
+  FileText,
+  History
 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function DeviceDetail() {
   const params = useParams();
@@ -38,11 +43,30 @@ export default function DeviceDetail() {
   const [incidentCase, setIncidentCase] = useState("");
   const [incidentOwner, setIncidentOwner] = useState("");
   const [incidentNote, setIncidentNote] = useState("");
+  const [historyFrom, setHistoryFrom] = useState("");
+  const [historyTo, setHistoryTo] = useState("");
 
   const { data: device, isLoading, isError } = useGetRecoveryDevice(endpointId, {
     query: { enabled: !!endpointId, queryKey: getGetRecoveryDeviceQueryKey(endpointId) },
     request: { credentials: "include" }
   });
+  const { data: history, isLoading: isHistoryLoading } = useGetRecoveryDeviceLocationHistory(
+    endpointId,
+    {
+      from: historyFrom ? `${historyFrom}T00:00:00.000Z` : undefined,
+      to: historyTo ? `${historyTo}T23:59:59.999Z` : undefined,
+    },
+    {
+      query: {
+        enabled: !!endpointId,
+        queryKey: getGetRecoveryDeviceLocationHistoryQueryKey(endpointId, {
+          from: historyFrom ? `${historyFrom}T00:00:00.000Z` : undefined,
+          to: historyTo ? `${historyTo}T23:59:59.999Z` : undefined,
+        }),
+      },
+      request: { credentials: "include" },
+    },
+  );
 
   const createIncident = useCreateRecoveryIncident({ request: { credentials: "include" } });
 
@@ -72,6 +96,20 @@ export default function DeviceDetail() {
     setIncidentOwner("");
     setIncidentNote("");
     setIsIncidentDialogOpen(true);
+  };
+
+  const handleHistoryExport = async (format: "json" | "csv") => {
+    try {
+      await exportRecoveryLocationHistory({
+        endpointId,
+        from: historyFrom || undefined,
+        to: historyTo || undefined,
+        format,
+      });
+      toast.success(`Device history exported as ${format.toUpperCase()}.`);
+    } catch {
+      toast.error("Could not create the device history export.");
+    }
   };
 
   if (isLoading) {
@@ -127,13 +165,23 @@ export default function DeviceDetail() {
         <Link href="/" className="inline-flex items-center text-xs uppercase tracking-widest font-bold text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Radar
         </Link>
-        <Button 
-          onClick={openDialog}
-          className="rounded-none uppercase text-xs font-bold tracking-widest gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
-        >
-          <Crosshair className="h-4 w-4" />
-          Initialize Incident
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => void handleHistoryExport("json")} className="rounded-none uppercase text-xs font-bold tracking-widest gap-2">
+            <FileJson className="h-4 w-4" />
+            History JSON
+          </Button>
+          <Button variant="outline" onClick={() => void handleHistoryExport("csv")} className="rounded-none uppercase text-xs font-bold tracking-widest gap-2">
+            <FileText className="h-4 w-4" />
+            History CSV
+          </Button>
+          <Button 
+            onClick={openDialog}
+            className="rounded-none uppercase text-xs font-bold tracking-widest gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
+          >
+            <Crosshair className="h-4 w-4" />
+            Initialize Incident
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -148,7 +196,7 @@ export default function DeviceDetail() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="rounded-none text-[10px] px-2 py-1 font-mono uppercase tracking-widest border-border text-muted-foreground bg-muted/50">
-            ID: {device.endpointId}
+            Action1 endpoint: {device.endpointId}
           </Badge>
           <Badge 
             variant="outline"
@@ -265,6 +313,51 @@ export default function DeviceDetail() {
             )}
           </Card>
 
+          <Card className="rounded-none border-t-4 border-t-secondary shadow-none">
+            <CardHeader className="bg-muted/30 pb-4 border-b border-border">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-2">
+                  <History className="h-5 w-5 text-primary" />
+                  <div>
+                    <CardTitle className="uppercase tracking-widest text-sm text-foreground">Location Observation History</CardTitle>
+                    <p className="mt-1 text-xs text-muted-foreground">Persisted last-known Action1 observations. A missing record means history was not yet collected, not that the device was absent.</p>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input type="date" aria-label="History start date in UTC" value={historyFrom} onChange={(event) => setHistoryFrom(event.target.value)} className="rounded-none font-mono text-xs sm:w-44" />
+                  <Input type="date" aria-label="History end date in UTC" value={historyTo} onChange={(event) => setHistoryTo(event.target.value)} className="rounded-none font-mono text-xs sm:w-44" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {isHistoryLoading ? (
+                <div className="p-8 flex items-center justify-center text-muted-foreground font-mono text-xs uppercase tracking-widest">
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Loading observation history
+                </div>
+              ) : history?.observations.length ? (
+                <div className="divide-y divide-border">
+                  {history.observations.slice(0, 100).map((observation) => (
+                    <div key={observation.id} className="p-4 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] gap-3 font-mono text-xs">
+                      <div className="space-y-1">
+                        <p className="font-bold text-foreground">{observation.locationCoordinates || "No valid coordinates reported"}</p>
+                        <p className="text-muted-foreground">Status: {observation.locationStatus || "Unavailable"} · Integrity: {observation.locationIntegrity || "Unknown"} · Source: {observation.locationSource || observation.positionSource || "Action1"}</p>
+                        <p className="text-muted-foreground">Device ID: {observation.deviceId || "Not reported"} · Serial: {observation.serialNumber || "Not reported"}</p>
+                      </div>
+                      <div className="text-left md:text-right text-muted-foreground whitespace-nowrap">
+                        <p>{formatRecoveryDate(observation.locationObservedAt || observation.sourceRefreshedAt, "PP p", "Timestamp unavailable")}</p>
+                        <p className="text-[10px]">Captured {formatRecoveryDate(observation.capturedAt, "PP p", "Timestamp unavailable")}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-muted-foreground font-mono text-xs uppercase tracking-widest">
+                  No persisted observations match this date range.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Assessment Warnings */}
           {(isStale || hasIntegrityIssues || integrityNeedsReview || device.locationError) && (
             <Card className="rounded-none border-t-4 border-t-orange-500 bg-orange-500/5 shadow-none">
@@ -320,6 +413,24 @@ export default function DeviceDetail() {
               <CardTitle className="uppercase tracking-widest text-sm text-foreground">Asset Identity</CardTitle>
             </CardHeader>
             <CardContent className="space-y-5 pt-5 font-mono">
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Canonical Action1 Endpoint ID</p>
+                <p className="text-xs break-all bg-muted px-2 py-1 inline-block border-l-2 border-primary">{device.endpointId}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Action1 Device ID</p>
+                <p className="text-xs break-all">{device.deviceId || "Not reported by Action1 yet"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Hardware Identity</p>
+                <p className="text-xs">Serial: {device.serialNumber || "Not reported"}</p>
+                <p className="text-xs text-muted-foreground">{[device.manufacturer, device.model].filter(Boolean).join(" · ") || "Manufacturer and model not reported"}</p>
+              </div>
+              {device.isDuplicateComputerName && (
+                <div className="p-3 border-l-2 border-orange-500 bg-orange-500/10 text-xs text-orange-700">
+                  <span className="font-bold">DUPLICATE COMPUTER NAME:</span> Use the Action1 endpoint ID and available hardware identity to distinguish this device.
+                </div>
+              )}
               <div className="space-y-1">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">OS Environment</p>
                 <p className="text-sm font-bold">{device.operatingSystem || "UNKNOWN"}</p>

@@ -176,6 +176,206 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "502":
           $ref: "#/components/responses/Action1Unavailable"
+  /recovery/devices/{endpointId}/location-history:
+    get:
+      operationId: getRecoveryDeviceLocationHistory
+      tags: [recovery]
+      summary: Get time-bounded, last-known observations for one Action1 endpoint
+      parameters:
+        - name: endpointId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 160
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Matching persisted last-known observations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryLocationHistory"
+        "400":
+          description: Invalid history date range
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /recovery/devices/{endpointId}/location-history/export:
+    get:
+      operationId: exportRecoveryDeviceLocationHistory
+      tags: [recovery]
+      summary: Export time-bounded, last-known observations for one Action1 endpoint
+      parameters:
+        - name: endpointId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 160
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [json, csv, print]
+            default: json
+      responses:
+        "200":
+          description: JSON, CSV, or print-ready HTML location history export
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryLocationHistoryExport"
+            text/csv:
+              schema:
+                type: string
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Invalid history date range or export request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /recovery/location-history:
+    get:
+      operationId: listRecoveryLocationHistory
+      tags: [recovery]
+      summary: List persisted last-known observations for the fleet or selected Action1 endpoints
+      parameters:
+        - name: endpointIds
+          in: query
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            maxItems: 50
+            items:
+              type: string
+              minLength: 1
+              maxLength: 160
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Matching persisted last-known observations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryLocationHistory"
+        "400":
+          description: Invalid history date range
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /recovery/location-history/export:
+    get:
+      operationId: exportRecoveryLocationHistory
+      tags: [recovery]
+      summary: Export persisted last-known observations for the fleet or selected endpoints
+      parameters:
+        - name: endpointIds
+          in: query
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            maxItems: 50
+            items:
+              type: string
+              minLength: 1
+              maxLength: 160
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [json, csv, print]
+            default: json
+      responses:
+        "200":
+          description: JSON, CSV, or print-ready HTML location history export
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryLocationHistoryExport"
+            text/csv:
+              schema:
+                type: string
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Invalid history date range or export request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /recovery/incidents:
     get:
       operationId: listRecoveryIncidents
@@ -386,6 +586,15 @@ components:
           type: ["string", "null"]
         deviceId:
           type: ["string", "null"]
+          description: Action1 device identifier when reported. This is a secondary identifier; endpointId remains the canonical management key.
+        serialNumber:
+          type: ["string", "null"]
+        manufacturer:
+          type: ["string", "null"]
+        model:
+          type: ["string", "null"]
+        isDuplicateComputerName:
+          type: boolean
         agentVersion:
           type: ["string", "null"]
         agentHealth:
@@ -441,6 +650,10 @@ components:
         - operatingSystem
         - lastSeen
         - deviceId
+        - serialNumber
+        - manufacturer
+        - model
+        - isDuplicateComputerName
         - agentVersion
         - agentHealth
         - recoveryStatus
@@ -477,6 +690,169 @@ components:
         source:
           type: string
       required: [devices, refreshedAt, source]
+    RecoveryLocationObservation:
+      type: object
+      properties:
+        id:
+          type: string
+        endpointId:
+          type: string
+        deviceId:
+          type: ["string", "null"]
+        computerName:
+          type: string
+        organizationId:
+          type: string
+        organizationName:
+          type: string
+        serialNumber:
+          type: ["string", "null"]
+        manufacturer:
+          type: ["string", "null"]
+        model:
+          type: ["string", "null"]
+        operatingSystem:
+          type: string
+        agentVersion:
+          type: ["string", "null"]
+        capturedAt:
+          type: string
+          format: date-time
+        sourceRefreshedAt:
+          type: string
+          format: date-time
+        locationObservedAt:
+          type: ["string", "null"]
+          format: date-time
+        lastSeenAt:
+          type: ["string", "null"]
+          format: date-time
+        latitude:
+          type: ["number", "null"]
+        longitude:
+          type: ["number", "null"]
+        accuracy:
+          type: ["string", "null"]
+        locationCoordinates:
+          type: ["string", "null"]
+        locationStatus:
+          type: ["string", "null"]
+        locationIntegrity:
+          type: ["string", "null"]
+        locationQuality:
+          type: ["string", "null"]
+        locationSource:
+          type: ["string", "null"]
+        positionSource:
+          type: ["string", "null"]
+        locationPermission:
+          type: ["string", "null"]
+        locationSequence:
+          type: ["string", "null"]
+        locationAgeMinutes:
+          type: ["string", "null"]
+        locationError:
+          type: ["string", "null"]
+        locationSummary:
+          type: ["string", "null"]
+        isMapSafe:
+          type: boolean
+      required:
+        - id
+        - endpointId
+        - deviceId
+        - computerName
+        - organizationId
+        - organizationName
+        - serialNumber
+        - manufacturer
+        - model
+        - operatingSystem
+        - agentVersion
+        - capturedAt
+        - sourceRefreshedAt
+        - locationObservedAt
+        - lastSeenAt
+        - latitude
+        - longitude
+        - accuracy
+        - locationCoordinates
+        - locationStatus
+        - locationIntegrity
+        - locationQuality
+        - locationSource
+        - positionSource
+        - locationPermission
+        - locationSequence
+        - locationAgeMinutes
+        - locationError
+        - locationSummary
+        - isMapSafe
+    RecoveryLocationHistory:
+      type: object
+      properties:
+        observations:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecoveryLocationObservation"
+        observationCount:
+          type: number
+          minimum: 0
+        from:
+          type: ["string", "null"]
+          format: date-time
+        to:
+          type: ["string", "null"]
+          format: date-time
+      required: [observations, observationCount, from, to]
+    RecoveryLocationHistoryExport:
+      type: object
+      properties:
+        exportId:
+          type: string
+        schemaVersion:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        source:
+          type: string
+        scope:
+          type: string
+          enum: [FLEET, SELECTED, SINGLE]
+        endpointIds:
+          type: array
+          items:
+            type: string
+        from:
+          type: ["string", "null"]
+          format: date-time
+        to:
+          type: ["string", "null"]
+          format: date-time
+        observationCount:
+          type: number
+          minimum: 0
+        observations:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecoveryLocationObservation"
+        limitations:
+          type: array
+          items:
+            type: string
+      required:
+        - exportId
+        - schemaVersion
+        - generatedAt
+        - source
+        - scope
+        - endpointIds
+        - from
+        - to
+        - observationCount
+        - observations
+        - limitations
     RecoverySummary:
       type: object
       properties:

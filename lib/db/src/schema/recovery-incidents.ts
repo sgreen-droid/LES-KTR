@@ -1,4 +1,6 @@
 import {
+  boolean,
+  doublePrecision,
   index,
   jsonb,
   pgTable,
@@ -86,6 +88,62 @@ export const recoveryIncidentAuditTable = pgTable(
   ],
 );
 
+export const recoveryLocationObservationsTable = pgTable(
+  "recovery_location_observations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    observationKey: text("observation_key").notNull(),
+    endpointId: text("endpoint_id").notNull(),
+    deviceId: text("device_id"),
+    computerName: text("computer_name").notNull(),
+    organizationId: text("organization_id").notNull(),
+    organizationName: text("organization_name").notNull(),
+    serialNumber: text("serial_number"),
+    manufacturer: text("manufacturer"),
+    model: text("model"),
+    operatingSystem: text("operating_system").notNull(),
+    agentVersion: text("agent_version"),
+    source: text("source").notNull().default("Action1"),
+    capturedAt: timestamp("captured_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    sourceRefreshedAt: timestamp("source_refreshed_at", {
+      withTimezone: true,
+    }).notNull(),
+    locationObservedAt: timestamp("location_observed_at", {
+      withTimezone: true,
+    }),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
+    accuracy: text("accuracy"),
+    locationCoordinates: text("location_coordinates"),
+    locationStatus: text("location_status"),
+    locationIntegrity: text("location_integrity"),
+    locationQuality: text("location_quality"),
+    locationSource: text("location_source"),
+    positionSource: text("position_source"),
+    locationPermission: text("location_permission"),
+    locationSequence: text("location_sequence"),
+    locationAgeMinutes: text("location_age_minutes"),
+    locationError: text("location_error"),
+    locationSummary: text("location_summary"),
+    isMapSafe: boolean("is_map_safe").notNull().default(false),
+    deviceSnapshot: jsonb("device_snapshot").notNull(),
+  },
+  (table) => [
+    uniqueIndex("recovery_location_observations_key_unique").on(
+      table.observationKey,
+    ),
+    index("recovery_location_observations_endpoint_at_idx").on(
+      table.endpointId,
+      table.sourceRefreshedAt,
+    ),
+    index("recovery_location_observations_captured_at_idx").on(table.capturedAt),
+    index("recovery_location_observations_device_id_idx").on(table.deviceId),
+  ],
+);
+
 export const insertRecoveryIncidentSchema = createInsertSchema(
   recoveryIncidentsTable,
 ).omit({ id: true, createdAt: true, updatedAt: true });
@@ -96,3 +154,5 @@ export type RecoveryIncident = typeof recoveryIncidentsTable.$inferSelect;
 export type RecoveryIncidentEndpoint =
   typeof recoveryIncidentEndpointsTable.$inferSelect;
 export type RecoveryIncidentAudit = typeof recoveryIncidentAuditTable.$inferSelect;
+export type RecoveryLocationObservation =
+  typeof recoveryLocationObservationsTable.$inferSelect;

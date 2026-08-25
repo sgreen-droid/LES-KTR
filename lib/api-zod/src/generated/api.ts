@@ -115,7 +115,11 @@ export const ListRecoveryDevicesResponse = zod.object({
   "endpointStatus": zod.string(),
   "operatingSystem": zod.string(),
   "lastSeen": zod.string().nullable(),
-  "deviceId": zod.string().nullable(),
+  "deviceId": zod.string().nullable().describe('Action1 device identifier when reported. This is a secondary identifier; endpointId remains the canonical management key.'),
+  "serialNumber": zod.string().nullable(),
+  "manufacturer": zod.string().nullable(),
+  "model": zod.string().nullable(),
+  "isDuplicateComputerName": zod.boolean(),
   "agentVersion": zod.string().nullable(),
   "agentHealth": zod.string().nullable(),
   "recoveryStatus": zod.string().nullable(),
@@ -164,7 +168,11 @@ export const GetRecoveryDeviceResponse = zod.object({
   "endpointStatus": zod.string(),
   "operatingSystem": zod.string(),
   "lastSeen": zod.string().nullable(),
-  "deviceId": zod.string().nullable(),
+  "deviceId": zod.string().nullable().describe('Action1 device identifier when reported. This is a secondary identifier; endpointId remains the canonical management key.'),
+  "serialNumber": zod.string().nullable(),
+  "manufacturer": zod.string().nullable(),
+  "model": zod.string().nullable(),
+  "isDuplicateComputerName": zod.boolean(),
   "agentVersion": zod.string().nullable(),
   "agentHealth": zod.string().nullable(),
   "recoveryStatus": zod.string().nullable(),
@@ -188,6 +196,258 @@ export const GetRecoveryDeviceResponse = zod.object({
   "locationCoordinates": zod.string().nullable(),
   "locationSummary": zod.string().nullable(),
   "isMapSafe": zod.boolean()
+})
+
+
+/**
+ * @summary Get time-bounded, last-known observations for one Action1 endpoint
+ */
+export const getRecoveryDeviceLocationHistoryPathEndpointIdMax = 160;
+
+
+
+export const GetRecoveryDeviceLocationHistoryParams = zod.object({
+  "endpointId": zod.coerce.string().min(1).max(getRecoveryDeviceLocationHistoryPathEndpointIdMax)
+})
+
+export const GetRecoveryDeviceLocationHistoryQueryParams = zod.object({
+  "from": zod.coerce.date().optional(),
+  "to": zod.coerce.date().optional()
+})
+
+export const getRecoveryDeviceLocationHistoryResponseObservationCountMin = 0;
+
+
+
+export const GetRecoveryDeviceLocationHistoryResponse = zod.object({
+  "observations": zod.array(zod.object({
+  "id": zod.string(),
+  "endpointId": zod.string(),
+  "deviceId": zod.string().nullable(),
+  "computerName": zod.string(),
+  "organizationId": zod.string(),
+  "organizationName": zod.string(),
+  "serialNumber": zod.string().nullable(),
+  "manufacturer": zod.string().nullable(),
+  "model": zod.string().nullable(),
+  "operatingSystem": zod.string(),
+  "agentVersion": zod.string().nullable(),
+  "capturedAt": zod.coerce.date(),
+  "sourceRefreshedAt": zod.coerce.date(),
+  "locationObservedAt": zod.coerce.date().nullable(),
+  "lastSeenAt": zod.coerce.date().nullable(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable(),
+  "accuracy": zod.string().nullable(),
+  "locationCoordinates": zod.string().nullable(),
+  "locationStatus": zod.string().nullable(),
+  "locationIntegrity": zod.string().nullable(),
+  "locationQuality": zod.string().nullable(),
+  "locationSource": zod.string().nullable(),
+  "positionSource": zod.string().nullable(),
+  "locationPermission": zod.string().nullable(),
+  "locationSequence": zod.string().nullable(),
+  "locationAgeMinutes": zod.string().nullable(),
+  "locationError": zod.string().nullable(),
+  "locationSummary": zod.string().nullable(),
+  "isMapSafe": zod.boolean()
+})),
+  "observationCount": zod.number().min(getRecoveryDeviceLocationHistoryResponseObservationCountMin),
+  "from": zod.coerce.date().nullable(),
+  "to": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Export time-bounded, last-known observations for one Action1 endpoint
+ */
+export const exportRecoveryDeviceLocationHistoryPathEndpointIdMax = 160;
+
+
+
+export const ExportRecoveryDeviceLocationHistoryParams = zod.object({
+  "endpointId": zod.coerce.string().min(1).max(exportRecoveryDeviceLocationHistoryPathEndpointIdMax)
+})
+
+export const exportRecoveryDeviceLocationHistoryQueryFormatDefault = `json`;
+
+export const ExportRecoveryDeviceLocationHistoryQueryParams = zod.object({
+  "from": zod.coerce.date().optional(),
+  "to": zod.coerce.date().optional(),
+  "format": zod.enum(['json', 'csv', 'print']).default(exportRecoveryDeviceLocationHistoryQueryFormatDefault)
+})
+
+export const exportRecoveryDeviceLocationHistoryResponseObservationCountMin = 0;
+
+
+
+export const ExportRecoveryDeviceLocationHistoryResponse = zod.object({
+  "exportId": zod.string(),
+  "schemaVersion": zod.string(),
+  "generatedAt": zod.coerce.date(),
+  "source": zod.string(),
+  "scope": zod.enum(['FLEET', 'SELECTED', 'SINGLE']),
+  "endpointIds": zod.array(zod.string()),
+  "from": zod.coerce.date().nullable(),
+  "to": zod.coerce.date().nullable(),
+  "observationCount": zod.number().min(exportRecoveryDeviceLocationHistoryResponseObservationCountMin),
+  "observations": zod.array(zod.object({
+  "id": zod.string(),
+  "endpointId": zod.string(),
+  "deviceId": zod.string().nullable(),
+  "computerName": zod.string(),
+  "organizationId": zod.string(),
+  "organizationName": zod.string(),
+  "serialNumber": zod.string().nullable(),
+  "manufacturer": zod.string().nullable(),
+  "model": zod.string().nullable(),
+  "operatingSystem": zod.string(),
+  "agentVersion": zod.string().nullable(),
+  "capturedAt": zod.coerce.date(),
+  "sourceRefreshedAt": zod.coerce.date(),
+  "locationObservedAt": zod.coerce.date().nullable(),
+  "lastSeenAt": zod.coerce.date().nullable(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable(),
+  "accuracy": zod.string().nullable(),
+  "locationCoordinates": zod.string().nullable(),
+  "locationStatus": zod.string().nullable(),
+  "locationIntegrity": zod.string().nullable(),
+  "locationQuality": zod.string().nullable(),
+  "locationSource": zod.string().nullable(),
+  "positionSource": zod.string().nullable(),
+  "locationPermission": zod.string().nullable(),
+  "locationSequence": zod.string().nullable(),
+  "locationAgeMinutes": zod.string().nullable(),
+  "locationError": zod.string().nullable(),
+  "locationSummary": zod.string().nullable(),
+  "isMapSafe": zod.boolean()
+})),
+  "limitations": zod.array(zod.string())
+})
+
+
+/**
+ * @summary List persisted last-known observations for the fleet or selected Action1 endpoints
+ */
+export const listRecoveryLocationHistoryQueryEndpointIdsItemMax = 160;
+
+export const listRecoveryLocationHistoryQueryEndpointIdsMax = 50;
+
+
+
+export const ListRecoveryLocationHistoryQueryParams = zod.object({
+  "endpointIds": zod.array(zod.coerce.string().min(1).max(listRecoveryLocationHistoryQueryEndpointIdsItemMax)).max(listRecoveryLocationHistoryQueryEndpointIdsMax).optional(),
+  "from": zod.coerce.date().optional(),
+  "to": zod.coerce.date().optional()
+})
+
+export const listRecoveryLocationHistoryResponseObservationCountMin = 0;
+
+
+
+export const ListRecoveryLocationHistoryResponse = zod.object({
+  "observations": zod.array(zod.object({
+  "id": zod.string(),
+  "endpointId": zod.string(),
+  "deviceId": zod.string().nullable(),
+  "computerName": zod.string(),
+  "organizationId": zod.string(),
+  "organizationName": zod.string(),
+  "serialNumber": zod.string().nullable(),
+  "manufacturer": zod.string().nullable(),
+  "model": zod.string().nullable(),
+  "operatingSystem": zod.string(),
+  "agentVersion": zod.string().nullable(),
+  "capturedAt": zod.coerce.date(),
+  "sourceRefreshedAt": zod.coerce.date(),
+  "locationObservedAt": zod.coerce.date().nullable(),
+  "lastSeenAt": zod.coerce.date().nullable(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable(),
+  "accuracy": zod.string().nullable(),
+  "locationCoordinates": zod.string().nullable(),
+  "locationStatus": zod.string().nullable(),
+  "locationIntegrity": zod.string().nullable(),
+  "locationQuality": zod.string().nullable(),
+  "locationSource": zod.string().nullable(),
+  "positionSource": zod.string().nullable(),
+  "locationPermission": zod.string().nullable(),
+  "locationSequence": zod.string().nullable(),
+  "locationAgeMinutes": zod.string().nullable(),
+  "locationError": zod.string().nullable(),
+  "locationSummary": zod.string().nullable(),
+  "isMapSafe": zod.boolean()
+})),
+  "observationCount": zod.number().min(listRecoveryLocationHistoryResponseObservationCountMin),
+  "from": zod.coerce.date().nullable(),
+  "to": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Export persisted last-known observations for the fleet or selected endpoints
+ */
+export const exportRecoveryLocationHistoryQueryEndpointIdsItemMax = 160;
+
+export const exportRecoveryLocationHistoryQueryEndpointIdsMax = 50;
+
+export const exportRecoveryLocationHistoryQueryFormatDefault = `json`;
+
+export const ExportRecoveryLocationHistoryQueryParams = zod.object({
+  "endpointIds": zod.array(zod.coerce.string().min(1).max(exportRecoveryLocationHistoryQueryEndpointIdsItemMax)).max(exportRecoveryLocationHistoryQueryEndpointIdsMax).optional(),
+  "from": zod.coerce.date().optional(),
+  "to": zod.coerce.date().optional(),
+  "format": zod.enum(['json', 'csv', 'print']).default(exportRecoveryLocationHistoryQueryFormatDefault)
+})
+
+export const exportRecoveryLocationHistoryResponseObservationCountMin = 0;
+
+
+
+export const ExportRecoveryLocationHistoryResponse = zod.object({
+  "exportId": zod.string(),
+  "schemaVersion": zod.string(),
+  "generatedAt": zod.coerce.date(),
+  "source": zod.string(),
+  "scope": zod.enum(['FLEET', 'SELECTED', 'SINGLE']),
+  "endpointIds": zod.array(zod.string()),
+  "from": zod.coerce.date().nullable(),
+  "to": zod.coerce.date().nullable(),
+  "observationCount": zod.number().min(exportRecoveryLocationHistoryResponseObservationCountMin),
+  "observations": zod.array(zod.object({
+  "id": zod.string(),
+  "endpointId": zod.string(),
+  "deviceId": zod.string().nullable(),
+  "computerName": zod.string(),
+  "organizationId": zod.string(),
+  "organizationName": zod.string(),
+  "serialNumber": zod.string().nullable(),
+  "manufacturer": zod.string().nullable(),
+  "model": zod.string().nullable(),
+  "operatingSystem": zod.string(),
+  "agentVersion": zod.string().nullable(),
+  "capturedAt": zod.coerce.date(),
+  "sourceRefreshedAt": zod.coerce.date(),
+  "locationObservedAt": zod.coerce.date().nullable(),
+  "lastSeenAt": zod.coerce.date().nullable(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable(),
+  "accuracy": zod.string().nullable(),
+  "locationCoordinates": zod.string().nullable(),
+  "locationStatus": zod.string().nullable(),
+  "locationIntegrity": zod.string().nullable(),
+  "locationQuality": zod.string().nullable(),
+  "locationSource": zod.string().nullable(),
+  "positionSource": zod.string().nullable(),
+  "locationPermission": zod.string().nullable(),
+  "locationSequence": zod.string().nullable(),
+  "locationAgeMinutes": zod.string().nullable(),
+  "locationError": zod.string().nullable(),
+  "locationSummary": zod.string().nullable(),
+  "isMapSafe": zod.boolean()
+})),
+  "limitations": zod.array(zod.string())
 })
 
 
@@ -271,7 +531,11 @@ export const CreateRecoveryIncidentResponse = zod.object({
   "endpointStatus": zod.string(),
   "operatingSystem": zod.string(),
   "lastSeen": zod.string().nullable(),
-  "deviceId": zod.string().nullable(),
+  "deviceId": zod.string().nullable().describe('Action1 device identifier when reported. This is a secondary identifier; endpointId remains the canonical management key.'),
+  "serialNumber": zod.string().nullable(),
+  "manufacturer": zod.string().nullable(),
+  "model": zod.string().nullable(),
+  "isDuplicateComputerName": zod.boolean(),
   "agentVersion": zod.string().nullable(),
   "agentHealth": zod.string().nullable(),
   "recoveryStatus": zod.string().nullable(),
@@ -345,7 +609,11 @@ export const GetRecoveryIncidentResponse = zod.object({
   "endpointStatus": zod.string(),
   "operatingSystem": zod.string(),
   "lastSeen": zod.string().nullable(),
-  "deviceId": zod.string().nullable(),
+  "deviceId": zod.string().nullable().describe('Action1 device identifier when reported. This is a secondary identifier; endpointId remains the canonical management key.'),
+  "serialNumber": zod.string().nullable(),
+  "manufacturer": zod.string().nullable(),
+  "model": zod.string().nullable(),
+  "isDuplicateComputerName": zod.boolean(),
   "agentVersion": zod.string().nullable(),
   "agentHealth": zod.string().nullable(),
   "recoveryStatus": zod.string().nullable(),
@@ -438,7 +706,11 @@ export const UpdateRecoveryIncidentResponse = zod.object({
   "endpointStatus": zod.string(),
   "operatingSystem": zod.string(),
   "lastSeen": zod.string().nullable(),
-  "deviceId": zod.string().nullable(),
+  "deviceId": zod.string().nullable().describe('Action1 device identifier when reported. This is a secondary identifier; endpointId remains the canonical management key.'),
+  "serialNumber": zod.string().nullable(),
+  "manufacturer": zod.string().nullable(),
+  "model": zod.string().nullable(),
+  "isDuplicateComputerName": zod.boolean(),
   "agentVersion": zod.string().nullable(),
   "agentHealth": zod.string().nullable(),
   "recoveryStatus": zod.string().nullable(),
@@ -521,7 +793,11 @@ export const ExportRecoveryIncidentResponse = zod.object({
   "endpointStatus": zod.string(),
   "operatingSystem": zod.string(),
   "lastSeen": zod.string().nullable(),
-  "deviceId": zod.string().nullable(),
+  "deviceId": zod.string().nullable().describe('Action1 device identifier when reported. This is a secondary identifier; endpointId remains the canonical management key.'),
+  "serialNumber": zod.string().nullable(),
+  "manufacturer": zod.string().nullable(),
+  "model": zod.string().nullable(),
+  "isDuplicateComputerName": zod.boolean(),
   "agentVersion": zod.string().nullable(),
   "agentHealth": zod.string().nullable(),
   "recoveryStatus": zod.string().nullable(),
