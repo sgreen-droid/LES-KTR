@@ -71,10 +71,12 @@ public sealed class PortableExecutableArchitectureTests
 
     private static MemoryStream CreateDosFile(int peHeaderOffset, int length = 128)
     {
-        var bytes = new byte[length];
+        var stream = new MemoryStream(length);
+        stream.SetLength(length);
+        var bytes = stream.GetBuffer();
         bytes[0] = (byte)'M';
         bytes[1] = (byte)'Z';
         BitConverter.GetBytes(peHeaderOffset).CopyTo(bytes, 0x3C);
-        return new MemoryStream(bytes);
+        return stream;
     }
 }
