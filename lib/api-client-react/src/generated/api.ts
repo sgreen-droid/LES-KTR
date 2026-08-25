@@ -28,6 +28,12 @@ import type {
   RateLimitedResponse,
   RecoveryDevice,
   RecoveryDeviceList,
+  RecoveryEvidenceExport,
+  RecoveryEvidenceExportRequest,
+  RecoveryIncidentDetail,
+  RecoveryIncidentInput,
+  RecoveryIncidentList,
+  RecoveryIncidentUpdate,
   RecoveryLogin,
   RecoverySession,
   RecoverySummary,
@@ -673,4 +679,373 @@ export function useGetRecoveryDevice<TData = Awaited<ReturnType<typeof getRecove
 
 
 
+
+export const getListRecoveryIncidentsUrl = () => {
+
+
+
+
+  return `/api/recovery/incidents`
+}
+
+/**
+ * @summary List recovery incidents
+ */
+export const listRecoveryIncidents = async ( options?: Parameters<typeof customFetch>[1]): Promise<RecoveryIncidentList> => {
+
+  return customFetch<RecoveryIncidentList>(getListRecoveryIncidentsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRecoveryIncidentsQueryKey = () => {
+    return [
+    `/api/recovery/incidents`
+    ] as const;
+    }
+
+
+export const getListRecoveryIncidentsQueryOptions = <TData = Awaited<ReturnType<typeof listRecoveryIncidents>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRecoveryIncidents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRecoveryIncidentsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRecoveryIncidents>>> = ({ signal }) => listRecoveryIncidents({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRecoveryIncidents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListRecoveryIncidentsQueryResult = NonNullable<Awaited<ReturnType<typeof listRecoveryIncidents>>>
+export type ListRecoveryIncidentsQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary List recovery incidents
+ */
+
+export function useListRecoveryIncidents<TData = Awaited<ReturnType<typeof listRecoveryIncidents>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRecoveryIncidents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListRecoveryIncidentsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateRecoveryIncidentUrl = () => {
+
+
+
+
+  return `/api/recovery/incidents`
+}
+
+/**
+ * @summary Create an incident and capture current endpoint evidence
+ */
+export const createRecoveryIncident = async (recoveryIncidentInput: RecoveryIncidentInput, options?: Parameters<typeof customFetch>[1]): Promise<RecoveryIncidentDetail> => {
+
+  return customFetch<RecoveryIncidentDetail>(getCreateRecoveryIncidentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(recoveryIncidentInput)
+  }
+);}
+
+
+
+
+
+export const getCreateRecoveryIncidentMutationOptions = <TError = ErrorType<ApiError | UnauthorizedResponse | Action1UnavailableResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRecoveryIncident>>, TError,{data: BodyType<RecoveryIncidentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createRecoveryIncident>>, TError,{data: BodyType<RecoveryIncidentInput>}, TContext> => {
+
+const mutationKey = ['createRecoveryIncident'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRecoveryIncident>>, {data: BodyType<RecoveryIncidentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createRecoveryIncident(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateRecoveryIncidentMutationResult = NonNullable<Awaited<ReturnType<typeof createRecoveryIncident>>>
+    export type CreateRecoveryIncidentMutationBody = BodyType<RecoveryIncidentInput>
+    export type CreateRecoveryIncidentMutationError = ErrorType<ApiError | UnauthorizedResponse | Action1UnavailableResponse>
+
+    /**
+ * @summary Create an incident and capture current endpoint evidence
+ */
+export const useCreateRecoveryIncident = <TError = ErrorType<ApiError | UnauthorizedResponse | Action1UnavailableResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRecoveryIncident>>, TError,{data: BodyType<RecoveryIncidentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createRecoveryIncident>>,
+        TError,
+        {data: BodyType<RecoveryIncidentInput>},
+        TContext
+      > => {
+      return useMutation(getCreateRecoveryIncidentMutationOptions(options));
+    }
+
+export const getGetRecoveryIncidentUrl = (incidentId: string,) => {
+
+
+
+
+  return `/api/recovery/incidents/${incidentId}`
+}
+
+/**
+ * @summary Get an incident with captured endpoint evidence and audit records
+ */
+export const getRecoveryIncident = async (incidentId: string, options?: Parameters<typeof customFetch>[1]): Promise<RecoveryIncidentDetail> => {
+
+  return customFetch<RecoveryIncidentDetail>(getGetRecoveryIncidentUrl(incidentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRecoveryIncidentQueryKey = (incidentId: string,) => {
+    return [
+    `/api/recovery/incidents/${incidentId}`
+    ] as const;
+    }
+
+
+export const getGetRecoveryIncidentQueryOptions = <TData = Awaited<ReturnType<typeof getRecoveryIncident>>, TError = ErrorType<UnauthorizedResponse | ApiError>>(incidentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRecoveryIncident>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRecoveryIncidentQueryKey(incidentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRecoveryIncident>>> = ({ signal }) => getRecoveryIncident(incidentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: incidentId !== null && incidentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRecoveryIncident>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRecoveryIncidentQueryResult = NonNullable<Awaited<ReturnType<typeof getRecoveryIncident>>>
+export type GetRecoveryIncidentQueryError = ErrorType<UnauthorizedResponse | ApiError>
+
+
+/**
+ * @summary Get an incident with captured endpoint evidence and audit records
+ */
+
+export function useGetRecoveryIncident<TData = Awaited<ReturnType<typeof getRecoveryIncident>>, TError = ErrorType<UnauthorizedResponse | ApiError>>(
+ incidentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRecoveryIncident>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRecoveryIncidentQueryOptions(incidentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateRecoveryIncidentUrl = (incidentId: string,) => {
+
+
+
+
+  return `/api/recovery/incidents/${incidentId}`
+}
+
+/**
+ * @summary Update incident ownership, status, case information, or add a note
+ */
+export const updateRecoveryIncident = async (incidentId: string,
+    recoveryIncidentUpdate: RecoveryIncidentUpdate, options?: Parameters<typeof customFetch>[1]): Promise<RecoveryIncidentDetail> => {
+
+  return customFetch<RecoveryIncidentDetail>(getUpdateRecoveryIncidentUrl(incidentId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(recoveryIncidentUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateRecoveryIncidentMutationOptions = <TError = ErrorType<ApiError | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRecoveryIncident>>, TError,{incidentId: string;data: BodyType<RecoveryIncidentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateRecoveryIncident>>, TError,{incidentId: string;data: BodyType<RecoveryIncidentUpdate>}, TContext> => {
+
+const mutationKey = ['updateRecoveryIncident'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateRecoveryIncident>>, {incidentId: string;data: BodyType<RecoveryIncidentUpdate>}> = (props) => {
+          const {incidentId,data} = props ?? {};
+
+          return  updateRecoveryIncident(incidentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateRecoveryIncidentMutationResult = NonNullable<Awaited<ReturnType<typeof updateRecoveryIncident>>>
+    export type UpdateRecoveryIncidentMutationBody = BodyType<RecoveryIncidentUpdate>
+    export type UpdateRecoveryIncidentMutationError = ErrorType<ApiError | UnauthorizedResponse>
+
+    /**
+ * @summary Update incident ownership, status, case information, or add a note
+ */
+export const useUpdateRecoveryIncident = <TError = ErrorType<ApiError | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRecoveryIncident>>, TError,{incidentId: string;data: BodyType<RecoveryIncidentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateRecoveryIncident>>,
+        TError,
+        {incidentId: string;data: BodyType<RecoveryIncidentUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateRecoveryIncidentMutationOptions(options));
+    }
+
+export const getExportRecoveryIncidentUrl = (incidentId: string,) => {
+
+
+
+
+  return `/api/recovery/incidents/${incidentId}/export`
+}
+
+/**
+ * @summary Generate a controlled incident evidence export
+ */
+export const exportRecoveryIncident = async (incidentId: string,
+    recoveryEvidenceExportRequest: RecoveryEvidenceExportRequest, options?: Parameters<typeof customFetch>[1]): Promise<RecoveryEvidenceExport | string> => {
+
+  return customFetch<RecoveryEvidenceExport | string>(getExportRecoveryIncidentUrl(incidentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(recoveryEvidenceExportRequest)
+  }
+);}
+
+
+
+
+
+export const getExportRecoveryIncidentMutationOptions = <TError = ErrorType<UnauthorizedResponse | ApiError | RateLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof exportRecoveryIncident>>, TError,{incidentId: string;data: BodyType<RecoveryEvidenceExportRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof exportRecoveryIncident>>, TError,{incidentId: string;data: BodyType<RecoveryEvidenceExportRequest>}, TContext> => {
+
+const mutationKey = ['exportRecoveryIncident'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof exportRecoveryIncident>>, {incidentId: string;data: BodyType<RecoveryEvidenceExportRequest>}> = (props) => {
+          const {incidentId,data} = props ?? {};
+
+          return  exportRecoveryIncident(incidentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExportRecoveryIncidentMutationResult = NonNullable<Awaited<ReturnType<typeof exportRecoveryIncident>>>
+    export type ExportRecoveryIncidentMutationBody = BodyType<RecoveryEvidenceExportRequest>
+    export type ExportRecoveryIncidentMutationError = ErrorType<UnauthorizedResponse | ApiError | RateLimitedResponse>
+
+    /**
+ * @summary Generate a controlled incident evidence export
+ */
+export const useExportRecoveryIncident = <TError = ErrorType<UnauthorizedResponse | ApiError | RateLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof exportRecoveryIncident>>, TError,{incidentId: string;data: BodyType<RecoveryEvidenceExportRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof exportRecoveryIncident>>,
+        TError,
+        {incidentId: string;data: BodyType<RecoveryEvidenceExportRequest>},
+        TContext
+      > => {
+      return useMutation(getExportRecoveryIncidentMutationOptions(options));
+    }
 

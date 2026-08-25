@@ -1,4 +1,4 @@
-modules = ["nodejs-24", "python-base-3.13"]
+modules = ["nodejs-24", "python-base-3.13", "postgresql-16"]
 
 [deployment]
 router = "application"
@@ -23,3 +23,6 @@ timeoutMs = 20000
 
 [userenv.shared]
 ACTION1_BASE_URL = "https://app.action1.com/api/3.0"
+
+[nix]
+channel = "stable-25_05"

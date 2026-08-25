@@ -120,6 +120,149 @@ export interface Action1Readiness {
   message: string;
 }
 
+export type RecoveryIncidentStatus = typeof RecoveryIncidentStatus[keyof typeof RecoveryIncidentStatus];
+
+
+export const RecoveryIncidentStatus = {
+  OPEN: 'OPEN',
+  ESCALATED: 'ESCALATED',
+  RECOVERED: 'RECOVERED',
+  CLOSED: 'CLOSED',
+} as const;
+
+export interface RecoveryIncident {
+  id: string;
+  title: string;
+  /** @nullable */
+  caseNumber: string | null;
+  /** @nullable */
+  owner: string | null;
+  status: RecoveryIncidentStatus;
+  reportedAt: string;
+  /** @nullable */
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** @minimum 0 */
+  endpointCount: number;
+}
+
+export interface RecoveryIncidentInput {
+  /**
+     * @minLength 3
+     * @maxLength 160
+     */
+  title: string;
+  /**
+     * @minItems 1
+     * @maxItems 50
+     * @items.minLength 1
+     * @items.maxLength 160
+     */
+  endpointIds: string[];
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  caseNumber?: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  owner?: string | null;
+  /** @nullable */
+  reportedAt?: string | null;
+  /**
+     * @maxLength 4000
+     * @nullable
+     */
+  note?: string | null;
+}
+
+export type RecoveryIncidentUpdateStatus = typeof RecoveryIncidentUpdateStatus[keyof typeof RecoveryIncidentUpdateStatus];
+
+
+export const RecoveryIncidentUpdateStatus = {
+  OPEN: 'OPEN',
+  ESCALATED: 'ESCALATED',
+  RECOVERED: 'RECOVERED',
+  CLOSED: 'CLOSED',
+} as const;
+
+export interface RecoveryIncidentUpdate {
+  /**
+     * @minLength 3
+     * @maxLength 160
+     */
+  title?: string;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  caseNumber?: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  owner?: string | null;
+  status?: RecoveryIncidentUpdateStatus;
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  note?: string;
+}
+
+export interface RecoveryIncidentEndpointEvidence {
+  endpointId: string;
+  organizationId: string;
+  organizationName: string;
+  capturedAt: string;
+  sourceRefreshedAt: string;
+  device: RecoveryDevice;
+}
+
+export interface RecoveryIncidentAuditRecord {
+  id: string;
+  eventType: string;
+  actorLabel: string;
+  summary: string;
+  /** @nullable */
+  endpointId: string | null;
+  occurredAt: string;
+}
+
+export type RecoveryIncidentDetail = RecoveryIncident & {
+  evidence: RecoveryIncidentEndpointEvidence[];
+  audit: RecoveryIncidentAuditRecord[];
+};
+
+export interface RecoveryIncidentList {
+  incidents: RecoveryIncident[];
+}
+
+export type RecoveryEvidenceExportRequestFormat = typeof RecoveryEvidenceExportRequestFormat[keyof typeof RecoveryEvidenceExportRequestFormat];
+
+
+export const RecoveryEvidenceExportRequestFormat = {
+  json: 'json',
+  csv: 'csv',
+  print: 'print',
+} as const;
+
+export interface RecoveryEvidenceExportRequest {
+  format: RecoveryEvidenceExportRequestFormat;
+}
+
+export interface RecoveryEvidenceExport {
+  exportId: string;
+  schemaVersion: string;
+  generatedAt: string;
+  source: string;
+  incident: RecoveryIncidentDetail;
+  limitations: string[];
+}
+
 /**
  * An authorized recovery console session is required
  */

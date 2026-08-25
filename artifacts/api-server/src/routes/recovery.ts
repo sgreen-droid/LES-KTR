@@ -2,13 +2,24 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import {
   CreateRecoverySessionBody,
   CreateRecoverySessionResponse,
+  CreateRecoveryIncidentBody,
+  CreateRecoveryIncidentResponse,
+  ExportRecoveryIncidentBody,
+  ExportRecoveryIncidentParams,
+  ExportRecoveryIncidentResponse,
   GetAction1ReadinessResponse,
   GetRecoveryDeviceParams,
   GetRecoveryDeviceResponse,
+  GetRecoveryIncidentParams,
+  GetRecoveryIncidentResponse,
   GetRecoverySessionResponse,
   GetRecoverySummaryResponse,
+  ListRecoveryIncidentsResponse,
   ListRecoveryDevicesQueryParams,
   ListRecoveryDevicesResponse,
+  UpdateRecoveryIncidentBody,
+  UpdateRecoveryIncidentParams,
+  UpdateRecoveryIncidentResponse,
 } from "@workspace/api-zod";
 import {
   Action1UnavailableError,
@@ -25,12 +36,45 @@ import {
   recordFailedLogin,
   verifyDashboardPassword,
 } from "../lib/recovery-session";
+import {
+  RecoveryIncidentInputError,
+  createRecoveryEvidenceExport,
+  createRecoveryIncident,
+  getRecoveryIncidentDetail,
+  listRecoveryIncidents,
+  renderRecoveryEvidenceCsv,
+  renderRecoveryEvidencePrintDocument,
+  updateRecoveryIncident,
+} from "../lib/recovery-incidents";
 
 const router: IRouter = Router();
 const SESSION_COOKIE = "les_recovery_session";
+const EXPORT_WINDOW_MS = 5 * 60 * 1000;
+const EXPORT_LIMIT = 12;
+const exportAttempts = new Map<string, number[]>();
 
 function getClientIdentifier(req: Request): string {
   return req.ip || "unknown";
+}
+
+function allowExport(clientId: string): { allowed: boolean; retryAfterSeconds: number } {
+  const now = Date.now();
+  const attempts = (exportAttempts.get(clientId) ?? []).filter(
+    (attempt) => now - attempt < EXPORT_WINDOW_MS,
+  );
+  if (attempts.length >= EXPORT_LIMIT) {
+    exportAttempts.set(clientId, attempts);
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(
+        1,
+        Math.ceil((EXPORT_WINDOW_MS - (now - attempts[0])) / 1000),
+      ),
+    };
+  }
+  attempts.push(now);
+  exportAttempts.set(clientId, attempts);
+  return { allowed: true, retryAfterSeconds: 0 };
 }
 
 function setRecoveryCookie(
@@ -86,6 +130,19 @@ function sendAction1Unavailable(
     message:
       "Action1 recovery data is temporarily unavailable. Check the API credential role and try again.",
   });
+}
+
+function sendNotFound(res: Response, message: string): void {
+  res.status(404).json({ error: "NOT_FOUND", message });
+}
+
+function sendIncidentInputError(req: Request, res: Response, error: unknown): void {
+  const message =
+    error instanceof RecoveryIncidentInputError
+      ? error.message
+      : "The incident could not be saved. Try again shortly.";
+  req.log.warn({ reason: message }, "Recovery incident request rejected");
+  res.status(400).json({ error: "INVALID_INCIDENT", message });
 }
 
 router.get(
@@ -254,6 +311,181 @@ router.get(
       res.json(GetRecoveryDeviceResponse.parse(device));
     } catch (error) {
       sendAction1Unavailable(req, res, error);
+    }
+  },
+);
+
+router.get(
+  "/recovery/incidents",
+  async (req, res): Promise<void> => {
+    if (!requireRecoverySession(req, res)) {
+      return;
+    }
+    try {
+      res.set("Cache-Control", "no-store");
+      res.json(ListRecoveryIncidentsResponse.parse(await listRecoveryIncidents()));
+    } catch (error) {
+      req.log.error({ error }, "Could not list recovery incidents");
+      res.status(500).json({
+        error: "INCIDENTS_UNAVAILABLE",
+        message: "Recovery incident records are temporarily unavailable.",
+      });
+    }
+  },
+);
+
+router.post(
+  "/recovery/incidents",
+  async (req, res): Promise<void> => {
+    if (!requireRecoverySession(req, res)) {
+      return;
+    }
+    const body = CreateRecoveryIncidentBody.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({
+        error: "INVALID_INCIDENT",
+        message: "Review the incident title and selected endpoints.",
+      });
+      return;
+    }
+    try {
+      const snapshot = await getRecoverySnapshot();
+      const incident = await createRecoveryIncident(body.data, snapshot);
+      req.log.info(
+        { incidentId: incident.id, endpointCount: incident.endpointCount },
+        "Recovery incident created",
+      );
+      res.set("Cache-Control", "no-store");
+      res.status(201).json(CreateRecoveryIncidentResponse.parse(incident));
+    } catch (error) {
+      if (error instanceof Action1UnavailableError) {
+        sendAction1Unavailable(req, res, error);
+        return;
+      }
+      sendIncidentInputError(req, res, error);
+    }
+  },
+);
+
+router.get(
+  "/recovery/incidents/:incidentId",
+  async (req, res): Promise<void> => {
+    if (!requireRecoverySession(req, res)) {
+      return;
+    }
+    const params = GetRecoveryIncidentParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({
+        error: "INVALID_INCIDENT",
+        message: "The incident identifier is invalid.",
+      });
+      return;
+    }
+    try {
+      const incident = await getRecoveryIncidentDetail(params.data.incidentId);
+      if (!incident) {
+        sendNotFound(res, "The requested recovery incident was not found.");
+        return;
+      }
+      res.set("Cache-Control", "no-store");
+      res.json(GetRecoveryIncidentResponse.parse(incident));
+    } catch (error) {
+      req.log.error({ error }, "Could not retrieve recovery incident");
+      res.status(500).json({
+        error: "INCIDENTS_UNAVAILABLE",
+        message: "Recovery incident records are temporarily unavailable.",
+      });
+    }
+  },
+);
+
+router.patch(
+  "/recovery/incidents/:incidentId",
+  async (req, res): Promise<void> => {
+    if (!requireRecoverySession(req, res)) {
+      return;
+    }
+    const params = UpdateRecoveryIncidentParams.safeParse(req.params);
+    const body = UpdateRecoveryIncidentBody.safeParse(req.body);
+    if (!params.success || !body.success || Object.keys(body.data ?? {}).length === 0) {
+      res.status(400).json({
+        error: "INVALID_INCIDENT",
+        message: "Provide a valid incident change or note.",
+      });
+      return;
+    }
+    try {
+      const incident = await updateRecoveryIncident(
+        params.data.incidentId,
+        body.data,
+      );
+      if (!incident) {
+        sendNotFound(res, "The requested recovery incident was not found.");
+        return;
+      }
+      req.log.info({ incidentId: incident.id }, "Recovery incident updated");
+      res.set("Cache-Control", "no-store");
+      res.json(UpdateRecoveryIncidentResponse.parse(incident));
+    } catch (error) {
+      sendIncidentInputError(req, res, error);
+    }
+  },
+);
+
+router.post(
+  "/recovery/incidents/:incidentId/export",
+  async (req, res): Promise<void> => {
+    if (!requireRecoverySession(req, res)) {
+      return;
+    }
+    const params = ExportRecoveryIncidentParams.safeParse(req.params);
+    const body = ExportRecoveryIncidentBody.safeParse(req.body);
+    if (!params.success || !body.success) {
+      res.status(400).json({
+        error: "INVALID_EXPORT",
+        message: "Choose a valid evidence export format.",
+      });
+      return;
+    }
+    const exportState = allowExport(getClientIdentifier(req));
+    if (!exportState.allowed) {
+      res.set("Retry-After", String(exportState.retryAfterSeconds));
+      res.status(429).json({
+        error: "RATE_LIMITED",
+        message: "Evidence exports are temporarily rate limited. Try again shortly.",
+      });
+      return;
+    }
+    try {
+      const exportData = await createRecoveryEvidenceExport(params.data.incidentId);
+      if (!exportData) {
+        sendNotFound(res, "The requested recovery incident was not found.");
+        return;
+      }
+      const filename = `les-recovery-evidence-${exportData.incident.id}`;
+      req.log.info(
+        { incidentId: exportData.incident.id, exportId: exportData.exportId, format: body.data.format },
+        "Recovery evidence exported",
+      );
+      res.set("Cache-Control", "no-store");
+      if (body.data.format === "csv") {
+        res.type("text/csv");
+        res.attachment(`${filename}.csv`);
+        res.send(renderRecoveryEvidenceCsv(exportData));
+        return;
+      }
+      if (body.data.format === "print") {
+        res.type("text/html");
+        res.send(renderRecoveryEvidencePrintDocument(exportData));
+        return;
+      }
+      res.json(ExportRecoveryIncidentResponse.parse(exportData));
+    } catch (error) {
+      req.log.error({ error }, "Could not generate recovery evidence export");
+      res.status(500).json({
+        error: "EXPORT_UNAVAILABLE",
+        message: "The evidence export could not be generated. Try again shortly.",
+      });
     }
   },
 );

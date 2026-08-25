@@ -191,3 +191,372 @@ export const GetRecoveryDeviceResponse = zod.object({
 })
 
 
+/**
+ * @summary List recovery incidents
+ */
+export const listRecoveryIncidentsResponseIncidentsItemEndpointCountMin = 0;
+
+
+
+export const ListRecoveryIncidentsResponse = zod.object({
+  "incidents": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "caseNumber": zod.string().nullable(),
+  "owner": zod.string().nullable(),
+  "status": zod.enum(['OPEN', 'ESCALATED', 'RECOVERED', 'CLOSED']),
+  "reportedAt": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "endpointCount": zod.number().min(listRecoveryIncidentsResponseIncidentsItemEndpointCountMin)
+}))
+})
+
+
+/**
+ * @summary Create an incident and capture current endpoint evidence
+ */
+export const createRecoveryIncidentBodyTitleMin = 3;
+export const createRecoveryIncidentBodyTitleMax = 160;
+
+export const createRecoveryIncidentBodyEndpointIdsItemMax = 160;
+
+export const createRecoveryIncidentBodyEndpointIdsMax = 50;
+
+export const createRecoveryIncidentBodyCaseNumberMax = 100;
+
+export const createRecoveryIncidentBodyOwnerMax = 100;
+
+export const createRecoveryIncidentBodyNoteMax = 4000;
+
+
+
+export const CreateRecoveryIncidentBody = zod.object({
+  "title": zod.string().min(createRecoveryIncidentBodyTitleMin).max(createRecoveryIncidentBodyTitleMax),
+  "endpointIds": zod.array(zod.string().min(1).max(createRecoveryIncidentBodyEndpointIdsItemMax)).min(1).max(createRecoveryIncidentBodyEndpointIdsMax),
+  "caseNumber": zod.string().max(createRecoveryIncidentBodyCaseNumberMax).nullish(),
+  "owner": zod.string().max(createRecoveryIncidentBodyOwnerMax).nullish(),
+  "reportedAt": zod.coerce.date().nullish(),
+  "note": zod.string().max(createRecoveryIncidentBodyNoteMax).nullish()
+})
+
+export const createRecoveryIncidentResponseOneEndpointCountMin = 0;
+
+
+
+export const CreateRecoveryIncidentResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "caseNumber": zod.string().nullable(),
+  "owner": zod.string().nullable(),
+  "status": zod.enum(['OPEN', 'ESCALATED', 'RECOVERED', 'CLOSED']),
+  "reportedAt": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "endpointCount": zod.number().min(createRecoveryIncidentResponseOneEndpointCountMin)
+}).and(zod.object({
+  "evidence": zod.array(zod.object({
+  "endpointId": zod.string(),
+  "organizationId": zod.string(),
+  "organizationName": zod.string(),
+  "capturedAt": zod.coerce.date(),
+  "sourceRefreshedAt": zod.coerce.date(),
+  "device": zod.object({
+  "endpointId": zod.string(),
+  "computerName": zod.string(),
+  "organizationId": zod.string(),
+  "organizationName": zod.string(),
+  "endpointStatus": zod.string(),
+  "operatingSystem": zod.string(),
+  "lastSeen": zod.string().nullable(),
+  "deviceId": zod.string().nullable(),
+  "agentVersion": zod.string().nullable(),
+  "agentHealth": zod.string().nullable(),
+  "recoveryStatus": zod.string().nullable(),
+  "locationStatus": zod.string().nullable(),
+  "locationIntegrity": zod.string().nullable(),
+  "locationAgeMinutes": zod.string().nullable(),
+  "locationPermission": zod.string().nullable(),
+  "locationUpdated": zod.string().nullable(),
+  "lastAttempt": zod.string().nullable(),
+  "lastSuccess": zod.string().nullable(),
+  "locationSequence": zod.string().nullable(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable(),
+  "accuracy": zod.string().nullable(),
+  "locationQuality": zod.string().nullable(),
+  "locationSource": zod.string().nullable(),
+  "positionSource": zod.string().nullable(),
+  "locationError": zod.string().nullable(),
+  "mapLink": zod.string().nullable(),
+  "mapEmbedUrl": zod.string().nullable(),
+  "locationCoordinates": zod.string().nullable(),
+  "locationSummary": zod.string().nullable(),
+  "isMapSafe": zod.boolean()
+})
+})),
+  "audit": zod.array(zod.object({
+  "id": zod.string(),
+  "eventType": zod.string(),
+  "actorLabel": zod.string(),
+  "summary": zod.string(),
+  "endpointId": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+}))
+
+
+/**
+ * @summary Get an incident with captured endpoint evidence and audit records
+ */
+export const GetRecoveryIncidentParams = zod.object({
+  "incidentId": zod.coerce.string()
+})
+
+export const getRecoveryIncidentResponseOneEndpointCountMin = 0;
+
+
+
+export const GetRecoveryIncidentResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "caseNumber": zod.string().nullable(),
+  "owner": zod.string().nullable(),
+  "status": zod.enum(['OPEN', 'ESCALATED', 'RECOVERED', 'CLOSED']),
+  "reportedAt": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "endpointCount": zod.number().min(getRecoveryIncidentResponseOneEndpointCountMin)
+}).and(zod.object({
+  "evidence": zod.array(zod.object({
+  "endpointId": zod.string(),
+  "organizationId": zod.string(),
+  "organizationName": zod.string(),
+  "capturedAt": zod.coerce.date(),
+  "sourceRefreshedAt": zod.coerce.date(),
+  "device": zod.object({
+  "endpointId": zod.string(),
+  "computerName": zod.string(),
+  "organizationId": zod.string(),
+  "organizationName": zod.string(),
+  "endpointStatus": zod.string(),
+  "operatingSystem": zod.string(),
+  "lastSeen": zod.string().nullable(),
+  "deviceId": zod.string().nullable(),
+  "agentVersion": zod.string().nullable(),
+  "agentHealth": zod.string().nullable(),
+  "recoveryStatus": zod.string().nullable(),
+  "locationStatus": zod.string().nullable(),
+  "locationIntegrity": zod.string().nullable(),
+  "locationAgeMinutes": zod.string().nullable(),
+  "locationPermission": zod.string().nullable(),
+  "locationUpdated": zod.string().nullable(),
+  "lastAttempt": zod.string().nullable(),
+  "lastSuccess": zod.string().nullable(),
+  "locationSequence": zod.string().nullable(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable(),
+  "accuracy": zod.string().nullable(),
+  "locationQuality": zod.string().nullable(),
+  "locationSource": zod.string().nullable(),
+  "positionSource": zod.string().nullable(),
+  "locationError": zod.string().nullable(),
+  "mapLink": zod.string().nullable(),
+  "mapEmbedUrl": zod.string().nullable(),
+  "locationCoordinates": zod.string().nullable(),
+  "locationSummary": zod.string().nullable(),
+  "isMapSafe": zod.boolean()
+})
+})),
+  "audit": zod.array(zod.object({
+  "id": zod.string(),
+  "eventType": zod.string(),
+  "actorLabel": zod.string(),
+  "summary": zod.string(),
+  "endpointId": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+}))
+
+
+/**
+ * @summary Update incident ownership, status, case information, or add a note
+ */
+export const UpdateRecoveryIncidentParams = zod.object({
+  "incidentId": zod.coerce.string()
+})
+
+export const updateRecoveryIncidentBodyTitleMin = 3;
+export const updateRecoveryIncidentBodyTitleMax = 160;
+
+export const updateRecoveryIncidentBodyCaseNumberMax = 100;
+
+export const updateRecoveryIncidentBodyOwnerMax = 100;
+
+export const updateRecoveryIncidentBodyNoteMax = 4000;
+
+
+
+export const UpdateRecoveryIncidentBody = zod.object({
+  "title": zod.string().min(updateRecoveryIncidentBodyTitleMin).max(updateRecoveryIncidentBodyTitleMax).optional(),
+  "caseNumber": zod.string().max(updateRecoveryIncidentBodyCaseNumberMax).nullish(),
+  "owner": zod.string().max(updateRecoveryIncidentBodyOwnerMax).nullish(),
+  "status": zod.enum(['OPEN', 'ESCALATED', 'RECOVERED', 'CLOSED']).optional(),
+  "note": zod.string().min(1).max(updateRecoveryIncidentBodyNoteMax).optional()
+})
+
+export const updateRecoveryIncidentResponseOneEndpointCountMin = 0;
+
+
+
+export const UpdateRecoveryIncidentResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "caseNumber": zod.string().nullable(),
+  "owner": zod.string().nullable(),
+  "status": zod.enum(['OPEN', 'ESCALATED', 'RECOVERED', 'CLOSED']),
+  "reportedAt": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "endpointCount": zod.number().min(updateRecoveryIncidentResponseOneEndpointCountMin)
+}).and(zod.object({
+  "evidence": zod.array(zod.object({
+  "endpointId": zod.string(),
+  "organizationId": zod.string(),
+  "organizationName": zod.string(),
+  "capturedAt": zod.coerce.date(),
+  "sourceRefreshedAt": zod.coerce.date(),
+  "device": zod.object({
+  "endpointId": zod.string(),
+  "computerName": zod.string(),
+  "organizationId": zod.string(),
+  "organizationName": zod.string(),
+  "endpointStatus": zod.string(),
+  "operatingSystem": zod.string(),
+  "lastSeen": zod.string().nullable(),
+  "deviceId": zod.string().nullable(),
+  "agentVersion": zod.string().nullable(),
+  "agentHealth": zod.string().nullable(),
+  "recoveryStatus": zod.string().nullable(),
+  "locationStatus": zod.string().nullable(),
+  "locationIntegrity": zod.string().nullable(),
+  "locationAgeMinutes": zod.string().nullable(),
+  "locationPermission": zod.string().nullable(),
+  "locationUpdated": zod.string().nullable(),
+  "lastAttempt": zod.string().nullable(),
+  "lastSuccess": zod.string().nullable(),
+  "locationSequence": zod.string().nullable(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable(),
+  "accuracy": zod.string().nullable(),
+  "locationQuality": zod.string().nullable(),
+  "locationSource": zod.string().nullable(),
+  "positionSource": zod.string().nullable(),
+  "locationError": zod.string().nullable(),
+  "mapLink": zod.string().nullable(),
+  "mapEmbedUrl": zod.string().nullable(),
+  "locationCoordinates": zod.string().nullable(),
+  "locationSummary": zod.string().nullable(),
+  "isMapSafe": zod.boolean()
+})
+})),
+  "audit": zod.array(zod.object({
+  "id": zod.string(),
+  "eventType": zod.string(),
+  "actorLabel": zod.string(),
+  "summary": zod.string(),
+  "endpointId": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+}))
+
+
+/**
+ * @summary Generate a controlled incident evidence export
+ */
+export const ExportRecoveryIncidentParams = zod.object({
+  "incidentId": zod.coerce.string()
+})
+
+export const ExportRecoveryIncidentBody = zod.object({
+  "format": zod.enum(['json', 'csv', 'print'])
+})
+
+export const exportRecoveryIncidentResponseIncidentOneEndpointCountMin = 0;
+
+
+
+export const ExportRecoveryIncidentResponse = zod.object({
+  "exportId": zod.string(),
+  "schemaVersion": zod.string(),
+  "generatedAt": zod.coerce.date(),
+  "source": zod.string(),
+  "incident": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "caseNumber": zod.string().nullable(),
+  "owner": zod.string().nullable(),
+  "status": zod.enum(['OPEN', 'ESCALATED', 'RECOVERED', 'CLOSED']),
+  "reportedAt": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "endpointCount": zod.number().min(exportRecoveryIncidentResponseIncidentOneEndpointCountMin)
+}).and(zod.object({
+  "evidence": zod.array(zod.object({
+  "endpointId": zod.string(),
+  "organizationId": zod.string(),
+  "organizationName": zod.string(),
+  "capturedAt": zod.coerce.date(),
+  "sourceRefreshedAt": zod.coerce.date(),
+  "device": zod.object({
+  "endpointId": zod.string(),
+  "computerName": zod.string(),
+  "organizationId": zod.string(),
+  "organizationName": zod.string(),
+  "endpointStatus": zod.string(),
+  "operatingSystem": zod.string(),
+  "lastSeen": zod.string().nullable(),
+  "deviceId": zod.string().nullable(),
+  "agentVersion": zod.string().nullable(),
+  "agentHealth": zod.string().nullable(),
+  "recoveryStatus": zod.string().nullable(),
+  "locationStatus": zod.string().nullable(),
+  "locationIntegrity": zod.string().nullable(),
+  "locationAgeMinutes": zod.string().nullable(),
+  "locationPermission": zod.string().nullable(),
+  "locationUpdated": zod.string().nullable(),
+  "lastAttempt": zod.string().nullable(),
+  "lastSuccess": zod.string().nullable(),
+  "locationSequence": zod.string().nullable(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable(),
+  "accuracy": zod.string().nullable(),
+  "locationQuality": zod.string().nullable(),
+  "locationSource": zod.string().nullable(),
+  "positionSource": zod.string().nullable(),
+  "locationError": zod.string().nullable(),
+  "mapLink": zod.string().nullable(),
+  "mapEmbedUrl": zod.string().nullable(),
+  "locationCoordinates": zod.string().nullable(),
+  "locationSummary": zod.string().nullable(),
+  "isMapSafe": zod.boolean()
+})
+})),
+  "audit": zod.array(zod.object({
+  "id": zod.string(),
+  "eventType": zod.string(),
+  "actorLabel": zod.string(),
+  "summary": zod.string(),
+  "endpointId": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+})),
+  "limitations": zod.array(zod.string())
+})
+
+

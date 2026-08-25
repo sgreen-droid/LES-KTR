@@ -14,7 +14,7 @@ interface Action1Organization {
   name: string;
 }
 
-interface RecoveryDevice {
+export interface RecoveryDevice {
   accuracy: string | null;
   agentHealth: string | null;
   agentVersion: string | null;
