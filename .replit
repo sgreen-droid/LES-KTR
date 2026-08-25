@@ -22,7 +22,7 @@ timeoutMs = 20000
 [userenv]
 
 [userenv.shared]
-ACTION1_BASE_URL = "https://app.action1.com/api/3.0"
+ACTION1_BASE_URL = "https://app.na-2.action1.com/api/3.0"
 
 [nix]
 channel = "stable-25_05"
