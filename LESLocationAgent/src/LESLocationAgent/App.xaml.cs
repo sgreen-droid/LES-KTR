@@ -318,23 +318,6 @@ public partial class App : Application
 
     internal static void StartupLog(string message)
     {
-        var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  {message}{Environment.NewLine}";
-
-        // Primary: C:\ProgramData\LESLocationAgent\startup.log
-        try
-        {
-            Directory.CreateDirectory(AppConfig.DataDirectory);
-            File.AppendAllText(
-                System.IO.Path.Combine(AppConfig.DataDirectory, "startup.log"), line);
-        }
-        catch { }
-
-        // Fallback: %TEMP%\LESLocationAgent.log  (always writable by any user)
-        try
-        {
-            File.AppendAllText(
-                System.IO.Path.Combine(Path.GetTempPath(), "LESLocationAgent.log"), line);
-        }
-        catch { }
+        StartupLogger.Write(message);
     }
 }

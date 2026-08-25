@@ -32,37 +32,87 @@ internal static class Program
     private const string EventSourceName  = "LESLocationAgent";
     private const string DownloadLink     =
         "https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe";
-    private const string MinWindowsVersion = "Windows 10 version 1809 (October 2018 Update)";
+    private const string MinWindowsVersion = "Windows 11 version 21H2 (build 22000)";
+    private const uint MinimumWindows11Build = 22000;
+    private const byte VerNtWorkstation = 1;
     private static FileStream? _machineInstanceLock;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct RtlOsVersionInfoEx
+    {
+        public uint OsVersionInfoSize;
+        public uint MajorVersion;
+        public uint MinorVersion;
+        public uint BuildNumber;
+        public uint PlatformId;
+
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+        public string CsdVersion;
+
+        public ushort ServicePackMajor;
+        public ushort ServicePackMinor;
+        public ushort SuiteMask;
+        public byte ProductType;
+        public byte Reserved;
+    }
+
+    [DllImport("ntdll.dll", CharSet = CharSet.Unicode)]
+    private static extern int RtlGetVersion(ref RtlOsVersionInfoEx versionInfo);
+
+    private readonly record struct WindowsVersionInfo(
+        uint Major,
+        uint Minor,
+        uint Build,
+        byte ProductType)
+    {
+        public bool IsWorkstation => ProductType == VerNtWorkstation;
+        public bool IsWindows11OrLater =>
+            IsWorkstation && Build >= MinimumWindows11Build;
+
+        public string DisplayName =>
+            IsWindows11OrLater
+                ? $"Windows 11 detected (build {Build})"
+                : IsWorkstation
+                    ? $"Windows client detected (version {Major}.{Minor}, build {Build})"
+                    : $"Windows Server or non-client edition detected (version {Major}.{Minor}, build {Build})";
+    }
 
     [STAThread]
     private static void Main(string[] args)
     {
         // Very first thing — write to the startup log before any WinUI code runs.
         // If the app disappears silently, check C:\ProgramData\LESLocationAgent\startup.log
-        App.StartupLog($"Main() entered — args: {string.Join(" ", args)}");
+        StartupLogger.Write($"Main() entered — args: {string.Join(" ", args)}");
 
         try
         {
             if (!TryAcquireMachineInstanceLock())
             {
-                App.StartupLog("Another LES Location Agent instance owns the machine recovery files; exiting.");
+                StartupLogger.Write("Another LES Location Agent instance owns the machine recovery files; exiting.");
                 return;
             }
 
-            App.StartupLog("Calling XamlCheckProcessRequirements");
+            var windowsVersion = GetActualWindowsVersion();
+            StartupLogger.Write(windowsVersion.DisplayName);
+            if (!windowsVersion.IsWindows11OrLater)
+            {
+                HandleUnsupportedWindowsError(windowsVersion);
+                return;
+            }
+
+            StartupLogger.Write("Calling XamlCheckProcessRequirements");
             // Verify WinUI 3 runtime requirements are met on this Windows version.
             // This call loads Microsoft.ui.xaml.dll; if the DLL is missing or
             // incompatible it throws DllNotFoundException / TypeLoadException here,
             // which we catch below before any WinUI type is touched.
-            // On a host OS below the SDK's minimum supported version the call may
-            // return false (rather than throwing), so we treat that as a failure too.
+            // A runtime or deployment incompatibility can return false rather than
+            // throwing, so surface that as a Windows App SDK failure.
             if (!XamlCheckProcessRequirements())
             {
-                HandleWindowsVersionError(
+                HandleWindowsAppSdkRequirementsError(
                     reason: "XamlCheckProcessRequirements() returned false",
-                    detail: null);
-                return; // HandleWindowsVersionError calls Environment.Exit; belt-and-braces.
+                    detail: windowsVersion.DisplayName);
+                return; // HandleWindowsAppSdkRequirementsError calls Environment.Exit; belt-and-braces.
             }
 
             // Required for WinUI 3 unpackaged apps
@@ -93,8 +143,8 @@ internal static class Program
                 "LES Location Agent could not start because a required Windows " +
                 "App SDK component failed to load." +
                 dllHint +
-                $"\n\nThe application requires {MinWindowsVersion} or later. " +
-                "Windows 11 already meets this operating-system requirement." +
+                "\n\nWindows 11 was detected, so the operating-system requirement " +
+                "is met." +
                 "\n\nThis usually means the installation is incomplete, the " +
                 "application was launched outside its install folder, or the " +
                 "Windows App SDK runtime is unavailable." +
@@ -111,7 +161,7 @@ internal static class Program
             WriteEventLogEntry(
                 $"Startup failed — Windows App SDK component could not be loaded.\n" +
                 $"{ex.GetType().Name}: {ex.Message}\n\n" +
-                $"Minimum required OS: {MinWindowsVersion}\n\n" +
+                "Windows 11 was detected before the WinUI startup check.\n\n" +
                 $"Stack trace:\n{ex.StackTrace}\n\n" +
                 $"Download the runtime from: {DownloadLink}",
                 EventLogEntryType.Error);
@@ -129,12 +179,91 @@ internal static class Program
         catch (Exception ex) when (ex is System.Runtime.InteropServices.SEHException)
         {
             // XamlCheckProcessRequirements() can raise an unmanaged structured
-            // exception (SEH) when the host Windows version is below the SDK's
-            // minimum.  Catch it here before it becomes an unhandled crash.
-            HandleWindowsVersionError(
+            // exception. Catch it here before it becomes an unhandled crash.
+            HandleWindowsAppSdkRequirementsError(
                 reason: "unmanaged exception from XamlCheckProcessRequirements()",
                 detail: $"{ex.GetType().Name}: {ex.Message}\n\nStack trace:\n{ex.StackTrace}");
         }
+    }
+
+    private static WindowsVersionInfo GetActualWindowsVersion()
+    {
+        var versionInfo = new RtlOsVersionInfoEx
+        {
+            OsVersionInfoSize = (uint)Marshal.SizeOf<RtlOsVersionInfoEx>(),
+            CsdVersion = string.Empty
+        };
+
+        if (RtlGetVersion(ref versionInfo) == 0)
+        {
+            return new WindowsVersionInfo(
+                versionInfo.MajorVersion,
+                versionInfo.MinorVersion,
+                versionInfo.BuildNumber,
+                versionInfo.ProductType);
+        }
+
+        var fallback = Environment.OSVersion.Version;
+        return new WindowsVersionInfo(
+            (uint)Math.Max(0, fallback.Major),
+            (uint)Math.Max(0, fallback.Minor),
+            (uint)Math.Max(0, fallback.Build),
+            ProductType: 0);
+    }
+
+    private static void HandleUnsupportedWindowsError(WindowsVersionInfo windowsVersion)
+    {
+        var message =
+            "LES Location Agent could not start because this PC does not meet " +
+            $"the minimum operating-system requirement.\n\nRequired: {MinWindowsVersion} " +
+            $"or later.\n\nDetected: {windowsVersion.DisplayName}." +
+            "\n\nUse a supported Windows 11 client edition (21H2 or later), then " +
+            "install the latest LES Location Agent MSI.";
+
+        WriteEventLogEntry(
+            $"Startup blocked — unsupported Windows version.\n" +
+            $"Required: {MinWindowsVersion}\n" +
+            $"Detected: {windowsVersion.DisplayName}",
+            EventLogEntryType.Error);
+
+        MessageBox(
+            nint.Zero,
+            message,
+            "LES Location Agent — Startup Error",
+            MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
+
+        Environment.Exit(1);
+    }
+
+    private static void HandleWindowsAppSdkRequirementsError(string reason, string? detail)
+    {
+        var windowsVersion = GetActualWindowsVersion();
+        var message =
+            "LES Location Agent could not complete its Windows App SDK " +
+            "startup check." +
+            $"\n\n{windowsVersion.DisplayName}. " +
+            $"This meets the {MinWindowsVersion} requirement." +
+            "\n\nThe issue is likely an unavailable, incompatible, or incomplete " +
+            "Windows App SDK installation—not an unsupported Windows version." +
+            "\n\nReinstall the latest LES Location Agent MSI. If the problem " +
+            "continues, install the Windows App SDK runtime and check the " +
+            "Windows Application Event Log for the full error.";
+
+        WriteEventLogEntry(
+            $"Startup failed — Windows App SDK requirements check did not succeed.\n" +
+            $"Cause: {reason}\n" +
+            $"Detected: {windowsVersion.DisplayName}\n" +
+            (detail is not null ? $"\n{detail}\n" : string.Empty) +
+            $"\nDownload the runtime from: {DownloadLink}",
+            EventLogEntryType.Error);
+
+        MessageBox(
+            nint.Zero,
+            message,
+            "LES Location Agent — Startup Error",
+            MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
+
+        Environment.Exit(1);
     }
 
     /// <summary>
@@ -165,43 +294,6 @@ internal static class Program
         {
             return false;
         }
-    }
-
-    /// <summary>
-    /// Surfaces a Windows-version incompatibility to the user and to the Event
-    /// Log, then exits the process.  Called both from the <c>false</c>-return
-    /// path and from the <see cref="SEHException"/> catch block.
-    /// </summary>
-    private static void HandleWindowsVersionError(string reason, string? detail)
-    {
-        string message =
-            "LES Location Agent could not complete the Windows App SDK " +
-            "requirements check." +
-            $"\n\nRequired operating system: {MinWindowsVersion} or later. " +
-            "Windows 11 meets this requirement." +
-            "\n\nIf this PC runs Windows 10 version 1809 or later, reinstall the " +
-            "latest LES Location Agent MSI, then download and run the Windows App " +
-            "SDK runtime installer if the problem continues:" +
-            $"\n\n{DownloadLink}" +
-            "\n\nCheck the Windows Event Log (Event Viewer → Windows Logs → " +
-            "Application) for an entry from \"LESLocationAgent\" with full details.";
-
-        string logMessage =
-            $"Startup failed — Windows App SDK requirements check did not succeed.\n" +
-            $"Cause: {reason}\n" +
-            $"Minimum required OS: {MinWindowsVersion}\n" +
-            (detail is not null ? $"\n{detail}\n" : string.Empty) +
-            $"\nDownload the runtime from: {DownloadLink}";
-
-        WriteEventLogEntry(logMessage, EventLogEntryType.Error);
-
-        MessageBox(
-            nint.Zero,
-            message,
-            "LES Location Agent — Startup Error",
-            MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
-
-        Environment.Exit(1);
     }
 
     /// <summary>
