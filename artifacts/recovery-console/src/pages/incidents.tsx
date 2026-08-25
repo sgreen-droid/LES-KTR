@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
-import { formatDistanceToNow, parseISO, format } from "date-fns";
 import { useListRecoveryIncidents } from "@/hooks/api";
+import { formatRecoveryDate } from "@/lib/recovery-dates";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -125,7 +125,7 @@ export default function IncidentsList() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-muted-foreground text-xs">
-                          {format(parseISO(incident.reportedAt), "MMM dd, HH:mm")}
+                          {formatRecoveryDate(incident.reportedAt, "MMM dd, HH:mm")}
                         </td>
                         <td className="px-6 py-4 text-right">
                           <Button variant="outline" size="sm" asChild className="rounded-none hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors uppercase text-[10px] font-bold tracking-widest">

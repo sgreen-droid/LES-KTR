@@ -1,6 +1,6 @@
 import { useParams, Link, useLocation } from "wouter";
-import { formatDistanceToNow, parseISO, format } from "date-fns";
 import { useGetRecoveryDevice, useCreateRecoveryIncident, getListRecoveryIncidentsQueryKey } from "@/hooks/api";
+import { formatRecoveryDate, formatRecoveryDistance, parseRecoveryDate } from "@/lib/recovery-dates";
 import { getGetRecoveryDeviceQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -119,6 +119,7 @@ export default function DeviceDetail() {
   const hasIntegrityIssues = integrityStatus === 'INVALID';
   const integrityNeedsReview = ['LEGACY', 'MISSING'].includes(integrityStatus ?? '');
   const hasHealthyAgent = ['OK', 'HEALTHY'].includes(device.agentHealth?.toUpperCase() ?? '');
+  const locationUpdatedDate = parseRecoveryDate(device.locationUpdated);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
@@ -168,9 +169,9 @@ export default function DeviceDetail() {
           <div className="space-y-1">
             <p className="font-mono text-xs font-bold uppercase tracking-widest text-primary">Last-known endpoint evidence</p>
             <p className="text-sm text-muted-foreground">
-              {device.locationUpdated
-                ? `The endpoint reported this location at ${format(parseISO(device.locationUpdated), "PP p")}.`
-                : "No endpoint location timestamp is available."}{" "}
+              {locationUpdatedDate
+                ? `The endpoint reported this location at ${formatRecoveryDate(device.locationUpdated, "PP p")}.`
+                : "No valid endpoint location timestamp is available."}{" "}
               This is not live tracking; a powered-off or disconnected PC cannot report a new location.
             </p>
           </div>
@@ -189,10 +190,10 @@ export default function DeviceDetail() {
                   <MapPin className="h-5 w-5 text-primary" />
                   <CardTitle className="uppercase tracking-widest text-sm text-foreground">Target Coordinates</CardTitle>
                 </div>
-                {device.locationUpdated && (
+                {locationUpdatedDate && (
                   <span className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1 bg-primary/10 px-2 py-1">
                     <Clock className="h-3 w-3" />
-                    Updated {formatDistanceToNow(parseISO(device.locationUpdated), { addSuffix: true })}
+                    Updated {formatRecoveryDistance(device.locationUpdated)}
                   </span>
                 )}
               </div>
@@ -331,7 +332,7 @@ export default function DeviceDetail() {
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Last Network Ping</p>
                 <p className="text-sm flex items-center gap-2">
                   <Clock className="h-3 w-3 text-primary" />
-                  {device.lastSeen ? format(parseISO(device.lastSeen), "MMM dd, HH:mm:ss") : "UNKNOWN"}
+                  {formatRecoveryDate(device.lastSeen, "MMM dd, HH:mm:ss", "UNKNOWN")}
                 </p>
               </div>
               <div className="space-y-2">
@@ -355,13 +356,13 @@ export default function DeviceDetail() {
               <div className="space-y-1">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Sync Attempt</p>
                 <p className="text-xs text-muted-foreground">
-                  {device.lastAttempt ? format(parseISO(device.lastAttempt), "MMM dd, HH:mm:ss") : "NEVER"}
+                  {formatRecoveryDate(device.lastAttempt, "MMM dd, HH:mm:ss", "NEVER")}
                 </p>
               </div>
               <div className="space-y-1">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Sync Success</p>
                 <p className="text-sm font-bold">
-                  {device.lastSuccess ? format(parseISO(device.lastSuccess), "MMM dd, HH:mm:ss") : "NEVER"}
+                  {formatRecoveryDate(device.lastSuccess, "MMM dd, HH:mm:ss", "NEVER")}
                 </p>
               </div>
             </CardContent>

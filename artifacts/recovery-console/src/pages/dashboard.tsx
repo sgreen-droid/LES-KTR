@@ -23,8 +23,8 @@ import {
   Crosshair
 } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
-import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
+import { formatRecoveryDate, formatRecoveryDistance } from "@/lib/recovery-dates";
 
 export default function Dashboard() {
   const [search, setSearch] = useState("");
@@ -111,7 +111,7 @@ export default function Dashboard() {
           <div className="space-y-1">
             <p className="font-mono text-xs font-bold uppercase tracking-widest text-primary">Last-known telemetry only</p>
             <p className="text-sm text-muted-foreground">
-              Action1 snapshot refreshed {deviceList?.refreshedAt ? format(parseISO(deviceList.refreshedAt), "PP p") : "when available"}.
+              Action1 snapshot refreshed {formatRecoveryDate(deviceList?.refreshedAt, "PP p", "when available")}.
               Location timestamps come from the endpoint; a powered-off or disconnected PC cannot be located.
             </p>
           </div>
@@ -260,7 +260,7 @@ export default function Dashboard() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
-                          {device.lastSeen ? formatDistanceToNow(parseISO(device.lastSeen), { addSuffix: true }) : "NEVER"}
+                          {formatRecoveryDistance(device.lastSeen, "NEVER")}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <Button variant="outline" size="sm" asChild className="rounded-none hover:bg-secondary hover:text-secondary-foreground uppercase text-[10px] font-bold tracking-widest">

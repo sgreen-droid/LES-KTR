@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "wouter";
-import { format, parseISO } from "date-fns";
 import { useGetRecoveryIncident, useUpdateRecoveryIncident, useExportRecoveryIncident, getGetRecoveryIncidentQueryKey, getListRecoveryIncidentsQueryKey } from "@/hooks/api";
+import { formatRecoveryDate } from "@/lib/recovery-dates";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -314,11 +314,11 @@ export default function IncidentDetail() {
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Reported</p>
-                    <p className="text-xs">{format(parseISO(incident.reportedAt), "MMM dd, HH:mm")}</p>
+                    <p className="text-xs">{formatRecoveryDate(incident.reportedAt, "MMM dd, HH:mm")}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Resolved</p>
-                    <p className="text-xs">{incident.resolvedAt ? format(parseISO(incident.resolvedAt), "MMM dd, HH:mm") : "-"}</p>
+                    <p className="text-xs">{formatRecoveryDate(incident.resolvedAt, "MMM dd, HH:mm", "-")}</p>
                   </div>
                 </div>
               )}
@@ -349,7 +349,7 @@ export default function IncidentDetail() {
                       </div>
                       <div className="text-right">
                         <Badge variant="outline" className="rounded-none text-[10px] uppercase tracking-widest border-border bg-muted/30">
-                          Captured: {format(parseISO(ev.capturedAt), "PP p")}
+                          Captured: {formatRecoveryDate(ev.capturedAt, "PP p")}
                         </Badge>
                       </div>
                     </div>
@@ -373,7 +373,7 @@ export default function IncidentDetail() {
                             </span>
                           </p>
                           <p className="text-[10px] text-muted-foreground">
-                            Status: {ev.device.locationStatus || "Unavailable"} · Action1 snapshot: {format(parseISO(ev.sourceRefreshedAt), "PP p")}
+                            Status: {ev.device.locationStatus || "Unavailable"} · Action1 snapshot: {formatRecoveryDate(ev.sourceRefreshedAt, "PP p")}
                           </p>
                         </div>
                       </div>
@@ -422,7 +422,7 @@ export default function IncidentDetail() {
                           <Badge variant="outline" className={`rounded-none text-[8px] uppercase tracking-widest px-1.5 py-0 ${badgeColor}`}>
                             {entry.eventType}
                           </Badge>
-                          <span className="text-[10px] text-muted-foreground">{format(parseISO(entry.occurredAt), "MMM dd, HH:mm")}</span>
+                          <span className="text-[10px] text-muted-foreground">{formatRecoveryDate(entry.occurredAt, "MMM dd, HH:mm")}</span>
                         </div>
                         <div className="text-xs mt-1 bg-card border border-border p-2 shadow-sm whitespace-pre-wrap font-sans">
                           {entry.summary}
