@@ -382,6 +382,10 @@ Run `Action1-LESLocationAgent-Health.ps1` on any endpoint to report:
 
 ## Recovery Operations
 
+For the complete administrator runbook, Action1 operations pack, stolen-PC
+response procedure, privacy controls, and acceptance checklist, see
+[`docs/RECOVERY-OPERATIONS-RUNBOOK.md`](docs/RECOVERY-OPERATIONS-RUNBOOK.md).
+
 Use Action1 to create alert policies from the recovery attributes:
 
 | Condition | Recommended Action1 response |
@@ -479,15 +483,14 @@ The dialog can distinguish these cases:
 | **The XAML DLL does not provide the required startup export** | Reinstall the latest MSI. The installed XAML runtime is incomplete or incompatible. |
 | **x64 architecture mismatch** | Use the x64 MSI on a 64-bit Windows 11 PC. |
 | **Windows could not load the XAML DLL or a native dependency** | Reinstall the MSI first. If the diagnostic also says the x64 Visual C++ runtime is not detected, repair that runtime next. Windows error 126 does not name the missing transitive DLL, so the agent does not claim Visual C++ is definitely the cause. |
-| **Windows App SDK readiness check returned false** | Install or repair the Windows App SDK Runtime (x64), then restart Windows. |
 | **Windows did not identify one specific missing dependency** | Reinstall the MSI first. The dialog and log show the Windows loader error and the files the agent found; do not install unrelated software at random. |
 
-Use only these official Microsoft installers when the dialog identifies the matching problem:
+This is a self-contained deployment: do **not** install the Windows App SDK
+Runtime as a workaround. The MSI carries the Windows App SDK files it needs.
+Use this official Microsoft installer only when the dialog identifies a native
+dependency failure and the Visual C++ x64 runtime is not detected:
 
 ```text
-Windows App SDK Runtime (x64)
-https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe
-
 Visual C++ Redistributable 2015–2022 (x64)
 https://aka.ms/vs/17/release/vc_redist.x64.exe
 ```
@@ -500,7 +503,7 @@ C:\ProgramData\LESLocationAgent\startup.log
 Event Viewer → Windows Logs → Application → Source: LESLocationAgent → Event ID 1000
 ```
 
-It includes the installed application directory, presence/version/architecture of `Microsoft.ui.xaml.dll`, Windows loader error number and message when one is available, process and OS architecture, Visual C++ x64 runtime evidence, and the Windows App SDK readiness result. It does not include location data, passwords, tokens, or recovery data.
+It includes the installed application directory, presence/version/architecture of `Microsoft.ui.xaml.dll`, Windows loader error number and message when one is available, process and OS architecture, Visual C++ x64 runtime evidence, and the XAML startup-check result. It does not include location data, passwords, tokens, or recovery data.
 
 The CI pipeline verifies that the published self-contained package includes the agent executable, its .NET runtime files, `Microsoft.ui.xaml.dll`, `Microsoft.WindowsAppRuntime.dll`, and the event-message resource required for Application-log diagnostics.
 

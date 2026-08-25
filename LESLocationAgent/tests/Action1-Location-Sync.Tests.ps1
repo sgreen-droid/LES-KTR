@@ -27,6 +27,14 @@ function Assert-Equal {
     }
 }
 
+function Assert-MapFieldsCleared {
+    param([string]$Name)
+
+    foreach ($field in @('Map Link', 'Location Coordinates', 'Location Summary')) {
+        Assert-Equal "$Name: $field" '' $global:LesCapturedAttributes[$field]
+    }
+}
+
 try {
     New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
     $timestamp = [DateTimeOffset]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
@@ -128,7 +136,7 @@ try {
     }
 
     # A signed record that is changed after writing must be visible as untrusted
-    # and must never create a map link.
+    # and clear map fields that Action1 might otherwise retain from a prior run.
     $tamperedLocation = [pscustomobject]@{
         latitude          = 41.000000
         longitude         = -73.859357
@@ -145,7 +153,11 @@ try {
         integrityHmac     = $integrityHmac
     }
     $tamperedLocation | ConvertTo-Json | Set-Content -Path $locationFile -Encoding UTF8
-    $global:LesCapturedAttributes = @{}
+    $global:LesCapturedAttributes = @{
+        'Map Link' = 'https://example.invalid/previous-location'
+        'Location Coordinates' = '40.839466, -73.859357'
+        'Location Summary' = 'previous location'
+    }
     $global:LesOptionalAttributeFailures = @()
     & $scriptPath
     Assert-Equal 'Location Status after integrity failure' 'ERROR' `
@@ -154,11 +166,7 @@ try {
         $global:LesCapturedAttributes['Location Integrity']
     Assert-Equal 'Agent Health after tampering' 'INTEGRITY FAILED' `
         $global:LesCapturedAttributes['Agent Health']
-    if ($global:LesCapturedAttributes.ContainsKey('Map Link') -or
-        $global:LesCapturedAttributes.ContainsKey('Location Coordinates') -or
-        $global:LesCapturedAttributes.ContainsKey('Location Summary')) {
-        throw 'An integrity failure must not update map-related attributes.'
-    }
+    Assert-MapFieldsCleared 'Map fields after integrity failure'
 
     # Tampering that also makes a coordinate invalid must be distinguished from
     # a normal bad reading: it is an integrity failure, not merely ERROR input.
@@ -191,11 +199,7 @@ try {
             $global:LesCapturedAttributes['Location Integrity']
         Assert-Equal "Recovery Status after $($invalid.Label)" 'ERROR' `
             $global:LesCapturedAttributes['Recovery Status']
-        if ($global:LesCapturedAttributes.ContainsKey('Map Link') -or
-            $global:LesCapturedAttributes.ContainsKey('Location Coordinates') -or
-            $global:LesCapturedAttributes.ContainsKey('Location Summary')) {
-            throw "$($invalid.Label) must not update map-related attributes."
-        }
+        Assert-MapFieldsCleared "Map fields after $($invalid.Label)"
     }
 
     # Invalid numeric, NaN, and infinite coordinates must never set map fields.
@@ -215,11 +219,7 @@ try {
         $global:LesOptionalAttributeFailures = @()
         & $scriptPath
 
-        if ($global:LesCapturedAttributes.ContainsKey('Map Link') -or
-            $global:LesCapturedAttributes.ContainsKey('Location Coordinates') -or
-            $global:LesCapturedAttributes.ContainsKey('Location Summary')) {
-            throw "$($invalid.Label) must not update map-related attributes."
-        }
+        Assert-MapFieldsCleared "Map fields after $($invalid.Label)"
         Assert-Equal "Location Status after $($invalid.Label)" 'ERROR' `
             $global:LesCapturedAttributes['Location Status']
     }

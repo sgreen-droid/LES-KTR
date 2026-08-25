@@ -30,13 +30,13 @@ public sealed class StartupDiagnosticClassifierTests
     [Theory]
     [InlineData(StartupDiagnosticClassifier.ErrorBadExeFormat)]
     [InlineData(StartupDiagnosticClassifier.ErrorExeMachineTypeMismatch)]
-    public void Classify_WhenWindowsReportsArchitectureMismatch_ExplainsTheX64Requirement(int errorCode)
+    public void Classify_WhenWindowsReportsALoaderFormatMismatch_DoesNotOverstateWhichBinaryIsWrong(int errorCode)
     {
         var result = StartupDiagnosticClassifier.Classify(
             Evidence(NativeLoaderErrorCode: errorCode));
 
-        result.FailureKind.Should().Be(StartupFailureKind.IncompatibleArchitecture);
-        result.RecommendedAction.Should().Contain("x64");
+        result.FailureKind.Should().Be(StartupFailureKind.NativeDependencyLoadFailure);
+        result.IsSpecific.Should().BeFalse();
     }
 
     [Fact]
@@ -64,14 +64,14 @@ public sealed class StartupDiagnosticClassifierTests
     }
 
     [Fact]
-    public void Classify_WhenTheSdkCheckReturnsFalse_ReportsTheCheckResultWithoutInventingACause()
+    public void Classify_WhenTheXamlStartupCheckFails_ReportsTheCheckResultWithoutInventingACause()
     {
         var result = StartupDiagnosticClassifier.Classify(
             Evidence(XamlRequirementsSatisfied: false));
 
         result.FailureKind.Should().Be(StartupFailureKind.WindowsAppSdkRequirementsFailed);
         result.IsSpecific.Should().BeFalse();
-        result.Summary.Should().Contain("returned false");
+        result.Summary.Should().Contain("did not complete successfully");
     }
 
     [Fact]

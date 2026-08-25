@@ -229,7 +229,7 @@ function Set-RecoveryAttributes {
 function Set-ErrorState {
     param([string]$Status, [string]$Reason, [string]$PermissionStatus)
     Write-Warning "Location Sync: $Reason"
-    Write-Warning 'Map Link not updated — valid coordinates unavailable.'
+    Write-Warning 'Map fields cleared — valid coordinates are unavailable or untrusted.'
     Set-Attribute 'Latitude'          ''
     Set-Attribute 'Longitude'         ''
     Set-Attribute 'Location Accuracy' ''
@@ -239,6 +239,12 @@ function Set-ErrorState {
     Set-Attribute 'Location Permission' $PermissionStatus
     Set-Attribute 'Location Updated'  ''
     Set-Attribute 'Location Status'   $Status
+    # These recovery attributes are optional during rollout, but when they
+    # exist they must not retain a prior map after a missing, invalid, or
+    # untrusted record.
+    Set-OptionalAttribute 'Map Link'             ''
+    Set-OptionalAttribute 'Location Coordinates' ''
+    Set-OptionalAttribute 'Location Summary'     ''
     Set-RecoveryAttributes $script:locationData $script:statusData `
         $Status $script:integrityStatus
     Write-Output "RESULT: $Status — $Reason"
@@ -293,7 +299,7 @@ $script:locationData = $data
 $script:integrityStatus = Get-LocationIntegrityStatus $data $StateFile
 if ($script:integrityStatus -eq 'INVALID') {
     Set-ErrorState 'ERROR' `
-        'Location integrity verification failed; map fields were not updated.' `
+        'Location integrity verification failed; map fields were cleared.' `
         $permissionStatus
     return
 }
@@ -388,7 +394,7 @@ try {
     }
     $locationSummary = "$locationCoordinates | ±$summaryAccuracy m | $summarySource | $locationStatus"
 } catch {
-    Write-Warning "Map Link not updated — could not format valid coordinates: $_"
+    Write-Warning "Map fields cleared — could not format valid coordinates: $_"
 }
 
 # 10. Set all Custom Attributes
@@ -409,7 +415,10 @@ if ($null -ne $mapLink) {
     Set-OptionalAttribute 'Location Coordinates' $locationCoordinates
     Set-OptionalAttribute 'Location Summary'     $locationSummary
 } else {
-    Write-Warning 'Map Link not updated — valid coordinates unavailable.'
+    Write-Warning 'Map fields cleared — valid coordinates unavailable or untrusted.'
+    Set-OptionalAttribute 'Map Link'             ''
+    Set-OptionalAttribute 'Location Coordinates' ''
+    Set-OptionalAttribute 'Location Summary'     ''
 }
 
 Write-Host "`n=== Sync complete ==="
@@ -418,5 +427,5 @@ Write-Output "Latitude: $lat  Longitude: $lon  Accuracy: $accuracyMeters m  Qual
 if ($null -ne $mapLink) {
     Write-Output "Map: $mapLink"
 } else {
-    Write-Output 'Map Link not updated — valid coordinates unavailable.'
+    Write-Output 'Map fields cleared — valid coordinates unavailable or untrusted.'
 }

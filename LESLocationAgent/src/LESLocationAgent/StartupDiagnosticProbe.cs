@@ -14,13 +14,10 @@ internal static class StartupDiagnosticProbe
 {
     private const uint LoadLibrarySearchDllLoadDir = 0x00000100;
     private const uint LoadLibrarySearchDefaultDirs = 0x00001000;
-    private const uint Scs32BitBinary = 0;
-    private const uint Scs64BitBinary = 6;
     private const int ErrorProcNotFound = 127;
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private delegate bool XamlCheckProcessRequirementsDelegate();
+    private delegate void XamlCheckProcessRequirementsDelegate();
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern nint LoadLibraryEx(
@@ -34,10 +31,6 @@ internal static class StartupDiagnosticProbe
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern nint GetProcAddress(nint hModule, string procName);
-
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetBinaryType(string lpApplicationName, out uint lpBinaryType);
 
     internal static StartupDiagnosticInspection InspectAndCheckRequirements()
     {
@@ -53,7 +46,9 @@ internal static class StartupDiagnosticProbe
         var evidence = new StartupDiagnosticEvidence(
             XamlDllExists: xamlDllExists,
             WindowsAppRuntimeDllExists: appRuntimeDllExists,
-            XamlDllArchitecture: xamlDllExists ? GetBinaryArchitecture(xamlDllPath) : "not present",
+            XamlDllArchitecture: xamlDllExists
+                ? PortableExecutableArchitecture.Inspect(xamlDllPath)
+                : "not present",
             Is64BitProcess: Environment.Is64BitProcess,
             Is64BitOperatingSystem: Environment.Is64BitOperatingSystem,
             VisualCppRuntimeDetected: visualCpp.Detected,
@@ -122,9 +117,9 @@ internal static class StartupDiagnosticProbe
             try
             {
                 var check = Marshal.GetDelegateForFunctionPointer<XamlCheckProcessRequirementsDelegate>(export);
-                var requirementsSatisfied = check();
+                check();
                 return new StartupDiagnosticInspection(
-                    evidence with { XamlRequirementsSatisfied = requirementsSatisfied },
+                    evidence with { XamlRequirementsSatisfied = true },
                     applicationDirectory,
                     xamlDllPath,
                     xamlDllVersion,
@@ -135,7 +130,7 @@ internal static class StartupDiagnosticProbe
             catch (Exception ex) when (ex is SEHException or TypeLoadException)
             {
                 return new StartupDiagnosticInspection(
-                    evidence,
+                    evidence with { XamlRequirementsSatisfied = false },
                     applicationDirectory,
                     xamlDllPath,
                     xamlDllVersion,
@@ -148,21 +143,6 @@ internal static class StartupDiagnosticProbe
         {
             FreeLibrary(library);
         }
-    }
-
-    private static string GetBinaryArchitecture(string filePath)
-    {
-        if (!GetBinaryType(filePath, out var binaryType))
-        {
-            return $"unknown (Windows error {Marshal.GetLastWin32Error()})";
-        }
-
-        return binaryType switch
-        {
-            Scs64BitBinary => "x64",
-            Scs32BitBinary => "x86",
-            _ => $"unknown (binary type {binaryType})"
-        };
     }
 
     private static string? TryGetFileVersion(string filePath)
@@ -260,7 +240,7 @@ internal sealed record StartupDiagnosticInspection(
         $"Windows loader result: {DescribeLoaderResult()}\n" +
         $"XAML startup export: {DescribeXamlStartupExport()}\n" +
         $"Windows App SDK readiness: {(Evidence.XamlRequirementsSatisfied.HasValue
-            ? Evidence.XamlRequirementsSatisfied.Value ? "passed" : "returned false"
+                ? Evidence.XamlRequirementsSatisfied.Value ? "passed" : "failed"
             : "not called")}" +
         (NativeProbeException is null ? string.Empty : $"\nNative startup exception: {NativeProbeException}") +
         $"\nRecommended action: {result.RecommendedAction}";
