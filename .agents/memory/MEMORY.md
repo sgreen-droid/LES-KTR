@@ -1,7 +1,7 @@
 - [WinUI3 SDK pinning](winui3-sdk-pinning.md) — GitHub Actions windows-latest now ships .NET SDK 10; WinUI 3 PRI tasks break on SDK 10; pin to 8.x via global.json.
 - [H.NotifyIcon WinUI API](h-notifyicon-winui-api.md) — No public events; use LeftClickCommand (ICommand). Global\ named events crash non-elevated processes; use Local\. Capture DispatcherQueue on UI thread before spawning listener thread.
 - [WinUI3 XBF loader failure](winui3-xbf-loader.md) — self-contained unpackaged WinUI 3: LoadComponent can fail with "XAML parsing failed" regardless of XAML content; build UI in code. Location consent auto-grant via HKCU ConsentStore.
-- [WinUI3 startup diagnostics](winui3-startup-diagnostics.md) — inspect the XAML DLL as a PE file and invoke its startup check as void to avoid false runtime failures.
+- [WinUI3 startup diagnostics](winui3-startup-diagnostics.md) — inspect the XAML DLL as a PE file; do not invoke the legacy XAML compatibility export as a startup gate.
 - [Action1 API rate limiting](action1-api-rate-limiting.md) — Token requests can return a long Retry-After; stop retries and resume only after that provider cooldown.
 - [OpenAPI Zod 3 contracts](openapi-zod3-contracts.md) — portable string/number schemas avoid unsupported generated Zod helpers in this workspace.
 - [Action1 map attribute clearing](action1-map-attribute-clearing.md) — clear map-derived attributes on invalid/no-location data so old, untrusted locations cannot look current.
