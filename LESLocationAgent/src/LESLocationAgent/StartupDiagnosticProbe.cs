@@ -14,10 +14,6 @@ internal static class StartupDiagnosticProbe
 {
     private const uint LoadLibrarySearchDllLoadDir = 0x00000100;
     private const uint LoadLibrarySearchDefaultDirs = 0x00001000;
-    private const int ErrorProcNotFound = 127;
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    private delegate void XamlCheckProcessRequirementsDelegate();
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern nint LoadLibraryEx(
@@ -28,9 +24,6 @@ internal static class StartupDiagnosticProbe
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool FreeLibrary(nint hLibModule);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern nint GetProcAddress(nint hModule, string procName);
 
     internal static StartupDiagnosticInspection InspectAndCheckRequirements()
     {
@@ -95,49 +88,19 @@ internal static class StartupDiagnosticProbe
 
         try
         {
-            var export = GetProcAddress(library, "XamlCheckProcessRequirements");
-            if (export == nint.Zero)
-            {
-                var errorCode = Marshal.GetLastWin32Error();
-                return new StartupDiagnosticInspection(
-                    evidence with
-                    {
-                        XamlRequirementsExportErrorCode = errorCode == 0 ? ErrorProcNotFound : errorCode,
-                        XamlRequirementsExportErrorMessage = DescribeWindowsError(
-                            errorCode == 0 ? ErrorProcNotFound : errorCode)
-                    },
-                    applicationDirectory,
-                    xamlDllPath,
-                    xamlDllVersion,
-                    appRuntimeDllExists,
-                    visualCpp.Evidence,
-                    NativeProbeException: null);
-            }
-
-            try
-            {
-                var check = Marshal.GetDelegateForFunctionPointer<XamlCheckProcessRequirementsDelegate>(export);
-                check();
-                return new StartupDiagnosticInspection(
-                    evidence with { XamlRequirementsSatisfied = true },
-                    applicationDirectory,
-                    xamlDllPath,
-                    xamlDllVersion,
-                    appRuntimeDllExists,
-                    visualCpp.Evidence,
-                    NativeProbeException: null);
-            }
-            catch (Exception ex) when (ex is SEHException or TypeLoadException)
-            {
-                return new StartupDiagnosticInspection(
-                    evidence with { XamlRequirementsSatisfied = false },
-                    applicationDirectory,
-                    xamlDllPath,
-                    xamlDllVersion,
-                    appRuntimeDllExists,
-                    visualCpp.Evidence,
-                    NativeProbeException: $"{ex.GetType().Name}: {ex.Message}");
-            }
+            // XamlCheckProcessRequirements is retained by the Windows App SDK for
+            // binary compatibility and is documented as a no-op on supported
+            // current runtimes. Do not invoke its undocumented native export as a
+            // startup gate: a manual function-pointer call can produce a false
+            // failure even after Windows has loaded the packaged XAML DLL.
+            return new StartupDiagnosticInspection(
+                evidence with { XamlRequirementsSatisfied = true },
+                applicationDirectory,
+                xamlDllPath,
+                xamlDllVersion,
+                appRuntimeDllExists,
+                visualCpp.Evidence,
+                NativeProbeException: null);
         }
         finally
         {
@@ -255,5 +218,5 @@ internal sealed record StartupDiagnosticInspection(
     private string DescribeXamlStartupExport() =>
         Evidence.XamlRequirementsExportErrorCode.HasValue
             ? $"{Evidence.XamlRequirementsExportErrorCode}: {Evidence.XamlRequirementsExportErrorMessage}"
-            : "XamlCheckProcessRequirements found";
+            : "not invoked (legacy Windows App SDK compatibility no-op)";
 }

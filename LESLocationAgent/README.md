@@ -225,7 +225,7 @@ Open `location.json`. It should look like:
   "permissionStatus": "Allowed",
   "timestampUtc": "2026-08-11T18:35:42Z",
   "computerName": "LES-LAPTOP-001",
-  "agentVersion": "1.1.5",
+  "agentVersion": "1.1.6",
   "deviceId": "d2719f71-a1cb-4ae2-b2fb-4ee88a008620",
   "recordSequence": 42,
   "integrityAlgorithm": "HMAC-SHA256-IEEE754LE",
@@ -486,7 +486,7 @@ Signed installers show your publisher name in Windows SmartScreen instead of "Un
 
 ### App won't start after installation
 
-The agent supports Windows 11 version 21H2 (build 22000) and later. Starting with agent version **1.1.5**, the startup dialog first inspects the installed self-contained files and asks Windows to load the exact `Microsoft.ui.xaml.dll` beside the agent. It then reports the evidence it found rather than guessing.
+The agent supports Windows 11 version 21H2 (build 22000) and later. Starting with agent version **1.1.6**, the startup dialog first inspects the installed self-contained files and asks Windows to load the exact `Microsoft.ui.xaml.dll` beside the agent. It reports verifiable file, architecture, and loader evidence rather than invoking the legacy `XamlCheckProcessRequirements` compatibility export as a startup gate.
 
 The dialog can distinguish these cases:
 
@@ -547,8 +547,8 @@ When you are ready to deploy to endpoints, publish a tagged GitHub Release so Ac
 Run these commands locally (or in any terminal with git access):
 
 ```powershell
-git tag v1.1.5
-git push origin v1.1.5
+git tag v1.1.6
+git push origin v1.1.6
 ```
 
 That's it. GitHub Actions detects the `v*.*.*` tag, builds the MSI, and automatically creates a GitHub Release with the following files attached:
