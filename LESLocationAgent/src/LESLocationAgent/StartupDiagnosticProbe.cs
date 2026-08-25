@@ -72,7 +72,7 @@ internal static class StartupDiagnosticProbe
                 null,
                 appRuntimeDllExists,
                 visualCpp.Evidence,
-                nativeProbeException: null);
+                NativeProbeException: null);
         }
 
         var xamlDllVersion = TryGetFileVersion(xamlDllPath);
@@ -95,7 +95,7 @@ internal static class StartupDiagnosticProbe
                 xamlDllVersion,
                 appRuntimeDllExists,
                 visualCpp.Evidence,
-                nativeProbeException: null);
+                NativeProbeException: null);
         }
 
         try
@@ -116,7 +116,7 @@ internal static class StartupDiagnosticProbe
                     xamlDllVersion,
                     appRuntimeDllExists,
                     visualCpp.Evidence,
-                    nativeProbeException: null);
+                    NativeProbeException: null);
             }
 
             try
@@ -130,7 +130,7 @@ internal static class StartupDiagnosticProbe
                     xamlDllVersion,
                     appRuntimeDllExists,
                     visualCpp.Evidence,
-                    nativeProbeException: null);
+                    NativeProbeException: null);
             }
             catch (Exception ex) when (ex is SEHException or TypeLoadException)
             {
@@ -141,7 +141,7 @@ internal static class StartupDiagnosticProbe
                     xamlDllVersion,
                     appRuntimeDllExists,
                     visualCpp.Evidence,
-                    nativeProbeException: $"{ex.GetType().Name}: {ex.Message}");
+                    NativeProbeException: $"{ex.GetType().Name}: {ex.Message}");
             }
         }
         finally
