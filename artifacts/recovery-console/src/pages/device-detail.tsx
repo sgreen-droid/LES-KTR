@@ -113,9 +113,12 @@ export default function DeviceDetail() {
     );
   }
 
-  const hasLocation = !!device.latitude && !!device.longitude;
+  const hasLocation = device.latitude !== null && device.longitude !== null;
   const isStale = device.recoveryStatus === 'STALE';
-  const hasIntegrityIssues = device.locationIntegrity && device.locationIntegrity !== 'OK';
+  const integrityStatus = device.locationIntegrity?.toUpperCase();
+  const hasIntegrityIssues = integrityStatus === 'INVALID';
+  const integrityNeedsReview = ['LEGACY', 'MISSING'].includes(integrityStatus ?? '');
+  const hasHealthyAgent = ['OK', 'HEALTHY'].includes(device.agentHealth?.toUpperCase() ?? '');
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
@@ -158,6 +161,21 @@ export default function DeviceDetail() {
           </Badge>
         </div>
       </div>
+
+      <Card className="rounded-none border-l-4 border-l-primary shadow-none bg-primary/5">
+        <CardContent className="p-4 flex items-start gap-3">
+          <Clock className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="space-y-1">
+            <p className="font-mono text-xs font-bold uppercase tracking-widest text-primary">Last-known endpoint evidence</p>
+            <p className="text-sm text-muted-foreground">
+              {device.locationUpdated
+                ? `The endpoint reported this location at ${format(parseISO(device.locationUpdated), "PP p")}.`
+                : "No endpoint location timestamp is available."}{" "}
+              This is not live tracking; a powered-off or disconnected PC cannot report a new location.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content Column */}
@@ -247,7 +265,7 @@ export default function DeviceDetail() {
           </Card>
 
           {/* Assessment Warnings */}
-          {(isStale || hasIntegrityIssues || device.locationError) && (
+          {(isStale || hasIntegrityIssues || integrityNeedsReview || device.locationError) && (
             <Card className="rounded-none border-t-4 border-t-orange-500 bg-orange-500/5 shadow-none">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm uppercase tracking-widest font-bold flex items-center gap-2 text-orange-600">
@@ -269,6 +287,14 @@ export default function DeviceDetail() {
                     <ShieldAlert className="h-4 w-4 mt-0.5 text-red-600" />
                     <div className="text-red-700">
                       <span className="font-bold">INTEGRITY COMPROMISED:</span> {device.locationIntegrity}. Suspect spoofing or tampering.
+                    </div>
+                  </div>
+                )}
+                {integrityNeedsReview && (
+                  <div className="flex items-start gap-3 p-3 bg-muted border-l-2 border-muted-foreground">
+                    <Info className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <span className="font-bold">INTEGRITY STATUS UNAVAILABLE:</span> {integrityStatus}. This is not an integrity failure, but operators should verify the agent record before relying on it.
                     </div>
                   </div>
                 )}
@@ -310,7 +336,7 @@ export default function DeviceDetail() {
               </div>
               <div className="space-y-2">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Agent Health</p>
-                <Badge variant="outline" className={`rounded-none text-[10px] uppercase tracking-widest font-bold ${device.agentHealth === "OK" ? "bg-green-500/10 text-green-600 border-green-500" : "bg-muted text-muted-foreground border-border"}`}>
+                <Badge variant="outline" className={`rounded-none text-[10px] uppercase tracking-widest font-bold ${hasHealthyAgent ? "bg-green-500/10 text-green-600 border-green-500" : "bg-muted text-muted-foreground border-border"}`}>
                   {device.agentHealth || "UNKNOWN"}
                 </Badge>
               </div>

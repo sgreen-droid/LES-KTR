@@ -382,6 +382,10 @@ Run `Action1-LESLocationAgent-Health.ps1` on any endpoint to report:
 
 ## Recovery Operations
 
+For the complete administrator runbook, Action1 operations pack, stolen-PC
+response procedure, privacy controls, and acceptance checklist, see
+[`docs/RECOVERY-OPERATIONS-RUNBOOK.md`](docs/RECOVERY-OPERATIONS-RUNBOOK.md).
+
 Use Action1 to create alert policies from the recovery attributes:
 
 | Condition | Recommended Action1 response |

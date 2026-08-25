@@ -368,7 +368,7 @@ export default function IncidentDetail() {
                         <div className="space-y-1">
                           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Assessment / provenance</p>
                           <p className="text-xs truncate" title={ev.device.locationSummary || ""}>
-                            <span className={ev.device.locationIntegrity === "OK" ? "text-green-600" : "text-destructive font-bold"}>
+                            <span className={ev.device.locationIntegrity?.toUpperCase() === "VALID" ? "text-green-600" : ev.device.locationIntegrity?.toUpperCase() === "INVALID" ? "text-destructive font-bold" : "text-muted-foreground"}>
                               Integrity: {ev.device.locationIntegrity || "UNKNOWN"}
                             </span>
                           </p>

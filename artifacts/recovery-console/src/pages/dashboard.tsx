@@ -23,7 +23,7 @@ import {
   Crosshair
 } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
-import { formatDistanceToNow, parseISO } from "date-fns";
+import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function Dashboard() {
@@ -104,6 +104,19 @@ export default function Dashboard() {
         <h1 className="text-3xl font-bold tracking-tight font-mono uppercase">Fleet Radar</h1>
         <p className="text-muted-foreground font-mono text-sm">Monitor and assess endpoint recovery status across the organization.</p>
       </div>
+
+      <Card className="rounded-none border-l-4 border-l-primary shadow-none bg-primary/5">
+        <CardContent className="p-4 flex items-start gap-3">
+          <Clock className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="space-y-1">
+            <p className="font-mono text-xs font-bold uppercase tracking-widest text-primary">Last-known telemetry only</p>
+            <p className="text-sm text-muted-foreground">
+              Action1 snapshot refreshed {deviceList?.refreshedAt ? format(parseISO(deviceList.refreshedAt), "PP p") : "when available"}.
+              Location timestamps come from the endpoint; a powered-off or disconnected PC cannot be located.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="rounded-none border-t-4 border-t-secondary shadow-none">
         <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4">
@@ -188,6 +201,18 @@ export default function Dashboard() {
                 ) : (
                   deviceList?.devices.map((device) => {
                     const isSelected = selectedEndpoints.has(device.endpointId);
+                    const locationStatus = device.locationStatus?.toUpperCase();
+                    const locationStatusClass =
+                      locationStatus === "ACTIVE"
+                        ? "text-green-600"
+                        : locationStatus === "STALE"
+                          ? "text-orange-600"
+                          : ["NO LOCATION", "PERMISSION DENIED", "ERROR"].includes(locationStatus ?? "")
+                            ? "text-destructive"
+                            : "text-muted-foreground";
+                    const integrityStatus = device.locationIntegrity?.toUpperCase();
+                    const integrityIsInvalid = integrityStatus === "INVALID";
+                    const integrityNeedsReview = ["LEGACY", "MISSING"].includes(integrityStatus ?? "");
                     return (
                       <tr key={device.endpointId} className={`transition-colors group ${isSelected ? "bg-primary/5" : "hover:bg-muted/30"}`}>
                         <td className="px-4 py-3 text-center">
@@ -218,13 +243,18 @@ export default function Dashboard() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-1">
-                            <span className={`text-xs font-bold ${device.locationStatus === 'ONLINE' ? 'text-green-600' : 'text-muted-foreground'}`}>
+                            <span className={`text-xs font-bold ${locationStatusClass}`}>
                               {device.locationStatus || "UNKNOWN"}
                             </span>
-                            {device.locationIntegrity && device.locationIntegrity !== "OK" && (
+                            {integrityIsInvalid && (
                               <span className="text-[10px] text-destructive flex items-center gap-1">
                                 <AlertTriangle className="h-3 w-3" />
-                                {device.locationIntegrity}
+                                Integrity: INVALID
+                              </span>
+                            )}
+                            {integrityNeedsReview && (
+                              <span className="text-[10px] text-muted-foreground">
+                                Integrity: {integrityStatus}
                               </span>
                             )}
                           </div>
