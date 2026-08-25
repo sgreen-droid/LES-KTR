@@ -225,7 +225,7 @@ Open `location.json`. It should look like:
   "permissionStatus": "Allowed",
   "timestampUtc": "2026-08-11T18:35:42Z",
   "computerName": "LES-LAPTOP-001",
-  "agentVersion": "1.1.5",
+  "agentVersion": "1.1.6",
   "deviceId": "d2719f71-a1cb-4ae2-b2fb-4ee88a008620",
   "recordSequence": 42,
   "integrityAlgorithm": "HMAC-SHA256-IEEE754LE",
@@ -358,12 +358,25 @@ Use `Action1-Install-LESLocationAgent.ps1` to deploy silently to many PCs:
    SHA-256 value in the script before uploading it to Action1.
 4. Upload the script to Action1 and run it as a software deployment task.
 
+**Important after a release is rebuilt or republished:** Action1 stores the
+script content that was uploaded to its automation library; it does not
+automatically refresh that copy from GitHub. Download the installer script
+again from the exact release you are deploying, replace the older Action1
+script, and then rerun the task. Do not only change the MSI URL or bypass a
+hash mismatch—the script must contain the matching `ExpectedSha256` for that
+release's MSI.
+
 The script will:
 - Download the MSI from your URL
 - Verify the SHA-256 hash (prevents tampered installers from running)
 - Install silently
 - Start the agent at the next interactive user sign-in
 - Report SUCCESS or FAILURE
+
+If the log reports `SHA-256 mismatch` while the download URL is correct, the
+Action1 library is likely using a stale script from an earlier build. Compare
+the script's `ExpectedSha256` with `SHA256-MANIFEST.txt` from the same GitHub
+release, replace the uploaded script, and run the task again.
 
 ---
 
@@ -473,7 +486,7 @@ Signed installers show your publisher name in Windows SmartScreen instead of "Un
 
 ### App won't start after installation
 
-The agent supports Windows 11 version 21H2 (build 22000) and later. Starting with agent version **1.1.5**, the startup dialog first inspects the installed self-contained files and asks Windows to load the exact `Microsoft.ui.xaml.dll` beside the agent. It then reports the evidence it found rather than guessing.
+The agent supports Windows 11 version 21H2 (build 22000) and later. Starting with agent version **1.1.6**, the startup dialog first inspects the installed self-contained files and asks Windows to load the exact `Microsoft.ui.xaml.dll` beside the agent. It reports verifiable file, architecture, and loader evidence rather than invoking the legacy `XamlCheckProcessRequirements` compatibility export as a startup gate.
 
 The dialog can distinguish these cases:
 
@@ -534,8 +547,8 @@ When you are ready to deploy to endpoints, publish a tagged GitHub Release so Ac
 Run these commands locally (or in any terminal with git access):
 
 ```powershell
-git tag v1.1.5
-git push origin v1.1.5
+git tag v1.1.6
+git push origin v1.1.6
 ```
 
 That's it. GitHub Actions detects the `v*.*.*` tag, builds the MSI, and automatically creates a GitHub Release with the following files attached:

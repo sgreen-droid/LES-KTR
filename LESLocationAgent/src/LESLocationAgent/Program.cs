@@ -225,7 +225,7 @@ internal static class Program
             $"\nWindows loader: {loaderResult}" +
             $"\nXAML startup export: {(inspection.Evidence.XamlRequirementsExportErrorCode.HasValue
                 ? $"Windows error {inspection.Evidence.XamlRequirementsExportErrorCode}: {inspection.Evidence.XamlRequirementsExportErrorMessage}"
-                : "XamlCheckProcessRequirements found")}" +
+                : "not invoked (legacy Windows App SDK compatibility no-op)")}" +
             $"\nVisual C++ x64 runtime: {(inspection.Evidence.VisualCppRuntimeDetected ? "detected" : "not detected")}" +
             $"\nWindows App SDK readiness: {(inspection.Evidence.XamlRequirementsSatisfied.HasValue
                 ? inspection.Evidence.XamlRequirementsSatisfied.Value ? "passed" : "failed"
