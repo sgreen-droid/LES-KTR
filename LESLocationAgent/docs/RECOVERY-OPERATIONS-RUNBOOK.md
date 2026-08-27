@@ -176,6 +176,21 @@ The Recovery Console should be used as follows:
 - **Endpoint detail** shows the available map and the reported update time.
   If integrity is invalid or coordinates are unavailable, treat the map as
   unavailable/untrusted.
+- **Location history** is available from Fleet Radar for the full fleet or
+  selected endpoints, and from endpoint detail for one endpoint. Set the
+  optional `From` and `To` controls in UTC before exporting JSON or CSV. Each
+  export has an export ID, generation time, source timestamps, record count,
+  and limitations; the export action is added to the audit trail.
+- **History semantics** are persisted last-known Action1 observations, not live
+  tracking. Collection begins when history capture is enabled, so records are
+  not backfilled. A powered-off, disconnected, unavailable, stale, or invalid
+  endpoint may have no new observation and must be assessed using its status
+  and integrity labels.
+- **Endpoint identity** uses the Action1 endpoint ID as the canonical
+  management identifier. Device ID and serial/manufacturer/model are
+  supporting fields only when Action1 reports them. Computer names can be
+  duplicated or changed; use the duplicate-name warning and never identify a
+  device by computer name alone.
 - **Incident evidence** is immutable captured evidence. It is explicitly
   labeled last-known and includes both evidence capture time and the Action1
   source refresh time.
@@ -193,10 +208,14 @@ The Recovery Console should be used as follows:
 - Grant Action1 and Recovery Console access by least privilege. Separate
   endpoint operators, security investigators, asset managers, and auditors
   where the organization's controls support it.
-- Set and document retention periods for Action1 attributes, incident
-  snapshots, audit records, and exported files. Store exports only in the
-  approved case repository, with access logging and secure deletion at the
-  end of the retention period.
+- Set and document retention periods for Action1 attributes, persisted
+  location history, incident snapshots, audit records, and exported files.
+  Location history defaults to 90 days and can be configured with
+  `RECOVERY_LOCATION_HISTORY_RETENTION_DAYS` up to 3,650 days. Retention
+  removes only ordinary history observations; immutable incident evidence is
+  independent and must not be deleted by history cleanup. Store exports only
+  in the approved case repository, with access logging and secure deletion at
+  the end of the retention period.
 - Do not put location data in public issue trackers, unrestricted email, or
   chat. Redact unnecessary personal data from reports shared outside the
   response team.

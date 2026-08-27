@@ -3,9 +3,34 @@ import { ShieldAlert, KeyRound, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { useCreateRecoverySession } from "@/hooks/api";
 import { useQueryClient } from "@tanstack/react-query";
-import { getGetRecoverySessionQueryKey } from "@workspace/api-client-react";
+import {
+  getGetRecoverySessionQueryKey,
+  type RecoverySession,
+} from "@workspace/api-client-react";
+
+function getLoginErrorMessage(error: unknown): string {
+  if (
+    error &&
+    typeof error === "object" &&
+    "status" in error &&
+    typeof error.status === "number"
+  ) {
+    if (error.status === 401) {
+      return "The operations password was not accepted.";
+    }
+    if (error.status === 429) {
+      return "Too many attempts. Wait for the retry period, then try again.";
+    }
+    return "The recovery service could not complete the login request. Try again.";
+  }
+  if (error instanceof TypeError) {
+    return "The recovery service could not be reached. Check your connection and try again.";
+  }
+  return "The console could not be unlocked. Try again.";
+}
 
 export default function Login() {
   const [password, setPassword] = useState("");
@@ -21,11 +46,15 @@ export default function Login() {
     createSession.mutate(
       { data: { password } },
       {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetRecoverySessionQueryKey() });
+        onSuccess: (session) => {
+          queryClient.setQueryData<RecoverySession>(
+            getGetRecoverySessionQueryKey(),
+            session,
+          );
+          setPassword("");
         },
         onError: (err) => {
-          setError(err.message || "Invalid password or rate limit exceeded.");
+          setError(getLoginErrorMessage(err));
         }
       }
     );
@@ -58,7 +87,11 @@ export default function Login() {
               <div className="space-y-2">
                 <div className="relative">
                   <KeyRound className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Label htmlFor="operations-password" className="sr-only">
+                    Operations password
+                  </Label>
                   <Input
+                    id="operations-password"
                     type="password"
                     autoComplete="current-password"
                     placeholder="Operations Password"
