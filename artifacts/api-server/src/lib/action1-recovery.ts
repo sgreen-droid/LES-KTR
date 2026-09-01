@@ -23,6 +23,7 @@ export interface RecoveryDevice {
   city: string | null;
   computerName: string;
   country: string | null;
+  crossStreets: string | null;
   deviceId: string | null;
   endpointId: string;
   endpointStatus: string;
@@ -56,6 +57,8 @@ export interface RecoveryDevice {
   state: string | null;
   streetAddress: string | null;
   postalCode: string | null;
+  nearestAddress: string | null;
+  addressPrecision: string | null;
   isDuplicateComputerName: boolean;
 }
 
@@ -229,6 +232,17 @@ function parseCoordinate(
     : null;
 }
 
+function parseLocationContext(summary: string | null): Map<string, string> {
+  const context = new Map<string, string>();
+  for (const segment of summary?.split("|") ?? []) {
+    const match = segment.trim().match(/^([A-Za-z_ ]+)\s*[:=]\s*(.+)$/);
+    if (match) {
+      context.set(normalizeKey(match[1]), match[2].trim());
+    }
+  }
+  return context;
+}
+
 function normalizeEndpoint(
   endpoint: UnknownRecord,
   organization: Action1Organization,
@@ -246,6 +260,10 @@ function normalizeEndpoint(
     180,
   );
   const locationIntegrity = pick(attributes, ["Location Integrity"]);
+  const locationSummary = pick(attributes, ["Location Summary"]);
+  const locationContext = parseLocationContext(locationSummary);
+  const contextValue = (aliases: string[]): string | null =>
+    pick(locationContext, aliases);
   const isMapSafe =
     latitude !== null &&
     longitude !== null &&
@@ -262,19 +280,28 @@ function normalizeEndpoint(
     addressSource: pick(attributes, [
       "Location Address Source",
       "Address Source",
-    ]),
+    ]) ?? contextValue(["Address Source", "Addr Source"]),
+    addressPrecision:
+      pick(attributes, ["Location Address Precision", "Address Precision"]) ??
+      contextValue(["Address Precision", "Precision"]),
     agentHealth: pick(attributes, ["Agent Health"]),
     agentVersion: pick(attributes, ["Agent Version", "agent_version"]),
-    city: pick(attributes, ["City", "Location City", "Locality"]),
+    city:
+      pick(attributes, ["City", "Location City", "Locality"]) ??
+      contextValue(["City"]),
     computerName:
       getString(endpoint["name"]) ??
       pick(attributes, ["Computer Name"]) ??
       endpointId,
-    country: pick(attributes, [
-      "Country",
-      "Country Code",
-      "Location Country",
-    ]),
+    country:
+      pick(attributes, ["Country", "Country Code", "Location Country"]) ??
+      contextValue(["Country"]),
+    crossStreets:
+      pick(attributes, [
+        "Cross Streets",
+        "Nearest Cross Streets",
+        "Location Cross Streets",
+      ]) ?? contextValue(["Cross Streets", "Cross", "Near"]),
     deviceId:
       getString(endpoint["device_id"]) ??
       getString(endpoint["deviceId"]) ??
@@ -302,7 +329,7 @@ function normalizeEndpoint(
     locationSequence: pick(attributes, ["Location Sequence"]),
     locationSource: pick(attributes, ["Location Source"]),
     locationStatus: pick(attributes, ["Location Status"]),
-    locationSummary: pick(attributes, ["Location Summary"]),
+    locationSummary,
     locationUpdated: pick(attributes, ["Location Updated"]),
     longitude,
     mapEmbedUrl: mapQuery
@@ -330,26 +357,33 @@ function normalizeEndpoint(
       getString(endpoint["serial_number"]) ??
       getString(endpoint["serialNumber"]) ??
       pick(attributes, ["Serial Number", "Serial", "Bios Serial Number"]),
-    state: pick(attributes, [
-      "State",
-      "State/Province",
-      "Province",
-      "Region",
-      "Location State",
-    ]),
-    streetAddress: pick(attributes, [
-      "Street Address",
-      "Address",
-      "Location Address",
-    ]),
-    postalCode: pick(attributes, [
-      "ZIP",
-      "ZIP Code",
-      "Zip Code",
-      "Postal Code",
-      "Postcode",
-      "Location ZIP",
-    ]),
+    state:
+      pick(attributes, [
+        "State",
+        "State/Province",
+        "Province",
+        "Region",
+        "Location State",
+      ]) ?? contextValue(["State", "Province", "Region"]),
+    streetAddress:
+      pick(attributes, ["Street Address", "Address", "Location Address"]) ??
+      contextValue(["Street Address"]),
+    nearestAddress:
+      pick(attributes, [
+        "Approx Location",
+        "Nearest Address",
+        "Location Nearest Address",
+      ]) ??
+      contextValue(["Nearest Address", "Address"]),
+    postalCode:
+      pick(attributes, [
+        "ZIP",
+        "ZIP Code",
+        "Zip Code",
+        "Postal Code",
+        "Postcode",
+        "Location ZIP",
+      ]) ?? contextValue(["ZIP", "Postal Code", "Postcode"]),
     isDuplicateComputerName: false,
   };
 }

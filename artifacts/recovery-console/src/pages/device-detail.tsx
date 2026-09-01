@@ -288,10 +288,25 @@ export default function DeviceDetail() {
                   </div>
                   
                   {/* Location Context */}
-                  <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6 bg-card">
+                  <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-6 bg-card">
                     <div className="space-y-2">
                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Raw Coordinates</p>
                       <p className="font-mono text-sm font-bold text-foreground bg-muted/50 p-2 inline-block border-l-2 border-l-border">{device.locationCoordinates}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nearest Reported Place</p>
+                      <p className="text-sm font-sans">
+                        {device.nearestAddress ||
+                          device.crossStreets ||
+                          [device.streetAddress, device.city, device.state, device.postalCode, device.country]
+                            .filter(Boolean)
+                            .join(", ") ||
+                          "Not reported"}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                        {device.addressPrecision ? `Precision: ${device.addressPrecision}` : "Address precision unavailable"}
+                        {device.addressSource ? ` · Source: ${device.addressSource}` : ""}
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Intel Summary</p>

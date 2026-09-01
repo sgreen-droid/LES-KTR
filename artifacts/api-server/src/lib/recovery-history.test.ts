@@ -18,6 +18,7 @@ const device: RecoveryDevice = {
   city: "Seattle",
   computerName: "=unsafe-computer-name",
   country: "US",
+  crossStreets: "1st Ave & Pine St",
   deviceId: null,
   endpointId: "endpoint-1",
   endpointStatus: "ONLINE",
@@ -52,6 +53,8 @@ const device: RecoveryDevice = {
   state: "WA",
   streetAddress: "100 Example Ave",
   postalCode: "98101",
+  nearestAddress: "100 Example Ave, Seattle, WA 98101",
+  addressPrecision: "STREET",
 };
 
 test("normalizes Action1 underscore timestamps safely", () => {
@@ -117,6 +120,8 @@ test("history CSV is spreadsheet-safe for identity values", () => {
           state: device.state,
           postalCode: device.postalCode,
           country: device.country,
+          nearestAddress: device.nearestAddress,
+          crossStreets: device.crossStreets,
         },
       ],
     },

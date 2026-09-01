@@ -47,6 +47,9 @@ export interface RecoveryLocationObservation {
   postalCode: string | null;
   country: string | null;
   addressSource: string | null;
+  nearestAddress: string | null;
+  crossStreets: string | null;
+  addressPrecision: string | null;
   locationCoordinates: string | null;
   locationStatus: string | null;
   locationIntegrity: string | null;
@@ -104,6 +107,8 @@ export interface RecoveryLocationEndpointSummary {
   state: string | null;
   postalCode: string | null;
   country: string | null;
+  nearestAddress: string | null;
+  crossStreets: string | null;
 }
 
 export interface RecoveryLocationHistoryCoverage {
@@ -209,6 +214,9 @@ function toObservation(
     postalCode: row.postalCode,
     country: row.country,
     addressSource: row.addressSource,
+    nearestAddress: row.nearestAddress,
+    crossStreets: row.crossStreets,
+    addressPrecision: row.addressPrecision,
     locationCoordinates: row.locationCoordinates,
     locationStatus: row.locationStatus,
     locationIntegrity: row.locationIntegrity,
@@ -439,6 +447,14 @@ export function buildRecoveryLocationHistoryAnalysis(
         endpointObservations,
         (observation) => observation.country,
       ),
+      nearestAddress: latestNonEmpty(
+        endpointObservations,
+        (observation) => observation.nearestAddress,
+      ),
+      crossStreets: latestNonEmpty(
+        endpointObservations,
+        (observation) => observation.crossStreets,
+      ),
     });
     totalApparentDistanceMeters += apparentDistanceMeters;
     movementSegmentCount += endpointMovementSegmentCount;
@@ -500,6 +516,9 @@ export async function recordRecoverySnapshot(snapshot: {
         postalCode: device.postalCode,
         country: device.country,
         addressSource: device.addressSource,
+        nearestAddress: device.nearestAddress,
+        crossStreets: device.crossStreets,
+        addressPrecision: device.addressPrecision,
         locationCoordinates: device.locationCoordinates,
         locationStatus: device.locationStatus,
         locationIntegrity: device.locationIntegrity,
@@ -698,6 +717,8 @@ export function renderRecoveryLocationHistoryCsv(
     "endpoint_latest_state",
     "endpoint_latest_postal_code",
     "endpoint_latest_country",
+    "endpoint_latest_nearest_address",
+    "endpoint_latest_cross_streets",
     "observation_id",
     "observation_number_for_endpoint",
     "observation_time_basis",
@@ -714,6 +735,9 @@ export function renderRecoveryLocationHistoryCsv(
     "postal_code",
     "country",
     "address_source",
+    "nearest_address",
+    "cross_streets",
+    "address_precision",
     "accuracy",
     "location_status",
     "location_integrity",
@@ -793,7 +817,9 @@ export function renderRecoveryLocationHistoryCsv(
       summary.state,
       summary.postalCode,
       summary.country,
-      ...new Array(34).fill(""),
+      summary.nearestAddress,
+      summary.crossStreets,
+      ...new Array(37).fill(""),
     ]),
     ...exportData.observations.map((observation) => {
       const endpointSummary = exportData.coverage.endpointSummaries.find(
@@ -829,6 +855,8 @@ export function renderRecoveryLocationHistoryCsv(
         endpointSummary?.state ?? "",
         endpointSummary?.postalCode ?? "",
         endpointSummary?.country ?? "",
+        endpointSummary?.nearestAddress ?? "",
+        endpointSummary?.crossStreets ?? "",
         observation.id,
         observation.observationNumber,
         observation.observationTimeBasis,
@@ -845,6 +873,9 @@ export function renderRecoveryLocationHistoryCsv(
         observation.postalCode,
         observation.country,
         observation.addressSource,
+        observation.nearestAddress,
+        observation.crossStreets,
+        observation.addressPrecision,
         observation.accuracy,
         observation.locationStatus,
         observation.locationIntegrity,
@@ -894,7 +925,7 @@ export function renderRecoveryLocationHistoryPrintDocument(
       (observation) => `<tr>
         <td>${escapeHtml(observation.computerName)}<br><small>Endpoint: ${escapeHtml(observation.endpointId)}<br>Device ID: ${escapeHtml(observation.deviceId ?? "Not reported")}</small></td>
         <td>${escapeHtml(observation.serialNumber ?? "Not reported")}<br><small>${escapeHtml(observation.manufacturer ?? "")} ${escapeHtml(observation.model ?? "")}</small></td>
-        <td>${escapeHtml(observation.locationCoordinates ?? "Unavailable")}<br><small>${escapeHtml([observation.city, observation.state, observation.postalCode, observation.country].filter(Boolean).join(", ") || "Address unavailable")} · ${escapeHtml(observation.accuracy ?? "Accuracy unavailable")}</small></td>
+        <td>${escapeHtml(observation.locationCoordinates ?? "Unavailable")}<br><small>${escapeHtml(observation.nearestAddress ?? observation.crossStreets ?? ([observation.city, observation.state, observation.postalCode, observation.country].filter(Boolean).join(", ") || "Address unavailable"))} · ${escapeHtml(observation.accuracy ?? "Accuracy unavailable")}</small></td>
         <td>${escapeHtml(observation.locationStatus ?? "Unavailable")}<br><small>Integrity: ${escapeHtml(observation.locationIntegrity ?? "Unknown")}</small></td>
         <td>#${observation.observationNumber} · ${escapeHtml(observation.locationObservedAt?.toISOString() ?? observation.sourceRefreshedAt.toISOString())}<br><small>${escapeHtml(observation.observationTimeBasis)} · Captured: ${escapeHtml(observation.capturedAt.toISOString())}</small></td>
         <td>${

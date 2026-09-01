@@ -90,6 +90,12 @@ export interface RecoveryDevice {
   /** @nullable */
   addressSource: string | null;
   /** @nullable */
+  nearestAddress: string | null;
+  /** @nullable */
+  crossStreets: string | null;
+  /** @nullable */
+  addressPrecision: string | null;
+  /** @nullable */
   locationQuality: string | null;
   /** @nullable */
   locationSource: string | null;
@@ -155,6 +161,12 @@ export interface RecoveryLocationObservation {
   country: string | null;
   /** @nullable */
   addressSource: string | null;
+  /** @nullable */
+  nearestAddress: string | null;
+  /** @nullable */
+  crossStreets: string | null;
+  /** @nullable */
+  addressPrecision: string | null;
   /** @nullable */
   locationCoordinates: string | null;
   /** @nullable */
@@ -269,6 +281,10 @@ export interface RecoveryLocationEndpointSummary {
   postalCode: string | null;
   /** @nullable */
   country: string | null;
+  /** @nullable */
+  nearestAddress: string | null;
+  /** @nullable */
+  crossStreets: string | null;
 }
 
 export interface RecoveryLocationHistoryCoverage {

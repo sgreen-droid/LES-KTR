@@ -300,9 +300,12 @@ export default function Dashboard() {
                         <td className="px-4 py-3 text-muted-foreground text-xs">
                           <div>{device.organizationName}</div>
                           <div className="mt-1 text-[10px] font-mono">
-                            {[device.city, device.state, device.postalCode]
-                              .filter(Boolean)
-                              .join(", ") || "City / state / ZIP not reported"}
+                            {device.nearestAddress ||
+                              device.crossStreets ||
+                              [device.city, device.state, device.postalCode]
+                                .filter(Boolean)
+                                .join(", ") ||
+                              "Nearest address not reported"}
                           </div>
                           {device.country && (
                             <div className="text-[10px] font-mono">{device.country}</div>

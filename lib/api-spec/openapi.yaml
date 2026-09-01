@@ -635,6 +635,12 @@ components:
           type: ["string", "null"]
         addressSource:
           type: ["string", "null"]
+        nearestAddress:
+          type: ["string", "null"]
+        crossStreets:
+          type: ["string", "null"]
+        addressPrecision:
+          type: ["string", "null"]
         locationQuality:
           type: ["string", "null"]
         locationSource:
@@ -686,6 +692,9 @@ components:
         - postalCode
         - country
         - addressSource
+        - nearestAddress
+        - crossStreets
+        - addressPrecision
         - locationQuality
         - locationSource
         - positionSource
@@ -763,6 +772,12 @@ components:
           type: ["string", "null"]
         addressSource:
           type: ["string", "null"]
+        nearestAddress:
+          type: ["string", "null"]
+        crossStreets:
+          type: ["string", "null"]
+        addressPrecision:
+          type: ["string", "null"]
         locationCoordinates:
           type: ["string", "null"]
         locationStatus:
@@ -812,6 +827,9 @@ components:
         - postalCode
         - country
         - addressSource
+        - nearestAddress
+        - crossStreets
+        - addressPrecision
         - locationCoordinates
         - locationStatus
         - locationIntegrity
@@ -943,6 +961,10 @@ components:
           type: ["string", "null"]
         country:
           type: ["string", "null"]
+        nearestAddress:
+          type: ["string", "null"]
+        crossStreets:
+          type: ["string", "null"]
       required:
         - endpointId
         - deviceId
@@ -963,6 +985,8 @@ components:
         - state
         - postalCode
         - country
+        - nearestAddress
+        - crossStreets
     RecoveryLocationHistoryCoverage:
       type: object
       properties:

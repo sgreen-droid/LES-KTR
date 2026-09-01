@@ -68,6 +68,12 @@ export interface RecoveryDevice {
   /** @nullable */
   addressSource: string | null;
   /** @nullable */
+  nearestAddress: string | null;
+  /** @nullable */
+  crossStreets: string | null;
+  /** @nullable */
+  addressPrecision: string | null;
+  /** @nullable */
   locationQuality: string | null;
   /** @nullable */
   locationSource: string | null;

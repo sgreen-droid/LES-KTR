@@ -43,4 +43,8 @@ export interface RecoveryLocationEndpointSummary {
   postalCode: string | null;
   /** @nullable */
   country: string | null;
+  /** @nullable */
+  nearestAddress: string | null;
+  /** @nullable */
+  crossStreets: string | null;
 }

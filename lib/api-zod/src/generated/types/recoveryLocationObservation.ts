@@ -48,6 +48,12 @@ export interface RecoveryLocationObservation {
   /** @nullable */
   addressSource: string | null;
   /** @nullable */
+  nearestAddress: string | null;
+  /** @nullable */
+  crossStreets: string | null;
+  /** @nullable */
+  addressPrecision: string | null;
+  /** @nullable */
   locationCoordinates: string | null;
   /** @nullable */
   locationStatus: string | null;
