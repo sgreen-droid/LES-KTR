@@ -6,7 +6,9 @@
     Reads C:\ProgramData\LESLocationAgent\location.json and status.json,
     validates all values, calculates staleness, and calls Action1-Set-CustomAttribute
     with the existing location attributes plus Map Link, Location Coordinates,
-    and Location Summary.
+    Location Summary, and Approx Location. Approx Location is populated from
+    location.json when the agent or an approved geocoder provides a verified
+    human-readable result. This script does not guess an address from a map URL.
 
     Location Status values:
       ACTIVE          — location exists and is <= 30 minutes old
@@ -21,9 +23,9 @@
       Latitude, Longitude, Location Accuracy, Location Quality,
       Location Source, Position Source, Location Permission,
       Location Updated, Location Status, Map Link, Location Coordinates,
-      Location Summary, Device ID, Location Sequence, Location Integrity,
+      Location Summary, Approx Location, Device ID, Location Sequence, Location Integrity,
       Agent Health, Agent Version, Last Attempt, Last Success,
-      Location Age Minutes, Recovery Status, Location Error
+      Location Age Minutes, Recovery Status
 #>
 
 #Requires -Version 5.1
@@ -95,6 +97,23 @@ function Get-PropertyValue {
         $value = $Object.PSObject.Properties[$Name].Value
         if ($null -ne $value) {
             return $value
+        }
+    }
+
+    return $Default
+}
+
+function Get-FirstPropertyValue {
+    param($Object, [string[]]$Names, $Default = '')
+
+    foreach ($name in $Names) {
+        if ($null -ne $Object -and
+            $null -ne $Object.PSObject.Properties[$name] -and
+            $null -ne $Object.PSObject.Properties[$name].Value) {
+            $value = "$($Object.PSObject.Properties[$name].Value)".Trim()
+            if (-not [string]::IsNullOrWhiteSpace($value)) {
+                return $value
+            }
         }
     }
 
@@ -220,7 +239,6 @@ function Set-RecoveryAttributes {
     Set-OptionalAttribute 'Last Success'         $lastSuccess
     Set-OptionalAttribute 'Location Age Minutes' $ageText
     Set-OptionalAttribute 'Recovery Status'      $RecoveryStatus
-    Set-OptionalAttribute 'Location Error'       $errorText
 }
 
 # ---------------------------------------------------------------
@@ -245,6 +263,7 @@ function Set-ErrorState {
     Set-OptionalAttribute 'Map Link'             ''
     Set-OptionalAttribute 'Location Coordinates' ''
     Set-OptionalAttribute 'Location Summary'     ''
+    Set-OptionalAttribute 'Approx Location'      ''
     Set-RecoveryAttributes $script:locationData $script:statusData `
         $Status $script:integrityStatus
     Write-Output "RESULT: $Status — $Reason"
@@ -367,11 +386,37 @@ $locationSource  = if ($data.PSObject.Properties['locationSource'])  { $data.loc
 $positionSource  = if ($data.PSObject.Properties['positionSource'])  { $data.positionSource  } else { '' }
 $permission      = if ($data.PSObject.Properties['permissionStatus']){ $data.permissionStatus } else { $permissionStatus }
 
+# These values are optional. The agent can provide them directly, or an
+# approved reverse-geocoder can add them to location.json. Keep them separate
+# internally, then pack them into Location Summary so no additional Action1
+# custom-attribute slots are required.
+$nearestAddress = Get-FirstPropertyValue $data @(
+    'nearestAddress', 'approxLocation', 'formattedAddress', 'address'
+)
+$crossStreets = Get-FirstPropertyValue $data @(
+    'crossStreets', 'nearestCrossStreets', 'locationCrossStreets'
+)
+$city = Get-FirstPropertyValue $data @('city', 'locationCity', 'locality')
+$state = Get-FirstPropertyValue $data @(
+    'state', 'stateProvince', 'province', 'region', 'locationState'
+)
+$postalCode = Get-FirstPropertyValue $data @(
+    'postalCode', 'zip', 'zipCode', 'postal', 'locationZip'
+)
+$country = Get-FirstPropertyValue $data @('country', 'countryCode', 'locationCountry')
+$addressSource = Get-FirstPropertyValue $data @(
+    'addressSource', 'locationAddressSource'
+)
+$addressPrecision = Get-FirstPropertyValue $data @(
+    'addressPrecision', 'locationAddressPrecision'
+)
+
 # 9. Generate the optional human-readable location values. Use invariant
 # formatting so the URL is valid regardless of the endpoint's locale.
 $mapLink            = $null
 $locationCoordinates = $null
 $locationSummary    = $null
+$approxLocation     = $null
 try {
     $latText = $lat.ToString('F6', [System.Globalization.CultureInfo]::InvariantCulture)
     $lonText = $lon.ToString('F6', [System.Globalization.CultureInfo]::InvariantCulture)
@@ -392,7 +437,34 @@ try {
     } else {
         "$positionSource"
     }
-    $locationSummary = "$locationCoordinates | ±$summaryAccuracy m | $summarySource | $locationStatus"
+    $summaryParts = [System.Collections.Generic.List[string]]::new()
+    $summaryParts.Add("$locationCoordinates | ±$summaryAccuracy m | $summarySource | $locationStatus")
+    if ($nearestAddress) { $summaryParts.Add("Nearest Address=$nearestAddress") }
+    if ($crossStreets) { $summaryParts.Add("Cross=$crossStreets") }
+    if ($city) { $summaryParts.Add("City=$city") }
+    if ($state) { $summaryParts.Add("State=$state") }
+    if ($postalCode) { $summaryParts.Add("ZIP=$postalCode") }
+    if ($country) { $summaryParts.Add("Country=$country") }
+    if ($addressSource) { $summaryParts.Add("Address Source=$addressSource") }
+    if ($addressPrecision) { $summaryParts.Add("Address Precision=$addressPrecision") }
+    $locationSummary = $summaryParts -join ' | '
+
+    $approxLocation = if ($nearestAddress) {
+        $nearestAddress
+    }
+    elseif ($crossStreets) {
+        $crossStreets
+    }
+    else {
+        $addressParts = @($city, $state, $postalCode, $country) |
+            Where-Object { -not [string]::IsNullOrWhiteSpace("$_") }
+        if ($addressParts.Count -gt 0) {
+            $addressParts -join ', '
+        }
+        else {
+            $locationCoordinates
+        }
+    }
 } catch {
     Write-Warning "Map fields cleared — could not format valid coordinates: $_"
 }
@@ -414,11 +486,13 @@ if ($null -ne $mapLink) {
     Set-OptionalAttribute 'Map Link'             $mapLink
     Set-OptionalAttribute 'Location Coordinates' $locationCoordinates
     Set-OptionalAttribute 'Location Summary'     $locationSummary
+    Set-OptionalAttribute 'Approx Location'      $approxLocation
 } else {
     Write-Warning 'Map fields cleared — valid coordinates unavailable or untrusted.'
     Set-OptionalAttribute 'Map Link'             ''
     Set-OptionalAttribute 'Location Coordinates' ''
     Set-OptionalAttribute 'Location Summary'     ''
+    Set-OptionalAttribute 'Approx Location'      ''
 }
 
 Write-Host "`n=== Sync complete ==="
@@ -426,6 +500,9 @@ Write-Output "RESULT: $locationStatus"
 Write-Output "Latitude: $lat  Longitude: $lon  Accuracy: $accuracyMeters m  Quality: $accuracyQuality"
 if ($null -ne $mapLink) {
     Write-Output "Map: $mapLink"
+    if (-not [string]::IsNullOrWhiteSpace("$approxLocation")) {
+        Write-Output "Approx Location: $approxLocation"
+    }
 } else {
     Write-Output 'Map fields cleared — valid coordinates unavailable or untrusted.'
 }
