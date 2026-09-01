@@ -6,49 +6,29 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface RecoveryDevice {
+export interface RecoveryLocationObservation {
+  id: string;
   endpointId: string;
+  /** @nullable */
+  deviceId: string | null;
   computerName: string;
   organizationId: string;
   organizationName: string;
-  endpointStatus: string;
-  operatingSystem: string;
-  /** @nullable */
-  lastSeen: string | null;
-  /**
-     * Action1 device identifier when reported. This is a secondary identifier; endpointId remains the canonical management key.
-     * @nullable
-     */
-  deviceId: string | null;
   /** @nullable */
   serialNumber: string | null;
   /** @nullable */
   manufacturer: string | null;
   /** @nullable */
   model: string | null;
-  isDuplicateComputerName: boolean;
+  operatingSystem: string;
   /** @nullable */
   agentVersion: string | null;
+  capturedAt: Date;
+  sourceRefreshedAt: Date;
   /** @nullable */
-  agentHealth: string | null;
+  locationObservedAt: Date | null;
   /** @nullable */
-  recoveryStatus: string | null;
-  /** @nullable */
-  locationStatus: string | null;
-  /** @nullable */
-  locationIntegrity: string | null;
-  /** @nullable */
-  locationAgeMinutes: string | null;
-  /** @nullable */
-  locationPermission: string | null;
-  /** @nullable */
-  locationUpdated: string | null;
-  /** @nullable */
-  lastAttempt: string | null;
-  /** @nullable */
-  lastSuccess: string | null;
-  /** @nullable */
-  locationSequence: string | null;
+  lastSeenAt: Date | null;
   /** @nullable */
   latitude: number | null;
   /** @nullable */
@@ -74,19 +54,25 @@ export interface RecoveryDevice {
   /** @nullable */
   addressPrecision: string | null;
   /** @nullable */
+  locationCoordinates: string | null;
+  /** @nullable */
+  locationStatus: string | null;
+  /** @nullable */
+  locationIntegrity: string | null;
+  /** @nullable */
   locationQuality: string | null;
   /** @nullable */
   locationSource: string | null;
   /** @nullable */
   positionSource: string | null;
   /** @nullable */
+  locationPermission: string | null;
+  /** @nullable */
+  locationSequence: string | null;
+  /** @nullable */
+  locationAgeMinutes: string | null;
+  /** @nullable */
   locationError: string | null;
-  /** @nullable */
-  mapLink: string | null;
-  /** @nullable */
-  mapEmbedUrl: string | null;
-  /** @nullable */
-  locationCoordinates: string | null;
   /** @nullable */
   locationSummary: string | null;
   isMapSafe: boolean;

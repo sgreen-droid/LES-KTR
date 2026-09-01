@@ -37,8 +37,18 @@ export interface RecoveryDevice {
   operatingSystem: string;
   /** @nullable */
   lastSeen: string | null;
-  /** @nullable */
+  /**
+     * Action1 device identifier when reported. This is a secondary identifier; endpointId remains the canonical management key.
+     * @nullable
+     */
   deviceId: string | null;
+  /** @nullable */
+  serialNumber: string | null;
+  /** @nullable */
+  manufacturer: string | null;
+  /** @nullable */
+  model: string | null;
+  isDuplicateComputerName: boolean;
   /** @nullable */
   agentVersion: string | null;
   /** @nullable */
@@ -68,6 +78,24 @@ export interface RecoveryDevice {
   /** @nullable */
   accuracy: string | null;
   /** @nullable */
+  streetAddress: string | null;
+  /** @nullable */
+  city: string | null;
+  /** @nullable */
+  state: string | null;
+  /** @nullable */
+  postalCode: string | null;
+  /** @nullable */
+  country: string | null;
+  /** @nullable */
+  addressSource: string | null;
+  /** @nullable */
+  nearestAddress: string | null;
+  /** @nullable */
+  crossStreets: string | null;
+  /** @nullable */
+  addressPrecision: string | null;
+  /** @nullable */
   locationQuality: string | null;
   /** @nullable */
   locationSource: string | null;
@@ -90,6 +118,228 @@ export interface RecoveryDeviceList {
   devices: RecoveryDevice[];
   refreshedAt: string;
   source: string;
+}
+
+export interface RecoveryLocationObservation {
+  id: string;
+  endpointId: string;
+  /** @nullable */
+  deviceId: string | null;
+  computerName: string;
+  organizationId: string;
+  organizationName: string;
+  /** @nullable */
+  serialNumber: string | null;
+  /** @nullable */
+  manufacturer: string | null;
+  /** @nullable */
+  model: string | null;
+  operatingSystem: string;
+  /** @nullable */
+  agentVersion: string | null;
+  capturedAt: string;
+  sourceRefreshedAt: string;
+  /** @nullable */
+  locationObservedAt: string | null;
+  /** @nullable */
+  lastSeenAt: string | null;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  accuracy: string | null;
+  /** @nullable */
+  streetAddress: string | null;
+  /** @nullable */
+  city: string | null;
+  /** @nullable */
+  state: string | null;
+  /** @nullable */
+  postalCode: string | null;
+  /** @nullable */
+  country: string | null;
+  /** @nullable */
+  addressSource: string | null;
+  /** @nullable */
+  nearestAddress: string | null;
+  /** @nullable */
+  crossStreets: string | null;
+  /** @nullable */
+  addressPrecision: string | null;
+  /** @nullable */
+  locationCoordinates: string | null;
+  /** @nullable */
+  locationStatus: string | null;
+  /** @nullable */
+  locationIntegrity: string | null;
+  /** @nullable */
+  locationQuality: string | null;
+  /** @nullable */
+  locationSource: string | null;
+  /** @nullable */
+  positionSource: string | null;
+  /** @nullable */
+  locationPermission: string | null;
+  /** @nullable */
+  locationSequence: string | null;
+  /** @nullable */
+  locationAgeMinutes: string | null;
+  /** @nullable */
+  locationError: string | null;
+  /** @nullable */
+  locationSummary: string | null;
+  isMapSafe: boolean;
+}
+
+export interface RecoveryLocationHistory {
+  observations: RecoveryLocationObservation[];
+  /** @minimum 0 */
+  observationCount: number;
+  /** @nullable */
+  from: string | null;
+  /** @nullable */
+  to: string | null;
+}
+
+export type RecoveryLocationMovementAssessment = typeof RecoveryLocationMovementAssessment[keyof typeof RecoveryLocationMovementAssessment];
+
+
+export const RecoveryLocationMovementAssessment = {
+  FIRST_COORDINATE: 'FIRST_COORDINATE',
+  NO_MATERIAL_CHANGE: 'NO_MATERIAL_CHANGE',
+  COORDINATE_CHANGE: 'COORDINATE_CHANGE',
+} as const;
+
+export interface RecoveryLocationMovement {
+  priorObservationId: string;
+  priorObservationAt: string;
+  /** @minimum 0 */
+  distanceMeters: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  elapsedMinutes: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  apparentSpeedKmh: number | null;
+  assessment: RecoveryLocationMovementAssessment;
+}
+
+export type RecoveryLocationExportObservationObservationTimeBasis = typeof RecoveryLocationExportObservationObservationTimeBasis[keyof typeof RecoveryLocationExportObservationObservationTimeBasis];
+
+
+export const RecoveryLocationExportObservationObservationTimeBasis = {
+  ENDPOINT_LOCATION_OBSERVED_AT: 'ENDPOINT_LOCATION_OBSERVED_AT',
+  ACTION1_SOURCE_REFRESHED_AT: 'ACTION1_SOURCE_REFRESHED_AT',
+} as const;
+
+export type RecoveryLocationExportObservation = RecoveryLocationObservation & ({
+  /** @minimum 1 */
+  observationNumber: number;
+  observationTimeBasis: RecoveryLocationExportObservationObservationTimeBasis;
+  movementFromPrevious: RecoveryLocationMovement | null;
+});
+
+export interface RecoveryLocationEndpointSummary {
+  endpointId: string;
+  /** @nullable */
+  deviceId: string | null;
+  computerNames: string[];
+  organizationName: string;
+  /** @minimum 0 */
+  observationCount: number;
+  /** @minimum 0 */
+  coordinateObservationCount: number;
+  /** @nullable */
+  firstObservationAt: string | null;
+  /** @nullable */
+  lastObservationAt: string | null;
+  /** @nullable */
+  firstCoordinate: string | null;
+  /** @nullable */
+  lastCoordinate: string | null;
+  /** @minimum 0 */
+  apparentDistanceMeters: number;
+  /** @minimum 0 */
+  movementSegmentCount: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  maxApparentSpeedKmh: number | null;
+  locationStatuses: string[];
+  integrityStates: string[];
+  /** @nullable */
+  city: string | null;
+  /** @nullable */
+  state: string | null;
+  /** @nullable */
+  postalCode: string | null;
+  /** @nullable */
+  country: string | null;
+  /** @nullable */
+  nearestAddress: string | null;
+  /** @nullable */
+  crossStreets: string | null;
+}
+
+export interface RecoveryLocationHistoryCoverage {
+  /** @minimum 0 */
+  endpointCount: number;
+  /** @minimum 0 */
+  endpointsWithCoordinates: number;
+  /** @minimum 0 */
+  observationCount: number;
+  /** @minimum 0 */
+  coordinateObservationCount: number;
+  /** @minimum 0 */
+  movementSegmentCount: number;
+  /** @nullable */
+  firstObservationAt: string | null;
+  /** @nullable */
+  lastObservationAt: string | null;
+  /** @minimum 0 */
+  totalApparentDistanceMeters: number;
+  endpointSummaries: RecoveryLocationEndpointSummary[];
+}
+
+export type RecoveryLocationHistoryExportScope = typeof RecoveryLocationHistoryExportScope[keyof typeof RecoveryLocationHistoryExportScope];
+
+
+export const RecoveryLocationHistoryExportScope = {
+  FLEET: 'FLEET',
+  SELECTED: 'SELECTED',
+  SINGLE: 'SINGLE',
+} as const;
+
+export type RecoveryLocationHistoryExportObservationOrdering = typeof RecoveryLocationHistoryExportObservationOrdering[keyof typeof RecoveryLocationHistoryExportObservationOrdering];
+
+
+export const RecoveryLocationHistoryExportObservationOrdering = {
+  GROUPED_BY_ENDPOINT_THEN_CHRONOLOGICAL_ASCENDING: 'GROUPED_BY_ENDPOINT_THEN_CHRONOLOGICAL_ASCENDING',
+} as const;
+
+export interface RecoveryLocationHistoryExport {
+  exportId: string;
+  schemaVersion: string;
+  generatedAt: string;
+  source: string;
+  scope: RecoveryLocationHistoryExportScope;
+  endpointIds: string[];
+  /** @nullable */
+  from: string | null;
+  /** @nullable */
+  to: string | null;
+  /** @minimum 0 */
+  observationCount: number;
+  observationOrdering: RecoveryLocationHistoryExportObservationOrdering;
+  coverage: RecoveryLocationHistoryCoverage;
+  observations: RecoveryLocationExportObservation[];
+  limitations: string[];
 }
 
 export interface RecoverySummary {
@@ -118,6 +368,149 @@ export interface Action1Readiness {
   status: Action1ReadinessStatus;
   checkedAt: string;
   message: string;
+}
+
+export type RecoveryIncidentStatus = typeof RecoveryIncidentStatus[keyof typeof RecoveryIncidentStatus];
+
+
+export const RecoveryIncidentStatus = {
+  OPEN: 'OPEN',
+  ESCALATED: 'ESCALATED',
+  RECOVERED: 'RECOVERED',
+  CLOSED: 'CLOSED',
+} as const;
+
+export interface RecoveryIncident {
+  id: string;
+  title: string;
+  /** @nullable */
+  caseNumber: string | null;
+  /** @nullable */
+  owner: string | null;
+  status: RecoveryIncidentStatus;
+  reportedAt: string;
+  /** @nullable */
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** @minimum 0 */
+  endpointCount: number;
+}
+
+export interface RecoveryIncidentInput {
+  /**
+     * @minLength 3
+     * @maxLength 160
+     */
+  title: string;
+  /**
+     * @minItems 1
+     * @maxItems 50
+     * @items.minLength 1
+     * @items.maxLength 160
+     */
+  endpointIds: string[];
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  caseNumber?: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  owner?: string | null;
+  /** @nullable */
+  reportedAt?: string | null;
+  /**
+     * @maxLength 4000
+     * @nullable
+     */
+  note?: string | null;
+}
+
+export type RecoveryIncidentUpdateStatus = typeof RecoveryIncidentUpdateStatus[keyof typeof RecoveryIncidentUpdateStatus];
+
+
+export const RecoveryIncidentUpdateStatus = {
+  OPEN: 'OPEN',
+  ESCALATED: 'ESCALATED',
+  RECOVERED: 'RECOVERED',
+  CLOSED: 'CLOSED',
+} as const;
+
+export interface RecoveryIncidentUpdate {
+  /**
+     * @minLength 3
+     * @maxLength 160
+     */
+  title?: string;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  caseNumber?: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  owner?: string | null;
+  status?: RecoveryIncidentUpdateStatus;
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  note?: string;
+}
+
+export interface RecoveryIncidentEndpointEvidence {
+  endpointId: string;
+  organizationId: string;
+  organizationName: string;
+  capturedAt: string;
+  sourceRefreshedAt: string;
+  device: RecoveryDevice;
+}
+
+export interface RecoveryIncidentAuditRecord {
+  id: string;
+  eventType: string;
+  actorLabel: string;
+  summary: string;
+  /** @nullable */
+  endpointId: string | null;
+  occurredAt: string;
+}
+
+export type RecoveryIncidentDetail = RecoveryIncident & {
+  evidence: RecoveryIncidentEndpointEvidence[];
+  audit: RecoveryIncidentAuditRecord[];
+};
+
+export interface RecoveryIncidentList {
+  incidents: RecoveryIncident[];
+}
+
+export type RecoveryEvidenceExportRequestFormat = typeof RecoveryEvidenceExportRequestFormat[keyof typeof RecoveryEvidenceExportRequestFormat];
+
+
+export const RecoveryEvidenceExportRequestFormat = {
+  json: 'json',
+  csv: 'csv',
+  print: 'print',
+} as const;
+
+export interface RecoveryEvidenceExportRequest {
+  format: RecoveryEvidenceExportRequestFormat;
+}
+
+export interface RecoveryEvidenceExport {
+  exportId: string;
+  schemaVersion: string;
+  generatedAt: string;
+  source: string;
+  incident: RecoveryIncidentDetail;
+  limitations: string[];
 }
 
 /**
@@ -162,5 +555,57 @@ export const ListRecoveryDevicesFreshness = {
   ACTIVE: 'ACTIVE',
   STALE: 'STALE',
   ALL: 'ALL',
+} as const;
+
+export type GetRecoveryDeviceLocationHistoryParams = {
+from?: string;
+to?: string;
+};
+
+export type ExportRecoveryDeviceLocationHistoryParams = {
+from?: string;
+to?: string;
+format?: ExportRecoveryDeviceLocationHistoryFormat;
+};
+
+export type ExportRecoveryDeviceLocationHistoryFormat = typeof ExportRecoveryDeviceLocationHistoryFormat[keyof typeof ExportRecoveryDeviceLocationHistoryFormat];
+
+
+export const ExportRecoveryDeviceLocationHistoryFormat = {
+  json: 'json',
+  csv: 'csv',
+  print: 'print',
+} as const;
+
+export type ListRecoveryLocationHistoryParams = {
+/**
+ * @maxItems 50
+ * @items.minLength 1
+ * @items.maxLength 160
+ */
+endpointIds?: string[];
+from?: string;
+to?: string;
+};
+
+export type ExportRecoveryLocationHistoryParams = {
+/**
+ * @maxItems 50
+ * @items.minLength 1
+ * @items.maxLength 160
+ */
+endpointIds?: string[];
+from?: string;
+to?: string;
+format?: ExportRecoveryLocationHistoryFormat;
+};
+
+export type ExportRecoveryLocationHistoryFormat = typeof ExportRecoveryLocationHistoryFormat[keyof typeof ExportRecoveryLocationHistoryFormat];
+
+
+export const ExportRecoveryLocationHistoryFormat = {
+  json: 'json',
+  csv: 'csv',
+  print: 'print',
 } as const;
 

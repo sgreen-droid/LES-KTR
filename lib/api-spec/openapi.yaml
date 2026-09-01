@@ -13,7 +13,7 @@ tags:
   - name: recovery-auth
     description: Recovery console session operations
   - name: recovery
-    description: Read-only recovery operations
+    description: Recovery endpoint, incident, and evidence operations
 paths:
   /healthz:
     get:
@@ -176,7 +176,346 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "502":
           $ref: "#/components/responses/Action1Unavailable"
+  /recovery/devices/{endpointId}/location-history:
+    get:
+      operationId: getRecoveryDeviceLocationHistory
+      tags: [recovery]
+      summary: Get time-bounded, last-known observations for one Action1 endpoint
+      parameters:
+        - name: endpointId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 160
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Matching persisted last-known observations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryLocationHistory"
+        "400":
+          description: Invalid history date range
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /recovery/devices/{endpointId}/location-history/export:
+    get:
+      operationId: exportRecoveryDeviceLocationHistory
+      tags: [recovery]
+      summary: Export time-bounded, last-known observations for one Action1 endpoint
+      parameters:
+        - name: endpointId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 160
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [json, csv, print]
+            default: json
+      responses:
+        "200":
+          description: JSON, CSV, or print-ready HTML location history export
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryLocationHistoryExport"
+            text/csv:
+              schema:
+                type: string
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Invalid history date range or export request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /recovery/location-history:
+    get:
+      operationId: listRecoveryLocationHistory
+      tags: [recovery]
+      summary: List persisted last-known observations for the fleet or selected Action1 endpoints
+      parameters:
+        - name: endpointIds
+          in: query
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            maxItems: 50
+            items:
+              type: string
+              minLength: 1
+              maxLength: 160
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Matching persisted last-known observations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryLocationHistory"
+        "400":
+          description: Invalid history date range
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /recovery/location-history/export:
+    get:
+      operationId: exportRecoveryLocationHistory
+      tags: [recovery]
+      summary: Export persisted last-known observations for the fleet or selected endpoints
+      parameters:
+        - name: endpointIds
+          in: query
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            maxItems: 50
+            items:
+              type: string
+              minLength: 1
+              maxLength: 160
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [json, csv, print]
+            default: json
+      responses:
+        "200":
+          description: JSON, CSV, or print-ready HTML location history export
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryLocationHistoryExport"
+            text/csv:
+              schema:
+                type: string
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Invalid history date range or export request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /recovery/incidents:
+    get:
+      operationId: listRecoveryIncidents
+      tags: [recovery]
+      summary: List recovery incidents
+      responses:
+        "200":
+          description: Recovery incidents ordered by most recently updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryIncidentList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createRecoveryIncident
+      tags: [recovery]
+      summary: Create an incident and capture current endpoint evidence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecoveryIncidentInput"
+      responses:
+        "201":
+          description: Created incident
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryIncidentDetail"
+        "400":
+          description: Invalid incident data or unknown endpoint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          $ref: "#/components/responses/Action1Unavailable"
+  /recovery/incidents/{incidentId}:
+    get:
+      operationId: getRecoveryIncident
+      tags: [recovery]
+      summary: Get an incident with captured endpoint evidence and audit records
+      parameters:
+        - $ref: "#/components/parameters/IncidentId"
+      responses:
+        "200":
+          description: Incident detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryIncidentDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Incident not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    patch:
+      operationId: updateRecoveryIncident
+      tags: [recovery]
+      summary: Update incident ownership, status, case information, or add a note
+      parameters:
+        - $ref: "#/components/parameters/IncidentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecoveryIncidentUpdate"
+      responses:
+        "200":
+          description: Updated incident
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryIncidentDetail"
+        "400":
+          description: Invalid incident update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Incident not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /recovery/incidents/{incidentId}/export:
+    post:
+      operationId: exportRecoveryIncident
+      tags: [recovery]
+      summary: Generate a controlled incident evidence export
+      parameters:
+        - $ref: "#/components/parameters/IncidentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecoveryEvidenceExportRequest"
+      responses:
+        "200":
+          description: JSON, CSV, or print-ready HTML evidence export
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryEvidenceExport"
+            text/csv:
+              schema:
+                type: string
+            text/html:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Incident not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 components:
+  parameters:
+    IncidentId:
+      name: incidentId
+      in: path
+      required: true
+      schema:
+        type: string
   responses:
     Unauthorized:
       description: An authorized recovery console session is required
@@ -247,6 +586,15 @@ components:
           type: ["string", "null"]
         deviceId:
           type: ["string", "null"]
+          description: Action1 device identifier when reported. This is a secondary identifier; endpointId remains the canonical management key.
+        serialNumber:
+          type: ["string", "null"]
+        manufacturer:
+          type: ["string", "null"]
+        model:
+          type: ["string", "null"]
+        isDuplicateComputerName:
+          type: boolean
         agentVersion:
           type: ["string", "null"]
         agentHealth:
@@ -275,6 +623,24 @@ components:
           type: ["number", "null"]
         accuracy:
           type: ["string", "null"]
+        streetAddress:
+          type: ["string", "null"]
+        city:
+          type: ["string", "null"]
+        state:
+          type: ["string", "null"]
+        postalCode:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+        addressSource:
+          type: ["string", "null"]
+        nearestAddress:
+          type: ["string", "null"]
+        crossStreets:
+          type: ["string", "null"]
+        addressPrecision:
+          type: ["string", "null"]
         locationQuality:
           type: ["string", "null"]
         locationSource:
@@ -302,6 +668,10 @@ components:
         - operatingSystem
         - lastSeen
         - deviceId
+        - serialNumber
+        - manufacturer
+        - model
+        - isDuplicateComputerName
         - agentVersion
         - agentHealth
         - recoveryStatus
@@ -316,6 +686,15 @@ components:
         - latitude
         - longitude
         - accuracy
+        - streetAddress
+        - city
+        - state
+        - postalCode
+        - country
+        - addressSource
+        - nearestAddress
+        - crossStreets
+        - addressPrecision
         - locationQuality
         - locationSource
         - positionSource
@@ -338,6 +717,372 @@ components:
         source:
           type: string
       required: [devices, refreshedAt, source]
+    RecoveryLocationObservation:
+      type: object
+      properties:
+        id:
+          type: string
+        endpointId:
+          type: string
+        deviceId:
+          type: ["string", "null"]
+        computerName:
+          type: string
+        organizationId:
+          type: string
+        organizationName:
+          type: string
+        serialNumber:
+          type: ["string", "null"]
+        manufacturer:
+          type: ["string", "null"]
+        model:
+          type: ["string", "null"]
+        operatingSystem:
+          type: string
+        agentVersion:
+          type: ["string", "null"]
+        capturedAt:
+          type: string
+          format: date-time
+        sourceRefreshedAt:
+          type: string
+          format: date-time
+        locationObservedAt:
+          type: ["string", "null"]
+          format: date-time
+        lastSeenAt:
+          type: ["string", "null"]
+          format: date-time
+        latitude:
+          type: ["number", "null"]
+        longitude:
+          type: ["number", "null"]
+        accuracy:
+          type: ["string", "null"]
+        streetAddress:
+          type: ["string", "null"]
+        city:
+          type: ["string", "null"]
+        state:
+          type: ["string", "null"]
+        postalCode:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+        addressSource:
+          type: ["string", "null"]
+        nearestAddress:
+          type: ["string", "null"]
+        crossStreets:
+          type: ["string", "null"]
+        addressPrecision:
+          type: ["string", "null"]
+        locationCoordinates:
+          type: ["string", "null"]
+        locationStatus:
+          type: ["string", "null"]
+        locationIntegrity:
+          type: ["string", "null"]
+        locationQuality:
+          type: ["string", "null"]
+        locationSource:
+          type: ["string", "null"]
+        positionSource:
+          type: ["string", "null"]
+        locationPermission:
+          type: ["string", "null"]
+        locationSequence:
+          type: ["string", "null"]
+        locationAgeMinutes:
+          type: ["string", "null"]
+        locationError:
+          type: ["string", "null"]
+        locationSummary:
+          type: ["string", "null"]
+        isMapSafe:
+          type: boolean
+      required:
+        - id
+        - endpointId
+        - deviceId
+        - computerName
+        - organizationId
+        - organizationName
+        - serialNumber
+        - manufacturer
+        - model
+        - operatingSystem
+        - agentVersion
+        - capturedAt
+        - sourceRefreshedAt
+        - locationObservedAt
+        - lastSeenAt
+        - latitude
+        - longitude
+        - accuracy
+        - streetAddress
+        - city
+        - state
+        - postalCode
+        - country
+        - addressSource
+        - nearestAddress
+        - crossStreets
+        - addressPrecision
+        - locationCoordinates
+        - locationStatus
+        - locationIntegrity
+        - locationQuality
+        - locationSource
+        - positionSource
+        - locationPermission
+        - locationSequence
+        - locationAgeMinutes
+        - locationError
+        - locationSummary
+        - isMapSafe
+    RecoveryLocationHistory:
+      type: object
+      properties:
+        observations:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecoveryLocationObservation"
+        observationCount:
+          type: number
+          minimum: 0
+        from:
+          type: ["string", "null"]
+          format: date-time
+        to:
+          type: ["string", "null"]
+          format: date-time
+      required: [observations, observationCount, from, to]
+    RecoveryLocationMovement:
+      type: object
+      properties:
+        priorObservationId:
+          type: string
+        priorObservationAt:
+          type: string
+          format: date-time
+        distanceMeters:
+          type: number
+          minimum: 0
+        elapsedMinutes:
+          type: ["number", "null"]
+          minimum: 0
+        apparentSpeedKmh:
+          type: ["number", "null"]
+          minimum: 0
+        assessment:
+          type: string
+          enum: [FIRST_COORDINATE, NO_MATERIAL_CHANGE, COORDINATE_CHANGE]
+      required:
+        - priorObservationId
+        - priorObservationAt
+        - distanceMeters
+        - elapsedMinutes
+        - apparentSpeedKmh
+        - assessment
+    RecoveryLocationExportObservation:
+      allOf:
+        - $ref: "#/components/schemas/RecoveryLocationObservation"
+        - type: object
+          properties:
+            observationNumber:
+              type: number
+              minimum: 1
+            observationTimeBasis:
+              type: string
+              enum:
+                - ENDPOINT_LOCATION_OBSERVED_AT
+                - ACTION1_SOURCE_REFRESHED_AT
+            movementFromPrevious:
+              oneOf:
+                - $ref: "#/components/schemas/RecoveryLocationMovement"
+                - type: "null"
+          required:
+            - observationNumber
+            - observationTimeBasis
+            - movementFromPrevious
+    RecoveryLocationEndpointSummary:
+      type: object
+      properties:
+        endpointId:
+          type: string
+        deviceId:
+          type: ["string", "null"]
+        computerNames:
+          type: array
+          items:
+            type: string
+        organizationName:
+          type: string
+        observationCount:
+          type: number
+          minimum: 0
+        coordinateObservationCount:
+          type: number
+          minimum: 0
+        firstObservationAt:
+          type: ["string", "null"]
+          format: date-time
+        lastObservationAt:
+          type: ["string", "null"]
+          format: date-time
+        firstCoordinate:
+          type: ["string", "null"]
+        lastCoordinate:
+          type: ["string", "null"]
+        apparentDistanceMeters:
+          type: number
+          minimum: 0
+        movementSegmentCount:
+          type: number
+          minimum: 0
+        maxApparentSpeedKmh:
+          type: ["number", "null"]
+          minimum: 0
+        locationStatuses:
+          type: array
+          items:
+            type: string
+        integrityStates:
+          type: array
+          items:
+            type: string
+        city:
+          type: ["string", "null"]
+        state:
+          type: ["string", "null"]
+        postalCode:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+        nearestAddress:
+          type: ["string", "null"]
+        crossStreets:
+          type: ["string", "null"]
+      required:
+        - endpointId
+        - deviceId
+        - computerNames
+        - organizationName
+        - observationCount
+        - coordinateObservationCount
+        - firstObservationAt
+        - lastObservationAt
+        - firstCoordinate
+        - lastCoordinate
+        - apparentDistanceMeters
+        - movementSegmentCount
+        - maxApparentSpeedKmh
+        - locationStatuses
+        - integrityStates
+        - city
+        - state
+        - postalCode
+        - country
+        - nearestAddress
+        - crossStreets
+    RecoveryLocationHistoryCoverage:
+      type: object
+      properties:
+        endpointCount:
+          type: number
+          minimum: 0
+        endpointsWithCoordinates:
+          type: number
+          minimum: 0
+        observationCount:
+          type: number
+          minimum: 0
+        coordinateObservationCount:
+          type: number
+          minimum: 0
+        movementSegmentCount:
+          type: number
+          minimum: 0
+        firstObservationAt:
+          type: ["string", "null"]
+          format: date-time
+        lastObservationAt:
+          type: ["string", "null"]
+          format: date-time
+        totalApparentDistanceMeters:
+          type: number
+          minimum: 0
+        endpointSummaries:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecoveryLocationEndpointSummary"
+      required:
+        - endpointCount
+        - endpointsWithCoordinates
+        - observationCount
+        - coordinateObservationCount
+        - movementSegmentCount
+        - firstObservationAt
+        - lastObservationAt
+        - totalApparentDistanceMeters
+        - endpointSummaries
+    RecoveryLocationHistoryExport:
+      type: object
+      properties:
+        exportId:
+          type: string
+        schemaVersion:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        source:
+          type: string
+        scope:
+          type: string
+          enum: [FLEET, SELECTED, SINGLE]
+        endpointIds:
+          type: array
+          items:
+            type: string
+        from:
+          type: ["string", "null"]
+          format: date-time
+        to:
+          type: ["string", "null"]
+          format: date-time
+        observationCount:
+          type: number
+          minimum: 0
+        observationOrdering:
+          type: string
+          enum: [GROUPED_BY_ENDPOINT_THEN_CHRONOLOGICAL_ASCENDING]
+        coverage:
+          $ref: "#/components/schemas/RecoveryLocationHistoryCoverage"
+        observations:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecoveryLocationExportObservation"
+        limitations:
+          type: array
+          items:
+            type: string
+      required:
+        - exportId
+        - schemaVersion
+        - generatedAt
+        - source
+        - scope
+        - endpointIds
+        - from
+        - to
+        - observationCount
+        - observationOrdering
+        - coverage
+        - observations
+        - limitations
     RecoverySummary:
       type: object
       properties:
@@ -381,3 +1126,186 @@ components:
         - status
         - checkedAt
         - message
+    RecoveryIncident:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        caseNumber:
+          type: ["string", "null"]
+        owner:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [OPEN, ESCALATED, RECOVERED, CLOSED]
+        reportedAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        endpointCount:
+          type: number
+          minimum: 0
+      required:
+        - id
+        - title
+        - caseNumber
+        - owner
+        - status
+        - reportedAt
+        - resolvedAt
+        - createdAt
+        - updatedAt
+        - endpointCount
+    RecoveryIncidentInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 160
+        endpointIds:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: string
+            minLength: 1
+            maxLength: 160
+        caseNumber:
+          type: ["string", "null"]
+          maxLength: 100
+        owner:
+          type: ["string", "null"]
+          maxLength: 100
+        reportedAt:
+          type: ["string", "null"]
+          format: date-time
+        note:
+          type: ["string", "null"]
+          maxLength: 4000
+      required: [title, endpointIds]
+    RecoveryIncidentUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 160
+        caseNumber:
+          type: ["string", "null"]
+          maxLength: 100
+        owner:
+          type: ["string", "null"]
+          maxLength: 100
+        status:
+          type: string
+          enum: [OPEN, ESCALATED, RECOVERED, CLOSED]
+        note:
+          type: string
+          minLength: 1
+          maxLength: 4000
+    RecoveryIncidentEndpointEvidence:
+      type: object
+      properties:
+        endpointId:
+          type: string
+        organizationId:
+          type: string
+        organizationName:
+          type: string
+        capturedAt:
+          type: string
+          format: date-time
+        sourceRefreshedAt:
+          type: string
+          format: date-time
+        device:
+          $ref: "#/components/schemas/RecoveryDevice"
+      required:
+        - endpointId
+        - organizationId
+        - organizationName
+        - capturedAt
+        - sourceRefreshedAt
+        - device
+    RecoveryIncidentAuditRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        eventType:
+          type: string
+        actorLabel:
+          type: string
+        summary:
+          type: string
+        endpointId:
+          type: ["string", "null"]
+        occurredAt:
+          type: string
+          format: date-time
+      required: [id, eventType, actorLabel, summary, endpointId, occurredAt]
+    RecoveryIncidentDetail:
+      allOf:
+        - $ref: "#/components/schemas/RecoveryIncident"
+        - type: object
+          properties:
+            evidence:
+              type: array
+              items:
+                $ref: "#/components/schemas/RecoveryIncidentEndpointEvidence"
+            audit:
+              type: array
+              items:
+                $ref: "#/components/schemas/RecoveryIncidentAuditRecord"
+          required: [evidence, audit]
+    RecoveryIncidentList:
+      type: object
+      properties:
+        incidents:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecoveryIncident"
+      required: [incidents]
+    RecoveryEvidenceExportRequest:
+      type: object
+      properties:
+        format:
+          type: string
+          enum: [json, csv, print]
+      required: [format]
+    RecoveryEvidenceExport:
+      type: object
+      properties:
+        exportId:
+          type: string
+        schemaVersion:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        source:
+          type: string
+        incident:
+          $ref: "#/components/schemas/RecoveryIncidentDetail"
+        limitations:
+          type: array
+          items:
+            type: string
+      required:
+        - exportId
+        - schemaVersion
+        - generatedAt
+        - source
+        - incident
+        - limitations

@@ -16,6 +16,8 @@ import { Layout } from '@/components/layout';
 import Login from '@/pages/login';
 import Dashboard from '@/pages/dashboard';
 import DeviceDetail from '@/pages/device-detail';
+import IncidentsList from '@/pages/incidents';
+import IncidentDetail from '@/pages/incident-detail';
 import { Loader2 } from 'lucide-react';
 
 const queryClient = new QueryClient({
@@ -59,6 +61,16 @@ function Router() {
         <Route path="/">
           <AuthWrapper>
             <Dashboard />
+          </AuthWrapper>
+        </Route>
+        <Route path="/incidents">
+          <AuthWrapper>
+            <IncidentsList />
+          </AuthWrapper>
+        </Route>
+        <Route path="/incidents/:incidentId">
+          <AuthWrapper>
+            <IncidentDetail />
           </AuthWrapper>
         </Route>
         <Route path="/devices/:endpointId">
