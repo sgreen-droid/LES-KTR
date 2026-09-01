@@ -267,7 +267,7 @@ export default function DeviceDetail() {
                         style={{ border: 0, filter: 'contrast(1.2) saturate(1.1) brightness(0.9)' }} 
                         allowFullScreen={false} 
                         loading="lazy" 
-                        referrerPolicy="no-referrer-when-downgrade"
+                         referrerPolicy="no-referrer"
                         className="absolute inset-0"
                         title="Device Location"
                       />
@@ -326,8 +326,8 @@ export default function DeviceDetail() {
             </CardContent>
             {device.mapLink && hasLocation && (
               <CardFooter className="bg-muted/30 p-4 border-t border-border flex justify-end">
-                <a href={device.mapLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary/80 transition-colors font-mono">
-                  Launch External Tactical Map <ExternalLink className="h-3 w-3" />
+                 <a href={device.mapLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary/80 transition-colors font-mono">
+                   Open OpenStreetMap <ExternalLink className="h-3 w-3" />
                 </a>
               </CardFooter>
             )}

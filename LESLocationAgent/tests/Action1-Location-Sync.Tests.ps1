@@ -79,7 +79,7 @@ try {
         state             = 'NY'
         postalCode        = '10460'
         country           = 'US'
-        addressSource     = 'GOOGLE_REVERSE_GEOCODE'
+        addressSource     = 'OSM_NOMINATIM'
         addressPrecision  = 'STREET'
     }
     $validStatus = [pscustomobject]@{
@@ -119,12 +119,12 @@ try {
     }
 
     Assert-Equal 'Map Link' `
-        'https://www.google.com/maps/search/?api=1&query=40.839466,-73.859357' `
+        'https://www.openstreetmap.org/?mlat=40.839466&mlon=-73.859357#map=18/40.839466/-73.859357' `
         $global:LesCapturedAttributes['Map Link']
     Assert-Equal 'Location Coordinates' '40.839466, -73.859357' `
         $global:LesCapturedAttributes['Location Coordinates']
     Assert-Equal 'Location Summary' `
-        '40.839466, -73.859357 | ±109 m | WiFi | ACTIVE | Nearest Address=1200 Main St, Bronx, NY 10460 | Cross=Main St & First Ave | City=Bronx | State=NY | ZIP=10460 | Country=US | Address Source=GOOGLE_REVERSE_GEOCODE | Address Precision=STREET' `
+        '40.839466, -73.859357 | ±109 m | WiFi | ACTIVE | Nearest Address=1200 Main St, Bronx, NY 10460 | Cross=Main St & First Ave | City=Bronx | State=NY | ZIP=10460 | Country=US | Address Source=OSM_NOMINATIM | Address Precision=STREET' `
         $global:LesCapturedAttributes['Location Summary']
     Assert-Equal 'Approx Location' '1200 Main St, Bronx, NY 10460' `
         $global:LesCapturedAttributes['Approx Location']

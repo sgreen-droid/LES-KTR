@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 import { logger } from "./logger";
 import { recordRecoverySnapshot } from "./recovery-history";
+import {
+  buildOpenStreetMapEmbedUrl,
+  buildOpenStreetMapLink,
+  enrichRecoveryDevices,
+} from "./osm-geocoder";
 
 const DEFAULT_ACTION1_BASE_URL = "https://app.action1.com/api/3.0";
 const CACHE_TTL_MS = 60 * 1000;
@@ -272,10 +277,6 @@ function normalizeEndpoint(
   const coordinateText = isMapSafe
     ? `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
     : null;
-  const mapQuery = isMapSafe
-    ? encodeURIComponent(`${latitude},${longitude}`)
-    : null;
-
   return {
     accuracy: pick(attributes, ["Location Accuracy"]),
     addressSource: pick(attributes, [
@@ -336,12 +337,14 @@ function normalizeEndpoint(
     locationSummary,
     locationUpdated: pick(attributes, ["Location Updated"]),
     longitude,
-    mapEmbedUrl: mapQuery
-      ? `https://www.google.com/maps?q=${mapQuery}&output=embed`
-      : null,
-    mapLink: mapQuery
-      ? `https://www.google.com/maps/search/?api=1&query=${mapQuery}`
-      : null,
+    mapEmbedUrl:
+      isMapSafe && latitude !== null && longitude !== null
+        ? buildOpenStreetMapEmbedUrl(latitude, longitude)
+        : null,
+    mapLink:
+      isMapSafe && latitude !== null && longitude !== null
+        ? buildOpenStreetMapLink(latitude, longitude)
+        : null,
     manufacturer:
       getString(endpoint["manufacturer"]) ??
       pick(attributes, ["Manufacturer", "System Manufacturer"]),
@@ -676,6 +679,7 @@ async function collectSnapshot(forceFreshAuthentication = false): Promise<Recove
     refreshedAt: new Date().toISOString(),
     source: "Action1",
   };
+  snapshot.devices = await enrichRecoveryDevices(snapshot.devices);
   logger.info(
     { deviceCount: snapshot.devices.length, organizationCount: organizations.length },
     "Action1 recovery snapshot refreshed",

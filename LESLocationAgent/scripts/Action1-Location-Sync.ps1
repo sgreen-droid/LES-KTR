@@ -421,7 +421,7 @@ try {
     $latText = $lat.ToString('F6', [System.Globalization.CultureInfo]::InvariantCulture)
     $lonText = $lon.ToString('F6', [System.Globalization.CultureInfo]::InvariantCulture)
     $locationCoordinates = "$latText, $lonText"
-    $mapLink = "https://www.google.com/maps/search/?api=1&query=$latText,$lonText"
+    $mapLink = "https://www.openstreetmap.org/?mlat=$latText&mlon=$lonText#map=18/$latText/$lonText"
 
     $summaryAccuracy = 'unknown'
     if ($null -ne $accuracyMeters) {

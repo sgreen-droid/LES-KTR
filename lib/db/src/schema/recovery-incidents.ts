@@ -153,6 +153,28 @@ export const recoveryLocationObservationsTable = pgTable(
   ],
 );
 
+export const recoveryGeocodingCacheTable = pgTable(
+  "recovery_geocoding_cache",
+  {
+    coordinateKey: text("coordinate_key").primaryKey(),
+    latitude: doublePrecision("latitude").notNull(),
+    longitude: doublePrecision("longitude").notNull(),
+    streetAddress: text("street_address"),
+    city: text("city"),
+    state: text("state"),
+    postalCode: text("postal_code"),
+    country: text("country"),
+    nearestAddress: text("nearest_address"),
+    addressPrecision: text("address_precision"),
+    status: text("status").notNull(),
+    attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index("recovery_geocoding_cache_expires_at_idx").on(table.expiresAt),
+  ],
+);
+
 export const insertRecoveryIncidentSchema = createInsertSchema(
   recoveryIncidentsTable,
 ).omit({ id: true, createdAt: true, updatedAt: true });

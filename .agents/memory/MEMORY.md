@@ -8,3 +8,4 @@
 - [Action1 timestamp formats](action1-timestamp-formats.md) — Action1 can return UTC timestamps as `YYYY-MM-DD_HH-MM-SS`, which strict ISO parsers reject.
 - [Published environment refresh](deployment-env-refresh.md) — shared environment changes require a republish before live deployment verification.
 - [Database publish override](replit-database-publish-override.md) — a manual DATABASE_URL secret can block Replit database features; verify managed data before removing the override.
+- [OpenStreetMap geocoding](osm-geocoding-policy.md) — recovery address enrichment and maps are Google-free; honor Nominatim caching and rate limits.

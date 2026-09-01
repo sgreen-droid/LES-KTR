@@ -73,6 +73,19 @@ views and alerts are clearest when all are present.
 | Identity and integrity | `Device ID`, `Location Sequence`, `Location Integrity` |
 | Health and freshness | `Agent Health`, `Agent Version`, `Last Attempt`, `Last Success`, `Location Age Minutes`, `Recovery Status`, `Location Error` |
 
+## OpenStreetMap enrichment
+
+The Recovery Console may add derived address context from OpenStreetMap
+Nominatim after Action1 returns a validated coordinate. Raw coordinates remain
+the authoritative endpoint evidence. Derived fields are labeled
+`OSM_NOMINATIM`, cached, and may be unavailable when the provider is throttled
+or offline.
+
+The public service is queried no faster than once per second. Operators must not
+interpret an address or map marker as more precise than the endpoint's reported
+accuracy. Cross streets are optional and are not fabricated when Nominatim does
+not return them.
+
 The Action1 endpoint, serial number, hostname/computer name, asset tag, and
 stable `Device ID` are complementary identifiers:
 

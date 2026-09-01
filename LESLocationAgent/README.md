@@ -409,6 +409,25 @@ Use Action1 to create alert policies from the recovery attributes:
 | `Location Integrity = INVALID` | Treat the displayed coordinates as untrusted. Preserve the endpoint record and investigate the device. |
 | `Agent Health = ERROR` or missing agent fields | Run the health check, confirm the agent version, then reinstall through the approved Action1 deployment if necessary. |
 
+### OpenStreetMap address enrichment
+
+The Recovery Console uses OpenStreetMap rather than a Google Maps API:
+
+- Valid coordinates are reverse-geocoded through the public Nominatim service
+  only when address context is missing or merely approximate.
+- Requests are serialized below Nominatim's one-request-per-second public limit.
+- Successful lookups are cached for 30 days; unavailable results and provider
+  failures are also cached temporarily so an outage cannot create a retry flood.
+- Address values are labeled `OSM_NOMINATIM` and never replace the raw
+  coordinates, endpoint timestamp, accuracy, or integrity evidence.
+- Console and Action1 map links open OpenStreetMap and require no Google API key.
+- OpenStreetMap attribution remains visible on the embedded map.
+
+Set `OSM_NOMINATIM_USER_AGENT` to an organization-approved identifying value
+for production use. The public service is appropriate only for low-volume,
+cached testing. Larger recurring fleets should use a self-hosted Nominatim
+instance or another approved OpenStreetMap-based service.
+
 For a missing or stolen device:
 
 1. Search Action1 using `Device ID`, device serial number, and computer name.
