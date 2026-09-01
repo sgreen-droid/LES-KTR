@@ -23,7 +23,8 @@ import {
   Crosshair,
   FileJson,
   FileText,
-  History
+  History,
+  Printer
 } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useQueryClient } from "@tanstack/react-query";
@@ -151,7 +152,7 @@ export default function Dashboard() {
             <div>
               <CardTitle className="uppercase tracking-widest text-sm">Location History Export</CardTitle>
               <CardDescription className="mt-1">
-                Export persisted last-known observations. History begins when this console captures an Action1 refresh; it is not live tracking.
+                Create case-ready evidence with fleet coverage, endpoint summaries, chronological observations, and apparent coordinate changes. JSON is structured, CSV is spreadsheet-ready, and Print is optimized for review.
               </CardDescription>
             </div>
           </div>
@@ -169,10 +170,13 @@ export default function Dashboard() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={() => void handleHistoryExport("json", "fleet")} className="rounded-none uppercase text-[10px] font-bold tracking-widest">
-              <FileJson className="mr-2 h-3 w-3" /> Fleet JSON
+              <FileJson className="mr-2 h-3 w-3" /> Evidence JSON
             </Button>
             <Button variant="outline" size="sm" onClick={() => void handleHistoryExport("csv", "fleet")} className="rounded-none uppercase text-[10px] font-bold tracking-widest">
-              <FileText className="mr-2 h-3 w-3" /> Fleet CSV
+              <FileText className="mr-2 h-3 w-3" /> Evidence CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => void handleHistoryExport("print", "fleet")} className="rounded-none uppercase text-[10px] font-bold tracking-widest">
+              <Printer className="mr-2 h-3 w-3" /> Print Report
             </Button>
           </div>
         </CardContent>
@@ -294,7 +298,15 @@ export default function Dashboard() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">
-                          {device.organizationName}
+                          <div>{device.organizationName}</div>
+                          <div className="mt-1 text-[10px] font-mono">
+                            {[device.city, device.state, device.postalCode]
+                              .filter(Boolean)
+                              .join(", ") || "City / state / ZIP not reported"}
+                          </div>
+                          {device.country && (
+                            <div className="text-[10px] font-mono">{device.country}</div>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <Badge 

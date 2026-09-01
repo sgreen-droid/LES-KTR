@@ -78,6 +78,18 @@ export interface RecoveryDevice {
   /** @nullable */
   accuracy: string | null;
   /** @nullable */
+  streetAddress: string | null;
+  /** @nullable */
+  city: string | null;
+  /** @nullable */
+  state: string | null;
+  /** @nullable */
+  postalCode: string | null;
+  /** @nullable */
+  country: string | null;
+  /** @nullable */
+  addressSource: string | null;
+  /** @nullable */
   locationQuality: string | null;
   /** @nullable */
   locationSource: string | null;
@@ -132,6 +144,18 @@ export interface RecoveryLocationObservation {
   /** @nullable */
   accuracy: string | null;
   /** @nullable */
+  streetAddress: string | null;
+  /** @nullable */
+  city: string | null;
+  /** @nullable */
+  state: string | null;
+  /** @nullable */
+  postalCode: string | null;
+  /** @nullable */
+  country: string | null;
+  /** @nullable */
+  addressSource: string | null;
+  /** @nullable */
   locationCoordinates: string | null;
   /** @nullable */
   locationStatus: string | null;
@@ -166,6 +190,107 @@ export interface RecoveryLocationHistory {
   to: string | null;
 }
 
+export type RecoveryLocationMovementAssessment = typeof RecoveryLocationMovementAssessment[keyof typeof RecoveryLocationMovementAssessment];
+
+
+export const RecoveryLocationMovementAssessment = {
+  FIRST_COORDINATE: 'FIRST_COORDINATE',
+  NO_MATERIAL_CHANGE: 'NO_MATERIAL_CHANGE',
+  COORDINATE_CHANGE: 'COORDINATE_CHANGE',
+} as const;
+
+export interface RecoveryLocationMovement {
+  priorObservationId: string;
+  priorObservationAt: string;
+  /** @minimum 0 */
+  distanceMeters: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  elapsedMinutes: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  apparentSpeedKmh: number | null;
+  assessment: RecoveryLocationMovementAssessment;
+}
+
+export type RecoveryLocationExportObservationObservationTimeBasis = typeof RecoveryLocationExportObservationObservationTimeBasis[keyof typeof RecoveryLocationExportObservationObservationTimeBasis];
+
+
+export const RecoveryLocationExportObservationObservationTimeBasis = {
+  ENDPOINT_LOCATION_OBSERVED_AT: 'ENDPOINT_LOCATION_OBSERVED_AT',
+  ACTION1_SOURCE_REFRESHED_AT: 'ACTION1_SOURCE_REFRESHED_AT',
+} as const;
+
+export type RecoveryLocationExportObservation = RecoveryLocationObservation & ({
+  /** @minimum 1 */
+  observationNumber: number;
+  observationTimeBasis: RecoveryLocationExportObservationObservationTimeBasis;
+  movementFromPrevious: RecoveryLocationMovement | null;
+});
+
+export interface RecoveryLocationEndpointSummary {
+  endpointId: string;
+  /** @nullable */
+  deviceId: string | null;
+  computerNames: string[];
+  organizationName: string;
+  /** @minimum 0 */
+  observationCount: number;
+  /** @minimum 0 */
+  coordinateObservationCount: number;
+  /** @nullable */
+  firstObservationAt: string | null;
+  /** @nullable */
+  lastObservationAt: string | null;
+  /** @nullable */
+  firstCoordinate: string | null;
+  /** @nullable */
+  lastCoordinate: string | null;
+  /** @minimum 0 */
+  apparentDistanceMeters: number;
+  /** @minimum 0 */
+  movementSegmentCount: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  maxApparentSpeedKmh: number | null;
+  locationStatuses: string[];
+  integrityStates: string[];
+  /** @nullable */
+  city: string | null;
+  /** @nullable */
+  state: string | null;
+  /** @nullable */
+  postalCode: string | null;
+  /** @nullable */
+  country: string | null;
+}
+
+export interface RecoveryLocationHistoryCoverage {
+  /** @minimum 0 */
+  endpointCount: number;
+  /** @minimum 0 */
+  endpointsWithCoordinates: number;
+  /** @minimum 0 */
+  observationCount: number;
+  /** @minimum 0 */
+  coordinateObservationCount: number;
+  /** @minimum 0 */
+  movementSegmentCount: number;
+  /** @nullable */
+  firstObservationAt: string | null;
+  /** @nullable */
+  lastObservationAt: string | null;
+  /** @minimum 0 */
+  totalApparentDistanceMeters: number;
+  endpointSummaries: RecoveryLocationEndpointSummary[];
+}
+
 export type RecoveryLocationHistoryExportScope = typeof RecoveryLocationHistoryExportScope[keyof typeof RecoveryLocationHistoryExportScope];
 
 
@@ -173,6 +298,13 @@ export const RecoveryLocationHistoryExportScope = {
   FLEET: 'FLEET',
   SELECTED: 'SELECTED',
   SINGLE: 'SINGLE',
+} as const;
+
+export type RecoveryLocationHistoryExportObservationOrdering = typeof RecoveryLocationHistoryExportObservationOrdering[keyof typeof RecoveryLocationHistoryExportObservationOrdering];
+
+
+export const RecoveryLocationHistoryExportObservationOrdering = {
+  GROUPED_BY_ENDPOINT_THEN_CHRONOLOGICAL_ASCENDING: 'GROUPED_BY_ENDPOINT_THEN_CHRONOLOGICAL_ASCENDING',
 } as const;
 
 export interface RecoveryLocationHistoryExport {
@@ -188,7 +320,9 @@ export interface RecoveryLocationHistoryExport {
   to: string | null;
   /** @minimum 0 */
   observationCount: number;
-  observations: RecoveryLocationObservation[];
+  observationOrdering: RecoveryLocationHistoryExportObservationOrdering;
+  coverage: RecoveryLocationHistoryCoverage;
+  observations: RecoveryLocationExportObservation[];
   limitations: string[];
 }
 

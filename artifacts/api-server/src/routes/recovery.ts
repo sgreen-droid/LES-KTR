@@ -185,9 +185,9 @@ function sendLocationHistoryExport(
 ): void {
   res.set("Cache-Control", "no-store");
   if (format === "csv") {
-    res.type("text/csv");
+    res.type("text/csv; charset=utf-8");
     res.attachment(`${filename}.csv`);
-    res.send(renderRecoveryLocationHistoryCsv(exportData));
+    res.send(`\uFEFF${renderRecoveryLocationHistoryCsv(exportData)}`);
     return;
   }
   if (format === "print") {
@@ -195,7 +195,11 @@ function sendLocationHistoryExport(
     res.send(renderRecoveryLocationHistoryPrintDocument(exportData));
     return;
   }
-  res.json(ExportRecoveryLocationHistoryResponse.parse(exportData));
+  res.type("application/json; charset=utf-8");
+  res.attachment(`${filename}.json`);
+  res.send(
+    JSON.stringify(ExportRecoveryLocationHistoryResponse.parse(exportData), null, 2),
+  );
 }
 
 function sendNotFound(res: Response, message: string): void {
@@ -460,7 +464,7 @@ router.get(
       sendLocationHistoryExport(
         res,
         query.data.format,
-        `les-location-history-${params.data.endpointId}`,
+        `les-location-evidence-${params.data.endpointId}`,
         exportData,
       );
     } catch (error) {
@@ -553,7 +557,7 @@ router.get(
       sendLocationHistoryExport(
         res,
         query.data.format,
-        `les-location-history-${exportData.scope.toLowerCase()}`,
+        `les-location-evidence-${exportData.scope.toLowerCase()}`,
         exportData,
       );
     } catch (error) {

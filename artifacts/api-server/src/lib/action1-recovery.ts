@@ -17,9 +17,12 @@ interface Action1Organization {
 
 export interface RecoveryDevice {
   accuracy: string | null;
+  addressSource: string | null;
   agentHealth: string | null;
   agentVersion: string | null;
+  city: string | null;
   computerName: string;
+  country: string | null;
   deviceId: string | null;
   endpointId: string;
   endpointStatus: string;
@@ -50,6 +53,9 @@ export interface RecoveryDevice {
   positionSource: string | null;
   recoveryStatus: string | null;
   serialNumber: string | null;
+  state: string | null;
+  streetAddress: string | null;
+  postalCode: string | null;
   isDuplicateComputerName: boolean;
 }
 
@@ -253,12 +259,22 @@ function normalizeEndpoint(
 
   return {
     accuracy: pick(attributes, ["Location Accuracy"]),
+    addressSource: pick(attributes, [
+      "Location Address Source",
+      "Address Source",
+    ]),
     agentHealth: pick(attributes, ["Agent Health"]),
     agentVersion: pick(attributes, ["Agent Version", "agent_version"]),
+    city: pick(attributes, ["City", "Location City", "Locality"]),
     computerName:
       getString(endpoint["name"]) ??
       pick(attributes, ["Computer Name"]) ??
       endpointId,
+    country: pick(attributes, [
+      "Country",
+      "Country Code",
+      "Location Country",
+    ]),
     deviceId:
       getString(endpoint["device_id"]) ??
       getString(endpoint["deviceId"]) ??
@@ -314,6 +330,26 @@ function normalizeEndpoint(
       getString(endpoint["serial_number"]) ??
       getString(endpoint["serialNumber"]) ??
       pick(attributes, ["Serial Number", "Serial", "Bios Serial Number"]),
+    state: pick(attributes, [
+      "State",
+      "State/Province",
+      "Province",
+      "Region",
+      "Location State",
+    ]),
+    streetAddress: pick(attributes, [
+      "Street Address",
+      "Address",
+      "Location Address",
+    ]),
+    postalCode: pick(attributes, [
+      "ZIP",
+      "ZIP Code",
+      "Zip Code",
+      "Postal Code",
+      "Postcode",
+      "Location ZIP",
+    ]),
     isDuplicateComputerName: false,
   };
 }

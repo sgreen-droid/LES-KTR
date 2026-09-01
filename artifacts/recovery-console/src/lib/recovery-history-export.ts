@@ -28,6 +28,19 @@ function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
+function getDownloadFilename(
+  response: Response,
+  fallback: string,
+): string {
+  const disposition = response.headers.get("content-disposition");
+  const encodedMatch = disposition?.match(/filename\*=UTF-8''([^;]+)/i);
+  if (encodedMatch?.[1]) {
+    return decodeURIComponent(encodedMatch[1]);
+  }
+  const quotedMatch = disposition?.match(/filename="([^"]+)"/i);
+  return quotedMatch?.[1] ?? fallback;
+}
+
 export async function exportRecoveryLocationHistory({
   endpointId,
   endpointIds,
@@ -48,30 +61,48 @@ export async function exportRecoveryLocationHistory({
       }
     }
   }
-  const response = await fetch(`${path}?${params.toString()}`, {
-    credentials: "include",
-    headers: { Accept: format === "json" ? "application/json" : "*/*" },
-  });
+  const printWindow =
+    format === "print" ? window.open("", "_blank") : null;
+  if (format === "print" && !printWindow) {
+    throw new Error("Allow pop-ups to open the print-ready history export.");
+  }
+  if (printWindow) {
+    printWindow.document.write(
+      "<!doctype html><title>Preparing evidence report</title><p style=\"font:16px Arial;padding:24px\">Preparing location evidence report…</p>",
+    );
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${path}?${params.toString()}`, {
+      credentials: "include",
+      headers: { Accept: format === "json" ? "application/json" : "*/*" },
+    });
+  } catch (error) {
+    printWindow?.close();
+    throw error;
+  }
   if (!response.ok) {
+    printWindow?.close();
     throw new Error("Location history export request failed.");
   }
 
   if (format === "print") {
-    const printWindow = window.open("", "_blank", "noopener,noreferrer");
-    if (!printWindow) {
-      throw new Error("Allow pop-ups to open the print-ready history export.");
-    }
+    if (!printWindow) return;
     printWindow.document.open();
     printWindow.document.write(await response.text());
     printWindow.document.close();
     printWindow.focus();
-    printWindow.onload = () => printWindow.print();
     return;
   }
 
   const scope = endpointId ? endpointId : "fleet";
+  const dateStamp = new Date().toISOString().replaceAll(":", "-");
   downloadBlob(
     await response.blob(),
-    `les-location-history-${scope}.${format === "json" ? "json" : "csv"}`,
+    getDownloadFilename(
+      response,
+      `les-location-evidence-${scope}-${dateStamp}.${format === "json" ? "json" : "csv"}`,
+    ),
   );
 }

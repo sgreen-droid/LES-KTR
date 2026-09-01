@@ -623,6 +623,18 @@ components:
           type: ["number", "null"]
         accuracy:
           type: ["string", "null"]
+        streetAddress:
+          type: ["string", "null"]
+        city:
+          type: ["string", "null"]
+        state:
+          type: ["string", "null"]
+        postalCode:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+        addressSource:
+          type: ["string", "null"]
         locationQuality:
           type: ["string", "null"]
         locationSource:
@@ -668,6 +680,12 @@ components:
         - latitude
         - longitude
         - accuracy
+        - streetAddress
+        - city
+        - state
+        - postalCode
+        - country
+        - addressSource
         - locationQuality
         - locationSource
         - positionSource
@@ -733,6 +751,18 @@ components:
           type: ["number", "null"]
         accuracy:
           type: ["string", "null"]
+        streetAddress:
+          type: ["string", "null"]
+        city:
+          type: ["string", "null"]
+        state:
+          type: ["string", "null"]
+        postalCode:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+        addressSource:
+          type: ["string", "null"]
         locationCoordinates:
           type: ["string", "null"]
         locationStatus:
@@ -776,6 +806,12 @@ components:
         - latitude
         - longitude
         - accuracy
+        - streetAddress
+        - city
+        - state
+        - postalCode
+        - country
+        - addressSource
         - locationCoordinates
         - locationStatus
         - locationIntegrity
@@ -805,6 +841,169 @@ components:
           type: ["string", "null"]
           format: date-time
       required: [observations, observationCount, from, to]
+    RecoveryLocationMovement:
+      type: object
+      properties:
+        priorObservationId:
+          type: string
+        priorObservationAt:
+          type: string
+          format: date-time
+        distanceMeters:
+          type: number
+          minimum: 0
+        elapsedMinutes:
+          type: ["number", "null"]
+          minimum: 0
+        apparentSpeedKmh:
+          type: ["number", "null"]
+          minimum: 0
+        assessment:
+          type: string
+          enum: [FIRST_COORDINATE, NO_MATERIAL_CHANGE, COORDINATE_CHANGE]
+      required:
+        - priorObservationId
+        - priorObservationAt
+        - distanceMeters
+        - elapsedMinutes
+        - apparentSpeedKmh
+        - assessment
+    RecoveryLocationExportObservation:
+      allOf:
+        - $ref: "#/components/schemas/RecoveryLocationObservation"
+        - type: object
+          properties:
+            observationNumber:
+              type: number
+              minimum: 1
+            observationTimeBasis:
+              type: string
+              enum:
+                - ENDPOINT_LOCATION_OBSERVED_AT
+                - ACTION1_SOURCE_REFRESHED_AT
+            movementFromPrevious:
+              oneOf:
+                - $ref: "#/components/schemas/RecoveryLocationMovement"
+                - type: "null"
+          required:
+            - observationNumber
+            - observationTimeBasis
+            - movementFromPrevious
+    RecoveryLocationEndpointSummary:
+      type: object
+      properties:
+        endpointId:
+          type: string
+        deviceId:
+          type: ["string", "null"]
+        computerNames:
+          type: array
+          items:
+            type: string
+        organizationName:
+          type: string
+        observationCount:
+          type: number
+          minimum: 0
+        coordinateObservationCount:
+          type: number
+          minimum: 0
+        firstObservationAt:
+          type: ["string", "null"]
+          format: date-time
+        lastObservationAt:
+          type: ["string", "null"]
+          format: date-time
+        firstCoordinate:
+          type: ["string", "null"]
+        lastCoordinate:
+          type: ["string", "null"]
+        apparentDistanceMeters:
+          type: number
+          minimum: 0
+        movementSegmentCount:
+          type: number
+          minimum: 0
+        maxApparentSpeedKmh:
+          type: ["number", "null"]
+          minimum: 0
+        locationStatuses:
+          type: array
+          items:
+            type: string
+        integrityStates:
+          type: array
+          items:
+            type: string
+        city:
+          type: ["string", "null"]
+        state:
+          type: ["string", "null"]
+        postalCode:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+      required:
+        - endpointId
+        - deviceId
+        - computerNames
+        - organizationName
+        - observationCount
+        - coordinateObservationCount
+        - firstObservationAt
+        - lastObservationAt
+        - firstCoordinate
+        - lastCoordinate
+        - apparentDistanceMeters
+        - movementSegmentCount
+        - maxApparentSpeedKmh
+        - locationStatuses
+        - integrityStates
+        - city
+        - state
+        - postalCode
+        - country
+    RecoveryLocationHistoryCoverage:
+      type: object
+      properties:
+        endpointCount:
+          type: number
+          minimum: 0
+        endpointsWithCoordinates:
+          type: number
+          minimum: 0
+        observationCount:
+          type: number
+          minimum: 0
+        coordinateObservationCount:
+          type: number
+          minimum: 0
+        movementSegmentCount:
+          type: number
+          minimum: 0
+        firstObservationAt:
+          type: ["string", "null"]
+          format: date-time
+        lastObservationAt:
+          type: ["string", "null"]
+          format: date-time
+        totalApparentDistanceMeters:
+          type: number
+          minimum: 0
+        endpointSummaries:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecoveryLocationEndpointSummary"
+      required:
+        - endpointCount
+        - endpointsWithCoordinates
+        - observationCount
+        - coordinateObservationCount
+        - movementSegmentCount
+        - firstObservationAt
+        - lastObservationAt
+        - totalApparentDistanceMeters
+        - endpointSummaries
     RecoveryLocationHistoryExport:
       type: object
       properties:
@@ -833,10 +1032,15 @@ components:
         observationCount:
           type: number
           minimum: 0
+        observationOrdering:
+          type: string
+          enum: [GROUPED_BY_ENDPOINT_THEN_CHRONOLOGICAL_ASCENDING]
+        coverage:
+          $ref: "#/components/schemas/RecoveryLocationHistoryCoverage"
         observations:
           type: array
           items:
-            $ref: "#/components/schemas/RecoveryLocationObservation"
+            $ref: "#/components/schemas/RecoveryLocationExportObservation"
         limitations:
           type: array
           items:
@@ -851,6 +1055,8 @@ components:
         - from
         - to
         - observationCount
+        - observationOrdering
+        - coverage
         - observations
         - limitations
     RecoverySummary:

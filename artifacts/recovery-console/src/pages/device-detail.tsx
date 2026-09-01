@@ -28,7 +28,8 @@ import {
   Loader2,
   FileJson,
   FileText,
-  History
+  History,
+  Printer
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -98,7 +99,7 @@ export default function DeviceDetail() {
     setIsIncidentDialogOpen(true);
   };
 
-  const handleHistoryExport = async (format: "json" | "csv") => {
+  const handleHistoryExport = async (format: "json" | "csv" | "print") => {
     try {
       await exportRecoveryLocationHistory({
         endpointId,
@@ -168,11 +169,15 @@ export default function DeviceDetail() {
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => void handleHistoryExport("json")} className="rounded-none uppercase text-xs font-bold tracking-widest gap-2">
             <FileJson className="h-4 w-4" />
-            History JSON
+            Evidence JSON
           </Button>
           <Button variant="outline" onClick={() => void handleHistoryExport("csv")} className="rounded-none uppercase text-xs font-bold tracking-widest gap-2">
             <FileText className="h-4 w-4" />
-            History CSV
+            Evidence CSV
+          </Button>
+          <Button variant="outline" onClick={() => void handleHistoryExport("print")} className="rounded-none uppercase text-xs font-bold tracking-widest gap-2">
+            <Printer className="h-4 w-4" />
+            Print Report
           </Button>
           <Button 
             onClick={openDialog}

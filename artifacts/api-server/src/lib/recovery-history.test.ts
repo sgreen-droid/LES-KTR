@@ -2,17 +2,22 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { RecoveryDevice } from "./action1-recovery";
 import {
+  buildRecoveryLocationHistoryAnalysis,
   createRecoveryObservationKey,
   parseAction1Timestamp,
   renderRecoveryLocationHistoryCsv,
+  type RecoveryLocationObservation,
   type RecoveryLocationHistoryExport,
 } from "./recovery-history";
 
 const device: RecoveryDevice = {
   accuracy: null,
+  addressSource: "Action1",
   agentHealth: null,
   agentVersion: "1.0.0",
+  city: "Seattle",
   computerName: "=unsafe-computer-name",
+  country: "US",
   deviceId: null,
   endpointId: "endpoint-1",
   endpointStatus: "ONLINE",
@@ -44,6 +49,9 @@ const device: RecoveryDevice = {
   positionSource: "GPS",
   recoveryStatus: "ACTIVE",
   serialNumber: "=serial",
+  state: "WA",
+  streetAddress: "100 Example Ave",
+  postalCode: "98101",
 };
 
 test("normalizes Action1 underscore timestamps safely", () => {
@@ -70,7 +78,7 @@ test("observation keys suppress identical captures but retain a newly reported d
 test("history CSV is spreadsheet-safe for identity values", () => {
   const exportData: RecoveryLocationHistoryExport = {
     exportId: "export-1",
-    schemaVersion: "les-recovery-location-history/v1",
+    schemaVersion: "les-recovery-location-history/v2",
     generatedAt: new Date("2026-08-25T18:00:00.000Z"),
     source: "test",
     scope: "SINGLE",
@@ -78,6 +86,40 @@ test("history CSV is spreadsheet-safe for identity values", () => {
     from: null,
     to: null,
     observationCount: 1,
+    observationOrdering: "GROUPED_BY_ENDPOINT_THEN_CHRONOLOGICAL_ASCENDING",
+    coverage: {
+      endpointCount: 1,
+      endpointsWithCoordinates: 1,
+      observationCount: 1,
+      coordinateObservationCount: 1,
+      movementSegmentCount: 0,
+      firstObservationAt: new Date("2026-08-25T17:30:00.000Z"),
+      lastObservationAt: new Date("2026-08-25T17:30:00.000Z"),
+      totalApparentDistanceMeters: 0,
+      endpointSummaries: [
+        {
+          endpointId: device.endpointId,
+          deviceId: null,
+          computerNames: [device.computerName],
+          organizationName: device.organizationName,
+          observationCount: 1,
+          coordinateObservationCount: 1,
+          firstObservationAt: new Date("2026-08-25T17:30:00.000Z"),
+          lastObservationAt: new Date("2026-08-25T17:30:00.000Z"),
+          firstCoordinate: device.locationCoordinates,
+          lastCoordinate: device.locationCoordinates,
+          apparentDistanceMeters: 0,
+          movementSegmentCount: 0,
+          maxApparentSpeedKmh: null,
+          locationStatuses: [device.locationStatus ?? ""],
+          integrityStates: [device.locationIntegrity ?? ""],
+          city: device.city,
+          state: device.state,
+          postalCode: device.postalCode,
+          country: device.country,
+        },
+      ],
+    },
     limitations: ["=never-formula"],
     observations: [
       {
@@ -87,6 +129,9 @@ test("history CSV is spreadsheet-safe for identity values", () => {
         sourceRefreshedAt: new Date("2026-08-25T18:00:00.000Z"),
         locationObservedAt: new Date("2026-08-25T17:30:00.000Z"),
         lastSeenAt: new Date("2026-08-25T17:30:00.000Z"),
+        observationNumber: 1,
+        observationTimeBasis: "ENDPOINT_LOCATION_OBSERVED_AT",
+        movementFromPrevious: null,
       },
     ],
   };
@@ -95,4 +140,47 @@ test("history CSV is spreadsheet-safe for identity values", () => {
   assert.match(csv, /"'=unsafe-computer-name"/);
   assert.match(csv, /"'=serial"/);
   assert.match(csv, /"'=never-formula"/);
+  assert.match(csv, /"EXPORT_SUMMARY"/);
+  assert.match(csv, /"ENDPOINT_SUMMARY"/);
+  assert.match(csv, /"OBSERVATION"/);
+  assert.match(csv, /"movement_assessment"/);
+  const columnCounts = csv
+    .split("\r\n")
+    .map((line) => line.split('","').length);
+  assert.ok(columnCounts.every((count) => count === columnCounts[0]));
+});
+
+test("history evidence is chronological and calculates apparent movement per endpoint", () => {
+  const makeObservation = (
+    id: string,
+    observedAt: string,
+    latitude: number,
+    longitude: number,
+  ): RecoveryLocationObservation => ({
+    ...device,
+    id,
+    capturedAt: new Date(observedAt),
+    sourceRefreshedAt: new Date(observedAt),
+    locationObservedAt: new Date(observedAt),
+    lastSeenAt: new Date(observedAt),
+    latitude,
+    longitude,
+    locationCoordinates: `${latitude},${longitude}`,
+  });
+  const analysis = buildRecoveryLocationHistoryAnalysis([
+    makeObservation("observation-2", "2026-08-25T18:30:00.000Z", 47.61, -122.3),
+    makeObservation("observation-1", "2026-08-25T17:30:00.000Z", 47.6, -122.3),
+  ]);
+
+  assert.equal(analysis.observations[0]?.id, "observation-1");
+  assert.equal(analysis.observations[1]?.observationNumber, 2);
+  assert.equal(
+    analysis.observations[1]?.movementFromPrevious?.assessment,
+    "COORDINATE_CHANGE",
+  );
+  assert.ok(
+    (analysis.observations[1]?.movementFromPrevious?.distanceMeters ?? 0) > 1000,
+  );
+  assert.equal(analysis.endpointSummaries[0]?.movementSegmentCount, 1);
+  assert.equal(analysis.movementSegmentCount, 1);
 });

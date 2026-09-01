@@ -5,8 +5,10 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { RecoveryLocationExportObservation } from './recoveryLocationExportObservation';
+import type { RecoveryLocationHistoryCoverage } from './recoveryLocationHistoryCoverage';
+import type { RecoveryLocationHistoryExportObservationOrdering } from './recoveryLocationHistoryExportObservationOrdering';
 import type { RecoveryLocationHistoryExportScope } from './recoveryLocationHistoryExportScope';
-import type { RecoveryLocationObservation } from './recoveryLocationObservation';
 
 export interface RecoveryLocationHistoryExport {
   exportId: string;
@@ -21,6 +23,8 @@ export interface RecoveryLocationHistoryExport {
   to: Date | null;
   /** @minimum 0 */
   observationCount: number;
-  observations: RecoveryLocationObservation[];
+  observationOrdering: RecoveryLocationHistoryExportObservationOrdering;
+  coverage: RecoveryLocationHistoryCoverage;
+  observations: RecoveryLocationExportObservation[];
   limitations: string[];
 }

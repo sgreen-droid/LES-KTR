@@ -134,6 +134,12 @@ export const ListRecoveryDevicesResponse = zod.object({
   "latitude": zod.number().nullable(),
   "longitude": zod.number().nullable(),
   "accuracy": zod.string().nullable(),
+  "streetAddress": zod.string().nullable(),
+  "city": zod.string().nullable(),
+  "state": zod.string().nullable(),
+  "postalCode": zod.string().nullable(),
+  "country": zod.string().nullable(),
+  "addressSource": zod.string().nullable(),
   "locationQuality": zod.string().nullable(),
   "locationSource": zod.string().nullable(),
   "positionSource": zod.string().nullable(),
@@ -187,6 +193,12 @@ export const GetRecoveryDeviceResponse = zod.object({
   "latitude": zod.number().nullable(),
   "longitude": zod.number().nullable(),
   "accuracy": zod.string().nullable(),
+  "streetAddress": zod.string().nullable(),
+  "city": zod.string().nullable(),
+  "state": zod.string().nullable(),
+  "postalCode": zod.string().nullable(),
+  "country": zod.string().nullable(),
+  "addressSource": zod.string().nullable(),
   "locationQuality": zod.string().nullable(),
   "locationSource": zod.string().nullable(),
   "positionSource": zod.string().nullable(),
@@ -239,6 +251,12 @@ export const GetRecoveryDeviceLocationHistoryResponse = zod.object({
   "latitude": zod.number().nullable(),
   "longitude": zod.number().nullable(),
   "accuracy": zod.string().nullable(),
+  "streetAddress": zod.string().nullable(),
+  "city": zod.string().nullable(),
+  "state": zod.string().nullable(),
+  "postalCode": zod.string().nullable(),
+  "country": zod.string().nullable(),
+  "addressSource": zod.string().nullable(),
   "locationCoordinates": zod.string().nullable(),
   "locationStatus": zod.string().nullable(),
   "locationIntegrity": zod.string().nullable(),
@@ -279,6 +297,35 @@ export const ExportRecoveryDeviceLocationHistoryQueryParams = zod.object({
 
 export const exportRecoveryDeviceLocationHistoryResponseObservationCountMin = 0;
 
+export const exportRecoveryDeviceLocationHistoryResponseCoverageEndpointCountMin = 0;
+
+export const exportRecoveryDeviceLocationHistoryResponseCoverageEndpointsWithCoordinatesMin = 0;
+
+export const exportRecoveryDeviceLocationHistoryResponseCoverageObservationCountMin = 0;
+
+export const exportRecoveryDeviceLocationHistoryResponseCoverageCoordinateObservationCountMin = 0;
+
+export const exportRecoveryDeviceLocationHistoryResponseCoverageMovementSegmentCountMin = 0;
+
+export const exportRecoveryDeviceLocationHistoryResponseCoverageTotalApparentDistanceMetersMin = 0;
+
+export const exportRecoveryDeviceLocationHistoryResponseCoverageEndpointSummariesItemObservationCountMin = 0;
+
+export const exportRecoveryDeviceLocationHistoryResponseCoverageEndpointSummariesItemCoordinateObservationCountMin = 0;
+
+export const exportRecoveryDeviceLocationHistoryResponseCoverageEndpointSummariesItemApparentDistanceMetersMin = 0;
+
+export const exportRecoveryDeviceLocationHistoryResponseCoverageEndpointSummariesItemMovementSegmentCountMin = 0;
+
+export const exportRecoveryDeviceLocationHistoryResponseCoverageEndpointSummariesItemMaxApparentSpeedKmhMin = 0;
+
+
+export const exportRecoveryDeviceLocationHistoryResponseObservationsItemTwoMovementFromPreviousOneDistanceMetersMin = 0;
+
+export const exportRecoveryDeviceLocationHistoryResponseObservationsItemTwoMovementFromPreviousOneElapsedMinutesMin = 0;
+
+export const exportRecoveryDeviceLocationHistoryResponseObservationsItemTwoMovementFromPreviousOneApparentSpeedKmhMin = 0;
+
 
 
 export const ExportRecoveryDeviceLocationHistoryResponse = zod.object({
@@ -291,6 +338,38 @@ export const ExportRecoveryDeviceLocationHistoryResponse = zod.object({
   "from": zod.coerce.date().nullable(),
   "to": zod.coerce.date().nullable(),
   "observationCount": zod.number().min(exportRecoveryDeviceLocationHistoryResponseObservationCountMin),
+  "observationOrdering": zod.enum(['GROUPED_BY_ENDPOINT_THEN_CHRONOLOGICAL_ASCENDING']),
+  "coverage": zod.object({
+  "endpointCount": zod.number().min(exportRecoveryDeviceLocationHistoryResponseCoverageEndpointCountMin),
+  "endpointsWithCoordinates": zod.number().min(exportRecoveryDeviceLocationHistoryResponseCoverageEndpointsWithCoordinatesMin),
+  "observationCount": zod.number().min(exportRecoveryDeviceLocationHistoryResponseCoverageObservationCountMin),
+  "coordinateObservationCount": zod.number().min(exportRecoveryDeviceLocationHistoryResponseCoverageCoordinateObservationCountMin),
+  "movementSegmentCount": zod.number().min(exportRecoveryDeviceLocationHistoryResponseCoverageMovementSegmentCountMin),
+  "firstObservationAt": zod.coerce.date().nullable(),
+  "lastObservationAt": zod.coerce.date().nullable(),
+  "totalApparentDistanceMeters": zod.number().min(exportRecoveryDeviceLocationHistoryResponseCoverageTotalApparentDistanceMetersMin),
+  "endpointSummaries": zod.array(zod.object({
+  "endpointId": zod.string(),
+  "deviceId": zod.string().nullable(),
+  "computerNames": zod.array(zod.string()),
+  "organizationName": zod.string(),
+  "observationCount": zod.number().min(exportRecoveryDeviceLocationHistoryResponseCoverageEndpointSummariesItemObservationCountMin),
+  "coordinateObservationCount": zod.number().min(exportRecoveryDeviceLocationHistoryResponseCoverageEndpointSummariesItemCoordinateObservationCountMin),
+  "firstObservationAt": zod.coerce.date().nullable(),
+  "lastObservationAt": zod.coerce.date().nullable(),
+  "firstCoordinate": zod.string().nullable(),
+  "lastCoordinate": zod.string().nullable(),
+  "apparentDistanceMeters": zod.number().min(exportRecoveryDeviceLocationHistoryResponseCoverageEndpointSummariesItemApparentDistanceMetersMin),
+  "movementSegmentCount": zod.number().min(exportRecoveryDeviceLocationHistoryResponseCoverageEndpointSummariesItemMovementSegmentCountMin),
+  "maxApparentSpeedKmh": zod.number().min(exportRecoveryDeviceLocationHistoryResponseCoverageEndpointSummariesItemMaxApparentSpeedKmhMin).nullable(),
+  "locationStatuses": zod.array(zod.string()),
+  "integrityStates": zod.array(zod.string()),
+  "city": zod.string().nullable(),
+  "state": zod.string().nullable(),
+  "postalCode": zod.string().nullable(),
+  "country": zod.string().nullable()
+}))
+}),
   "observations": zod.array(zod.object({
   "id": zod.string(),
   "endpointId": zod.string(),
@@ -310,6 +389,12 @@ export const ExportRecoveryDeviceLocationHistoryResponse = zod.object({
   "latitude": zod.number().nullable(),
   "longitude": zod.number().nullable(),
   "accuracy": zod.string().nullable(),
+  "streetAddress": zod.string().nullable(),
+  "city": zod.string().nullable(),
+  "state": zod.string().nullable(),
+  "postalCode": zod.string().nullable(),
+  "country": zod.string().nullable(),
+  "addressSource": zod.string().nullable(),
   "locationCoordinates": zod.string().nullable(),
   "locationStatus": zod.string().nullable(),
   "locationIntegrity": zod.string().nullable(),
@@ -322,7 +407,18 @@ export const ExportRecoveryDeviceLocationHistoryResponse = zod.object({
   "locationError": zod.string().nullable(),
   "locationSummary": zod.string().nullable(),
   "isMapSafe": zod.boolean()
-})),
+}).and(zod.object({
+  "observationNumber": zod.number().min(1),
+  "observationTimeBasis": zod.enum(['ENDPOINT_LOCATION_OBSERVED_AT', 'ACTION1_SOURCE_REFRESHED_AT']),
+  "movementFromPrevious": zod.union([zod.object({
+  "priorObservationId": zod.string(),
+  "priorObservationAt": zod.coerce.date(),
+  "distanceMeters": zod.number().min(exportRecoveryDeviceLocationHistoryResponseObservationsItemTwoMovementFromPreviousOneDistanceMetersMin),
+  "elapsedMinutes": zod.number().min(exportRecoveryDeviceLocationHistoryResponseObservationsItemTwoMovementFromPreviousOneElapsedMinutesMin).nullable(),
+  "apparentSpeedKmh": zod.number().min(exportRecoveryDeviceLocationHistoryResponseObservationsItemTwoMovementFromPreviousOneApparentSpeedKmhMin).nullable(),
+  "assessment": zod.enum(['FIRST_COORDINATE', 'NO_MATERIAL_CHANGE', 'COORDINATE_CHANGE'])
+}),zod.null()])
+}))),
   "limitations": zod.array(zod.string())
 })
 
@@ -366,6 +462,12 @@ export const ListRecoveryLocationHistoryResponse = zod.object({
   "latitude": zod.number().nullable(),
   "longitude": zod.number().nullable(),
   "accuracy": zod.string().nullable(),
+  "streetAddress": zod.string().nullable(),
+  "city": zod.string().nullable(),
+  "state": zod.string().nullable(),
+  "postalCode": zod.string().nullable(),
+  "country": zod.string().nullable(),
+  "addressSource": zod.string().nullable(),
   "locationCoordinates": zod.string().nullable(),
   "locationStatus": zod.string().nullable(),
   "locationIntegrity": zod.string().nullable(),
@@ -403,6 +505,35 @@ export const ExportRecoveryLocationHistoryQueryParams = zod.object({
 
 export const exportRecoveryLocationHistoryResponseObservationCountMin = 0;
 
+export const exportRecoveryLocationHistoryResponseCoverageEndpointCountMin = 0;
+
+export const exportRecoveryLocationHistoryResponseCoverageEndpointsWithCoordinatesMin = 0;
+
+export const exportRecoveryLocationHistoryResponseCoverageObservationCountMin = 0;
+
+export const exportRecoveryLocationHistoryResponseCoverageCoordinateObservationCountMin = 0;
+
+export const exportRecoveryLocationHistoryResponseCoverageMovementSegmentCountMin = 0;
+
+export const exportRecoveryLocationHistoryResponseCoverageTotalApparentDistanceMetersMin = 0;
+
+export const exportRecoveryLocationHistoryResponseCoverageEndpointSummariesItemObservationCountMin = 0;
+
+export const exportRecoveryLocationHistoryResponseCoverageEndpointSummariesItemCoordinateObservationCountMin = 0;
+
+export const exportRecoveryLocationHistoryResponseCoverageEndpointSummariesItemApparentDistanceMetersMin = 0;
+
+export const exportRecoveryLocationHistoryResponseCoverageEndpointSummariesItemMovementSegmentCountMin = 0;
+
+export const exportRecoveryLocationHistoryResponseCoverageEndpointSummariesItemMaxApparentSpeedKmhMin = 0;
+
+
+export const exportRecoveryLocationHistoryResponseObservationsItemTwoMovementFromPreviousOneDistanceMetersMin = 0;
+
+export const exportRecoveryLocationHistoryResponseObservationsItemTwoMovementFromPreviousOneElapsedMinutesMin = 0;
+
+export const exportRecoveryLocationHistoryResponseObservationsItemTwoMovementFromPreviousOneApparentSpeedKmhMin = 0;
+
 
 
 export const ExportRecoveryLocationHistoryResponse = zod.object({
@@ -415,6 +546,38 @@ export const ExportRecoveryLocationHistoryResponse = zod.object({
   "from": zod.coerce.date().nullable(),
   "to": zod.coerce.date().nullable(),
   "observationCount": zod.number().min(exportRecoveryLocationHistoryResponseObservationCountMin),
+  "observationOrdering": zod.enum(['GROUPED_BY_ENDPOINT_THEN_CHRONOLOGICAL_ASCENDING']),
+  "coverage": zod.object({
+  "endpointCount": zod.number().min(exportRecoveryLocationHistoryResponseCoverageEndpointCountMin),
+  "endpointsWithCoordinates": zod.number().min(exportRecoveryLocationHistoryResponseCoverageEndpointsWithCoordinatesMin),
+  "observationCount": zod.number().min(exportRecoveryLocationHistoryResponseCoverageObservationCountMin),
+  "coordinateObservationCount": zod.number().min(exportRecoveryLocationHistoryResponseCoverageCoordinateObservationCountMin),
+  "movementSegmentCount": zod.number().min(exportRecoveryLocationHistoryResponseCoverageMovementSegmentCountMin),
+  "firstObservationAt": zod.coerce.date().nullable(),
+  "lastObservationAt": zod.coerce.date().nullable(),
+  "totalApparentDistanceMeters": zod.number().min(exportRecoveryLocationHistoryResponseCoverageTotalApparentDistanceMetersMin),
+  "endpointSummaries": zod.array(zod.object({
+  "endpointId": zod.string(),
+  "deviceId": zod.string().nullable(),
+  "computerNames": zod.array(zod.string()),
+  "organizationName": zod.string(),
+  "observationCount": zod.number().min(exportRecoveryLocationHistoryResponseCoverageEndpointSummariesItemObservationCountMin),
+  "coordinateObservationCount": zod.number().min(exportRecoveryLocationHistoryResponseCoverageEndpointSummariesItemCoordinateObservationCountMin),
+  "firstObservationAt": zod.coerce.date().nullable(),
+  "lastObservationAt": zod.coerce.date().nullable(),
+  "firstCoordinate": zod.string().nullable(),
+  "lastCoordinate": zod.string().nullable(),
+  "apparentDistanceMeters": zod.number().min(exportRecoveryLocationHistoryResponseCoverageEndpointSummariesItemApparentDistanceMetersMin),
+  "movementSegmentCount": zod.number().min(exportRecoveryLocationHistoryResponseCoverageEndpointSummariesItemMovementSegmentCountMin),
+  "maxApparentSpeedKmh": zod.number().min(exportRecoveryLocationHistoryResponseCoverageEndpointSummariesItemMaxApparentSpeedKmhMin).nullable(),
+  "locationStatuses": zod.array(zod.string()),
+  "integrityStates": zod.array(zod.string()),
+  "city": zod.string().nullable(),
+  "state": zod.string().nullable(),
+  "postalCode": zod.string().nullable(),
+  "country": zod.string().nullable()
+}))
+}),
   "observations": zod.array(zod.object({
   "id": zod.string(),
   "endpointId": zod.string(),
@@ -434,6 +597,12 @@ export const ExportRecoveryLocationHistoryResponse = zod.object({
   "latitude": zod.number().nullable(),
   "longitude": zod.number().nullable(),
   "accuracy": zod.string().nullable(),
+  "streetAddress": zod.string().nullable(),
+  "city": zod.string().nullable(),
+  "state": zod.string().nullable(),
+  "postalCode": zod.string().nullable(),
+  "country": zod.string().nullable(),
+  "addressSource": zod.string().nullable(),
   "locationCoordinates": zod.string().nullable(),
   "locationStatus": zod.string().nullable(),
   "locationIntegrity": zod.string().nullable(),
@@ -446,7 +615,18 @@ export const ExportRecoveryLocationHistoryResponse = zod.object({
   "locationError": zod.string().nullable(),
   "locationSummary": zod.string().nullable(),
   "isMapSafe": zod.boolean()
-})),
+}).and(zod.object({
+  "observationNumber": zod.number().min(1),
+  "observationTimeBasis": zod.enum(['ENDPOINT_LOCATION_OBSERVED_AT', 'ACTION1_SOURCE_REFRESHED_AT']),
+  "movementFromPrevious": zod.union([zod.object({
+  "priorObservationId": zod.string(),
+  "priorObservationAt": zod.coerce.date(),
+  "distanceMeters": zod.number().min(exportRecoveryLocationHistoryResponseObservationsItemTwoMovementFromPreviousOneDistanceMetersMin),
+  "elapsedMinutes": zod.number().min(exportRecoveryLocationHistoryResponseObservationsItemTwoMovementFromPreviousOneElapsedMinutesMin).nullable(),
+  "apparentSpeedKmh": zod.number().min(exportRecoveryLocationHistoryResponseObservationsItemTwoMovementFromPreviousOneApparentSpeedKmhMin).nullable(),
+  "assessment": zod.enum(['FIRST_COORDINATE', 'NO_MATERIAL_CHANGE', 'COORDINATE_CHANGE'])
+}),zod.null()])
+}))),
   "limitations": zod.array(zod.string())
 })
 
@@ -550,6 +730,12 @@ export const CreateRecoveryIncidentResponse = zod.object({
   "latitude": zod.number().nullable(),
   "longitude": zod.number().nullable(),
   "accuracy": zod.string().nullable(),
+  "streetAddress": zod.string().nullable(),
+  "city": zod.string().nullable(),
+  "state": zod.string().nullable(),
+  "postalCode": zod.string().nullable(),
+  "country": zod.string().nullable(),
+  "addressSource": zod.string().nullable(),
   "locationQuality": zod.string().nullable(),
   "locationSource": zod.string().nullable(),
   "positionSource": zod.string().nullable(),
@@ -628,6 +814,12 @@ export const GetRecoveryIncidentResponse = zod.object({
   "latitude": zod.number().nullable(),
   "longitude": zod.number().nullable(),
   "accuracy": zod.string().nullable(),
+  "streetAddress": zod.string().nullable(),
+  "city": zod.string().nullable(),
+  "state": zod.string().nullable(),
+  "postalCode": zod.string().nullable(),
+  "country": zod.string().nullable(),
+  "addressSource": zod.string().nullable(),
   "locationQuality": zod.string().nullable(),
   "locationSource": zod.string().nullable(),
   "positionSource": zod.string().nullable(),
@@ -725,6 +917,12 @@ export const UpdateRecoveryIncidentResponse = zod.object({
   "latitude": zod.number().nullable(),
   "longitude": zod.number().nullable(),
   "accuracy": zod.string().nullable(),
+  "streetAddress": zod.string().nullable(),
+  "city": zod.string().nullable(),
+  "state": zod.string().nullable(),
+  "postalCode": zod.string().nullable(),
+  "country": zod.string().nullable(),
+  "addressSource": zod.string().nullable(),
   "locationQuality": zod.string().nullable(),
   "locationSource": zod.string().nullable(),
   "positionSource": zod.string().nullable(),
@@ -812,6 +1010,12 @@ export const ExportRecoveryIncidentResponse = zod.object({
   "latitude": zod.number().nullable(),
   "longitude": zod.number().nullable(),
   "accuracy": zod.string().nullable(),
+  "streetAddress": zod.string().nullable(),
+  "city": zod.string().nullable(),
+  "state": zod.string().nullable(),
+  "postalCode": zod.string().nullable(),
+  "country": zod.string().nullable(),
+  "addressSource": zod.string().nullable(),
   "locationQuality": zod.string().nullable(),
   "locationSource": zod.string().nullable(),
   "positionSource": zod.string().nullable(),

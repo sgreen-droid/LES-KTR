@@ -56,6 +56,18 @@ export interface RecoveryDevice {
   /** @nullable */
   accuracy: string | null;
   /** @nullable */
+  streetAddress: string | null;
+  /** @nullable */
+  city: string | null;
+  /** @nullable */
+  state: string | null;
+  /** @nullable */
+  postalCode: string | null;
+  /** @nullable */
+  country: string | null;
+  /** @nullable */
+  addressSource: string | null;
+  /** @nullable */
   locationQuality: string | null;
   /** @nullable */
   locationSource: string | null;
