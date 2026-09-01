@@ -1,0 +1,55 @@
+=== LES Location Agent — Action1 Sync ===
+Running as: LESPC-07$ on LESPC-07
+Timestamp:  2026-09-01T17:44:30Z
+Location age: 2.2 minutes — ACTIVE
+Setting Action1 Custom Attributes...
+  Setting 'Latitude' = '40.8131116594085'
+Action1-Set-CustomAttribute: Latitude=40.8131116594085
+  Setting 'Longitude' = '-73.9453448814208'
+Action1-Set-CustomAttribute: Longitude=-73.9453448814208
+  Setting 'Location Accuracy' = '99'
+Action1-Set-CustomAttribute: Location Accuracy=99
+  Setting 'Location Quality' = 'GOOD'
+Action1-Set-CustomAttribute: Location Quality=GOOD
+  Setting 'Location Source' = 'Windows Geolocation'
+Action1-Set-CustomAttribute: Location Source=Windows Geolocation
+  Setting 'Position Source' = 'WiFi'
+Action1-Set-CustomAttribute: Position Source=WiFi
+  Setting 'Location Permission' = 'Allowed'
+Action1-Set-CustomAttribute: Location Permission=Allowed
+  Setting 'Location Updated' = '2026-09-01T17:42:17Z'
+Action1-Set-CustomAttribute: Location Updated=2026-09-01T17:42:17Z
+  Setting 'Location Status' = 'ACTIVE'
+Action1-Set-CustomAttribute: Location Status=ACTIVE
+  Setting 'Device ID' = 'e4615d9e-f4d5-4ccd-b3cc-664b6a84f5ab'
+Action1-Set-CustomAttribute: Device ID=e4615d9e-f4d5-4ccd-b3cc-664b6a84f5ab
+  Setting 'Location Sequence' = '12'
+Action1-Set-CustomAttribute: Location Sequence=12
+  Setting 'Location Integrity' = 'VALID'
+Action1-Set-CustomAttribute: Location Integrity=VALID
+  Setting 'Agent Health' = 'HEALTHY'
+Action1-Set-CustomAttribute: Agent Health=HEALTHY
+  Setting 'Agent Version' = '1.1.5'
+Action1-Set-CustomAttribute: Agent Version=1.1.5
+  Setting 'Last Attempt' = '2026-09-01T17:42:35Z'
+Action1-Set-CustomAttribute: Last Attempt=2026-09-01T17:42:35Z
+  Setting 'Last Success' = '2026-09-01T13:42:17Z'
+Action1-Set-CustomAttribute: Last Success=2026-09-01T13:42:17Z
+  Setting 'Location Age Minutes' = '2.2'
+Action1-Set-CustomAttribute: Location Age Minutes=2.2
+  Setting 'Recovery Status' = 'ACTIVE'
+Action1-Set-CustomAttribute: Recovery Status=ACTIVE
+  Setting 'Location Error' = ''
+Error in Action1-Set-CustomAttribute: "Location Error" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Map Link' = 'https://www.google.com/maps/search/?api=1&query=40.813112,-73.945345'
+Action1-Set-CustomAttribute: Map Link=https://www.google.com/maps/search/?api=1&query=40.813112,-73.945345
+  Setting 'Location Coordinates' = '40.813112, -73.945345'
+Action1-Set-CustomAttribute: Location Coordinates=40.813112, -73.945345
+  Setting 'Location Summary' = '40.813112, -73.945345 | ±99 m | WiFi | ACTIVE'
+Action1-Set-CustomAttribute: Location Summary=40.813112, -73.945345 | ±99 m | WiFi | ACTIVE
+  Setting 'Approx Location' = ''
+Action1-Set-CustomAttribute: Approx Location=
+=== Sync complete ===
+RESULT: ACTIVE
+Latitude: 40.8131116594085  Longitude: -73.9453448814208  Accuracy: 99 m  Quality: GOOD
+Map: https://www.google.com/maps/search/?api=1&query=40.813112,-73.945345

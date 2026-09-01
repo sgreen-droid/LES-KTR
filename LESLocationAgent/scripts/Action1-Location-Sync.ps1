@@ -25,7 +25,7 @@
       Location Updated, Location Status, Map Link, Location Coordinates,
       Location Summary, Approx Location, Device ID, Location Sequence, Location Integrity,
       Agent Health, Agent Version, Last Attempt, Last Success,
-      Location Age Minutes, Recovery Status, Location Error
+      Location Age Minutes, Recovery Status
 #>
 
 #Requires -Version 5.1
@@ -239,7 +239,6 @@ function Set-RecoveryAttributes {
     Set-OptionalAttribute 'Last Success'         $lastSuccess
     Set-OptionalAttribute 'Location Age Minutes' $ageText
     Set-OptionalAttribute 'Recovery Status'      $RecoveryStatus
-    Set-OptionalAttribute 'Location Error'       $errorText
 }
 
 # ---------------------------------------------------------------
