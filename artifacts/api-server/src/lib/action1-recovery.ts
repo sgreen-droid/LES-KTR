@@ -264,6 +264,7 @@ function normalizeEndpoint(
   const locationContext = parseLocationContext(locationSummary);
   const contextValue = (aliases: string[]): string | null =>
     pick(locationContext, aliases);
+  const approxLocation = pick(attributes, ["Approx Location"]);
   const isMapSafe =
     latitude !== null &&
     longitude !== null &&
@@ -280,10 +281,13 @@ function normalizeEndpoint(
     addressSource: pick(attributes, [
       "Location Address Source",
       "Address Source",
-    ]) ?? contextValue(["Address Source", "Addr Source"]),
+    ]) ??
+      contextValue(["Address Source", "Addr Source"]) ??
+      (approxLocation ? "ACTION1_APPROX_LOCATION" : null),
     addressPrecision:
       pick(attributes, ["Location Address Precision", "Address Precision"]) ??
-      contextValue(["Address Precision", "Precision"]),
+      contextValue(["Address Precision", "Precision"]) ??
+      (approxLocation ? "APPROXIMATE" : null),
     agentHealth: pick(attributes, ["Agent Health"]),
     agentVersion: pick(attributes, ["Agent Version", "agent_version"]),
     city:
@@ -369,11 +373,8 @@ function normalizeEndpoint(
       pick(attributes, ["Street Address", "Address", "Location Address"]) ??
       contextValue(["Street Address"]),
     nearestAddress:
-      pick(attributes, [
-        "Approx Location",
-        "Nearest Address",
-        "Location Nearest Address",
-      ]) ??
+      approxLocation ??
+      pick(attributes, ["Nearest Address", "Location Nearest Address"]) ??
       contextValue(["Nearest Address", "Address"]),
     postalCode:
       pick(attributes, [
