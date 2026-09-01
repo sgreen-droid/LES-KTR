@@ -7,3 +7,4 @@
 - [Action1 map attribute clearing](action1-map-attribute-clearing.md) — clear map-derived attributes on invalid/no-location data so old, untrusted locations cannot look current.
 - [Action1 timestamp formats](action1-timestamp-formats.md) — Action1 can return UTC timestamps as `YYYY-MM-DD_HH-MM-SS`, which strict ISO parsers reject.
 - [Published environment refresh](deployment-env-refresh.md) — shared environment changes require a republish before live deployment verification.
+- [Database publish override](replit-database-publish-override.md) — a manual DATABASE_URL secret can block Replit database features; verify managed data before removing the override.
