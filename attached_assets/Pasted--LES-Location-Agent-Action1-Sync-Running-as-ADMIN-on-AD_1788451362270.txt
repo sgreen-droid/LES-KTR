@@ -1,0 +1,68 @@
+=== LES Location Agent — Action1 Sync ===
+Running as: ADMIN$ on ADMIN
+Timestamp:  2026-09-03T16:01:57Z
+Location age: 1.8 minutes — ACTIVE
+Setting Action1 Custom Attributes...
+  Setting 'Latitude' = '40.813134877104'
+Error in Action1-Set-CustomAttribute: "Latitude" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Longitude' = '-73.9452877977917'
+Error in Action1-Set-CustomAttribute: "Longitude" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Location Accuracy' = '96'
+Error in Action1-Set-CustomAttribute: "Location Accuracy" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Location Quality' = 'GOOD'
+Error in Action1-Set-CustomAttribute: "Location Quality" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Location Source' = 'Windows Geolocation'
+Error in Action1-Set-CustomAttribute: "Location Source" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Position Source' = 'WiFi'
+Error in Action1-Set-CustomAttribute: "Position Source" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Location Permission' = 'Allowed'
+Error in Action1-Set-CustomAttribute: "Location Permission" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Location Updated' = '2026-09-03T16:00:09Z'
+Error in Action1-Set-CustomAttribute: "Location Updated" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Location Status' = 'ACTIVE'
+Error in Action1-Set-CustomAttribute: "Location Status" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Device ID' = '24b0ee0a-236a-4dd7-88db-00f80eefe6d2'
+Error in Action1-Set-CustomAttribute: "Device ID" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Location Sequence' = '64'
+Error in Action1-Set-CustomAttribute: "Location Sequence" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Location Integrity' = 'VALID'
+Error in Action1-Set-CustomAttribute: "Location Integrity" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Agent Health' = 'HEALTHY'
+Error in Action1-Set-CustomAttribute: "Agent Health" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Agent Version' = '1.1.5'
+Error in Action1-Set-CustomAttribute: "Agent Version" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Last Attempt' = '2026-09-03T16:00:26Z'
+Error in Action1-Set-CustomAttribute: "Last Attempt" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Last Success' = '2026-09-03T12:00:09Z'
+Error in Action1-Set-CustomAttribute: "Last Success" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Location Age Minutes' = '1.8'
+Error in Action1-Set-CustomAttribute: "Location Age Minutes" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Recovery Status' = 'ACTIVE'
+Error in Action1-Set-CustomAttribute: "Recovery Status" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Map Link' = 'https://www.openstreetmap.org/?mlat=40.813135&mlon=-73.945288#map=18/40.813135/-73.945288'
+Error in Action1-Set-CustomAttribute: "Map Link" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Location Coordinates' = '40.813135, -73.945288'
+Error in Action1-Set-CustomAttribute: "Location Coordinates" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Location Summary' = '40.813135, -73.945288 | ±96 m | WiFi | ACTIVE'
+Error in Action1-Set-CustomAttribute: "Location Summary" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Approx Location' = ''
+Error in Action1-Set-CustomAttribute: "Approx Location" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Nearest Address' = ''
+Action1-Set-CustomAttribute: Nearest Address=
+  Setting 'Cross Streets' = ''
+Action1-Set-CustomAttribute: Cross Streets=
+  Setting 'City' = ''
+Action1-Set-CustomAttribute: City=
+  Setting 'State' = ''
+Action1-Set-CustomAttribute: State=
+  Setting 'ZIP' = ''
+Error in Action1-Set-CustomAttribute: "ZIP" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Country' = ''
+Action1-Set-CustomAttribute: Country=
+  Setting 'Address Source' = ''
+Action1-Set-CustomAttribute: Address Source=
+  Setting 'Address Precision' = ''
+Action1-Set-CustomAttribute: Address Precision=
+=== Sync complete ===
+RESULT: ACTIVE
+Location details updated in Action1 custom attributes.

@@ -74,8 +74,12 @@ $script:integrityStatus = 'MISSING'
 function Set-Attribute {
     param([string]$Name, $Value)
     $displayValue = if ($null -eq $Value) { '' } else { "$Value" }
-    Write-Host "  Setting '$Name' = '$displayValue'"
-    Action1-Set-CustomAttribute $Name $displayValue
+    Write-Host "  Setting '$Name'"
+    try {
+        Action1-Set-CustomAttribute $Name $displayValue -ErrorAction Stop
+    } catch {
+        throw "Action1 custom attribute '$Name' could not be updated: $($_.Exception.Message)"
+    }
 }
 
 # New attributes are optional during rollout. If one has not been created in

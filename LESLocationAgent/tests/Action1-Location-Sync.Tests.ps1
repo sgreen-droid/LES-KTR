@@ -13,6 +13,7 @@ $statusFile = Join-Path $tempDir 'status.json'
 $stateFile = Join-Path $tempDir 'agent-state.json'
 
 function global:Action1-Set-CustomAttribute {
+    [CmdletBinding()]
     param([string]$Name, [string]$Value)
     if ($global:LesOptionalAttributeFailures -contains $Name) {
         throw "Simulated Action1 failure for optional attribute '$Name'."

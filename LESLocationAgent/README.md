@@ -291,6 +291,13 @@ In the **Action1 portal**, create these Custom Attributes (exact names, case-sen
 3. Run it against your test PC.
 4. Confirm the location and recovery Custom Attributes populate on the endpoint record.
 
+The location fields listed as required must already exist in Action1. The
+updated script fails the run when a required field such as `Latitude` is
+missing, instead of reporting a false `ACTIVE` success. Optional address
+attributes may be added later; failures for those fields are warned and do not
+stop the core sync. Sync output intentionally does not print coordinate,
+address, or map-link values.
+
 **Location Status values:**
 
 | Status | Meaning |
