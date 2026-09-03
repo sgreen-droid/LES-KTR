@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "xZzbrj-7PahYJKRKNeO9V"
+uri = "file://LESLocationAgent/scripts/Action1-Location-Sync.ps1"
+type = "unspecified"
+title = "Updated Action1 Location Sync Script"
+description = "Checked-in PowerShell sync script. It preserves the existing Action1 attributes and publishes optional address fields, including Cross Streets, when trusted source data is present."
+logical_id = "b90e9efc-3616-4da3-924a-e5e57e810f90"
+content_hash = "sha256:41eedf84e437c19911ccad9457acc48ff09da47ddfe3ac0a5656da49ec88afe8"
+size = 20500
+mtime_ms = 1788449892523
+storage_uri = "gcs://replit-rams-assets-picard/rams/assets/repl:b46ffd92-1747-4344-b090-f8befc9db1b0/b90e9efc-3616-4da3-924a-e5e57e810f90/65c1ef51-4ff5-42bf-8509-4390cea736a3"
+storage_version_token = "1788450847130819"
+content_type = "application/octet-stream"
