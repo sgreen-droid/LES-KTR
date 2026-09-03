@@ -288,24 +288,31 @@ export default function DeviceDetail() {
                   </div>
                   
                   {/* Location Context */}
-                  <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-6 bg-card">
+                  <div className="p-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 bg-card">
                     <div className="space-y-2">
                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Raw Coordinates</p>
                       <p className="font-mono text-sm font-bold text-foreground bg-muted/50 p-2 inline-block border-l-2 border-l-border">{device.locationCoordinates}</p>
                     </div>
                     <div className="space-y-2">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nearest Reported Place</p>
-                      <p className="text-sm font-sans">
-                        {device.nearestAddress ||
-                          device.crossStreets ||
-                          [device.streetAddress, device.city, device.state, device.postalCode, device.country]
-                            .filter(Boolean)
-                            .join(", ") ||
-                          "Not reported"}
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nearest Address</p>
+                      <p className="text-sm font-sans">{device.nearestAddress || device.streetAddress || "Not available"}</p>
+                      <p className="text-xs text-muted-foreground font-sans">
+                        {[device.city, device.state, device.postalCode, device.country]
+                          .filter(Boolean)
+                          .join(", ") || "Locality not available"}
                       </p>
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
                         {device.addressPrecision ? `Precision: ${device.addressPrecision}` : "Address precision unavailable"}
                         {device.addressSource ? ` · Source: ${device.addressSource}` : ""}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cross Streets</p>
+                      <p className="text-sm font-sans">{device.crossStreets || "Not available"}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                        {device.crossStreets
+                          ? "Source: Action1 recovery attribute"
+                          : "No cross streets reported by Action1"}
                       </p>
                     </div>
                     <div className="space-y-2">
@@ -360,6 +367,13 @@ export default function DeviceDetail() {
                     <div key={observation.id} className="p-4 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] gap-3 font-mono text-xs">
                       <div className="space-y-1">
                         <p className="font-bold text-foreground">{observation.locationCoordinates || "No valid coordinates reported"}</p>
+                        <p className="text-muted-foreground">
+                          Nearest address: {observation.nearestAddress || observation.streetAddress || "Not available"}
+                        </p>
+                        <p className="text-muted-foreground">
+                          Cross streets: {observation.crossStreets || "Not available"}
+                          {observation.crossStreets ? " (Action1)" : ""}
+                        </p>
                         <p className="text-muted-foreground">Status: {observation.locationStatus || "Unavailable"} · Integrity: {observation.locationIntegrity || "Unknown"} · Source: {observation.locationSource || observation.positionSource || "Action1"}</p>
                         <p className="text-muted-foreground">Device ID: {observation.deviceId || "Not reported"} · Serial: {observation.serialNumber || "Not reported"}</p>
                       </div>

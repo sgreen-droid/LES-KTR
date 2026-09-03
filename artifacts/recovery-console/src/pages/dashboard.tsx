@@ -299,17 +299,15 @@ export default function Dashboard() {
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">
                           <div>{device.organizationName}</div>
-                          <div className="mt-1 text-[10px] font-mono">
-                            {device.nearestAddress ||
-                              device.crossStreets ||
-                              [device.city, device.state, device.postalCode]
+                          <div className="mt-1 space-y-0.5 text-[10px] font-mono">
+                            <div>Nearest address: {device.nearestAddress || device.streetAddress || "Not available"}</div>
+                            <div>Cross streets: {device.crossStreets || "Not available"}</div>
+                            <div>
+                              Locality: {[device.city, device.state, device.postalCode, device.country]
                                 .filter(Boolean)
-                                .join(", ") ||
-                              "Nearest address not reported"}
+                                .join(", ") || "Not available"}
+                            </div>
                           </div>
-                          {device.country && (
-                            <div className="text-[10px] font-mono">{device.country}</div>
-                          )}
                         </td>
                         <td className="px-4 py-3">
                           <Badge 

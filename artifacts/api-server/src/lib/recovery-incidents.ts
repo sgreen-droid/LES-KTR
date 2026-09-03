@@ -320,7 +320,7 @@ export async function createRecoveryEvidenceExport(
   }
   return {
     exportId,
-    schemaVersion: "les-recovery-evidence/v1",
+    schemaVersion: "les-recovery-evidence/v2",
     generatedAt: new Date(),
     source:
       "Action1 endpoint recovery attributes captured at incident creation; this export does not represent a live device location.",
@@ -328,6 +328,7 @@ export async function createRecoveryEvidenceExport(
     limitations: [
       "Location coordinates are last-known observations captured when this incident was opened, not live tracking data.",
       "A stale, invalid, legacy, unavailable, or unverifiable status must be considered before relying on any location field.",
+      "Cross streets are shown only when Action1 reported them. OpenStreetMap Nominatim address enrichment does not infer or fabricate an intersection.",
       "Action1 remains the endpoint system of record. This packet contains no provider credentials, recovery secrets, or agent HMAC material.",
       "Use only for authorized company-owned device recovery and follow the organization’s incident and legal procedures.",
     ],
@@ -357,6 +358,9 @@ export function renderRecoveryEvidenceCsv(exportData: RecoveryEvidenceExport): s
     "incident_title",
     "case_number",
     "incident_status",
+    "incident_owner",
+    "incident_reported_at_utc",
+    "incident_resolved_at_utc",
     "endpoint_id",
     "device_id",
     "computer_name",
@@ -370,8 +374,27 @@ export function renderRecoveryEvidenceCsv(exportData: RecoveryEvidenceExport): s
     "location_updated",
     "location_coordinates",
     "accuracy",
+    "street_address",
+    "nearest_address",
+    "cross_streets",
+    "cross_streets_source",
+    "city",
+    "state",
+    "postal_code",
+    "country",
+    "address_precision",
+    "address_source",
+    "openstreetmap_url",
     "location_status",
     "location_integrity",
+    "location_quality",
+    "location_source",
+    "position_source",
+    "location_permission",
+    "location_sequence",
+    "location_age_minutes",
+    "location_error",
+    "location_summary",
     "agent_health",
     "agent_version",
     "evidence_limitations",
@@ -386,6 +409,9 @@ export function renderRecoveryEvidenceCsv(exportData: RecoveryEvidenceExport): s
       exportData.incident.title,
       exportData.incident.caseNumber,
       exportData.incident.status,
+      exportData.incident.owner,
+      exportData.incident.reportedAt,
+      exportData.incident.resolvedAt,
       evidence.endpointId,
       device.deviceId,
       device.computerName,
@@ -399,8 +425,27 @@ export function renderRecoveryEvidenceCsv(exportData: RecoveryEvidenceExport): s
       device.locationUpdated,
       device.locationCoordinates,
       device.accuracy,
+      device.streetAddress,
+      device.nearestAddress,
+      device.crossStreets ?? "NOT_AVAILABLE",
+      device.crossStreets ? "ACTION1_RECOVERY_ATTRIBUTE" : "NOT_AVAILABLE",
+      device.city,
+      device.state,
+      device.postalCode,
+      device.country,
+      device.addressPrecision,
+      device.addressSource,
+      device.mapLink,
       device.locationStatus,
       device.locationIntegrity,
+      device.locationQuality,
+      device.locationSource,
+      device.positionSource,
+      device.locationPermission,
+      device.locationSequence,
+      device.locationAgeMinutes,
+      device.locationError,
+      device.locationSummary,
       device.agentHealth,
       device.agentVersion,
       limitations,
@@ -424,14 +469,46 @@ export function renderRecoveryEvidencePrintDocument(
   exportData: RecoveryEvidenceExport,
 ): string {
   const incident = exportData.incident;
+  const locationContext = (device: RecoveryDevice) => {
+    const locality =
+      [device.city, device.state, device.postalCode, device.country]
+        .filter(Boolean)
+        .join(", ") || "Not available";
+    const nearestAddress =
+      device.nearestAddress ?? device.streetAddress ?? "Not available";
+    const crossStreets = device.crossStreets ?? "Not available";
+    return { locality, nearestAddress, crossStreets };
+  };
+  const operationalSummaryRows = incident.evidence
+    .map(({ device, capturedAt, sourceRefreshedAt }) => {
+      const context = locationContext(device);
+      return `<article class="endpoint-summary">
+        <div class="endpoint-heading">
+          <div><strong>${escapeHtml(device.computerName)}</strong><small>Endpoint: ${escapeHtml(device.endpointId)} · Device ID: ${escapeHtml(device.deviceId ?? "Not reported")}</small></div>
+          <span class="status">${escapeHtml(device.locationStatus ?? "Unavailable")}</span>
+        </div>
+        <div class="summary-grid">
+          <div><span class="label">Nearest address</span>${escapeHtml(context.nearestAddress)}</div>
+          <div><span class="label">Cross streets</span>${escapeHtml(context.crossStreets)}<small>${device.crossStreets ? "Source: Action1 recovery attribute" : "No cross streets were reported by Action1"}</small></div>
+          <div><span class="label">City / state / ZIP / country</span>${escapeHtml(context.locality)}</div>
+          <div><span class="label">Raw coordinates / accuracy</span>${escapeHtml(device.locationCoordinates ?? "Not available")}<small>${escapeHtml(device.accuracy ?? "Accuracy unavailable")}</small></div>
+          <div><span class="label">Integrity / precision</span>${escapeHtml(device.locationIntegrity ?? "Unknown")}<small>Address precision: ${escapeHtml(device.addressPrecision ?? "Unavailable")}</small></div>
+          <div><span class="label">Address source</span>${escapeHtml(device.addressSource ?? "Not available")}<small>Location source: ${escapeHtml(device.locationSource ?? device.positionSource ?? "Not reported")}</small></div>
+          <div><span class="label">Location observed</span>${escapeHtml(device.locationUpdated ?? "Not reported")}<small>Action1 refreshed: ${escapeHtml(sourceRefreshedAt.toISOString())}</small></div>
+          <div><span class="label">Evidence captured</span>${escapeHtml(capturedAt.toISOString())}${device.mapLink ? `<small><a href="${escapeHtml(device.mapLink)}">Open in OpenStreetMap</a></small>` : "<small>Map link unavailable</small>"}</div>
+        </div>
+      </article>`;
+    })
+    .join("");
   const evidenceRows = incident.evidence
     .map(({ device, capturedAt, sourceRefreshedAt }) => {
+      const context = locationContext(device);
       return `<tr>
         <td>${escapeHtml(device.computerName)}<br><small>Endpoint: ${escapeHtml(device.endpointId)}<br>Device ID: ${escapeHtml(device.deviceId ?? "Not reported")}</small></td>
-        <td>${escapeHtml(device.organizationName)}</td>
-        <td>${escapeHtml(device.locationCoordinates || "Unavailable")}<br><small>${escapeHtml(device.accuracy || "Accuracy unavailable")}</small></td>
-        <td>${escapeHtml(device.locationStatus || "Unavailable")}<br><small>Integrity: ${escapeHtml(device.locationIntegrity || "Unknown")}</small></td>
-        <td>${escapeHtml(capturedAt.toISOString())}<br><small>Action1 refreshed: ${escapeHtml(sourceRefreshedAt.toISOString())}</small></td>
+        <td>${escapeHtml(device.organizationName)}<br><small>Serial: ${escapeHtml(device.serialNumber ?? "Not reported")}<br>${escapeHtml([device.manufacturer, device.model].filter(Boolean).join(" ") || "Hardware not reported")}</small></td>
+        <td><strong>Nearest address:</strong> ${escapeHtml(context.nearestAddress)}<br><strong>Cross streets:</strong> ${escapeHtml(context.crossStreets)}<br><small>${device.crossStreets ? "Cross-street source: Action1 recovery attribute" : "Cross streets unavailable — not reported by Action1"}<br>${escapeHtml(context.locality)}<br>Precision: ${escapeHtml(device.addressPrecision ?? "Unavailable")} · Source: ${escapeHtml(device.addressSource ?? "Not available")}</small></td>
+        <td>${escapeHtml(device.locationCoordinates || "Unavailable")}<br><small>Accuracy: ${escapeHtml(device.accuracy || "Unavailable")}<br>Observed: ${escapeHtml(device.locationUpdated ?? "Not reported")}</small></td>
+        <td>${escapeHtml(device.locationStatus || "Unavailable")}<br><small>Integrity: ${escapeHtml(device.locationIntegrity || "Unknown")}<br>Captured: ${escapeHtml(capturedAt.toISOString())}<br>Action1 refreshed: ${escapeHtml(sourceRefreshedAt.toISOString())}</small></td>
       </tr>`;
     })
     .join("");
@@ -454,12 +531,20 @@ export function renderRecoveryEvidencePrintDocument(
       .banner { background: #f8edcf; border-left: 4px solid #9a6700; padding: 10px 12px; margin: 18px 0; }
       .meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
       .meta div { padding: 8px; background: #f4f7f9; border: 1px solid #d9e2e8; }
+      .endpoint-summary { border: 1px solid #b8c8d5; margin: 10px 0; break-inside: avoid; }
+      .endpoint-heading { align-items: center; background: #eaf1f5; display: flex; justify-content: space-between; padding: 8px 10px; }
+      .endpoint-heading strong, .endpoint-heading small { display: block; }
+      .status { border: 1px solid #8797a5; font-size: 10px; font-weight: bold; padding: 3px 6px; text-transform: uppercase; }
+      .summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .summary-grid > div { border-top: 1px solid #d9e2e8; padding: 7px 10px; }
+      .summary-grid > div:nth-child(odd) { border-right: 1px solid #d9e2e8; }
       .label { color: #52616f; display: block; font-size: 10px; font-weight: bold; text-transform: uppercase; }
       table { border-collapse: collapse; width: 100%; margin-top: 10px; }
       th, td { border: 1px solid #cbd5df; padding: 8px; text-align: left; vertical-align: top; }
       th { background: #eaf1f5; font-size: 10px; text-transform: uppercase; }
-      small { color: #52616f; } ul { padding-left: 20px; } li { margin-bottom: 5px; }
+      small { color: #52616f; display: block; } ul { padding-left: 20px; } li { margin-bottom: 5px; }
       footer { margin-top: 30px; padding-top: 10px; border-top: 1px solid #cbd5df; color: #52616f; font-size: 10px; }
+      .detail-pages { break-before: page; page-break-before: always; }
     </style>
   </head>
   <body>
@@ -472,12 +557,16 @@ export function renderRecoveryEvidencePrintDocument(
       <div><span class="label">Status / owner</span>${escapeHtml(incident.status)} / ${escapeHtml(incident.owner || "Unassigned")}</div>
       <div><span class="label">Reported / generated UTC</span>${escapeHtml(incident.reportedAt.toISOString())}<br>${escapeHtml(exportData.generatedAt.toISOString())}</div>
     </div>
-    <h2>Captured endpoint evidence</h2>
-    <table><thead><tr><th>Endpoint</th><th>Organization</th><th>Last-known location</th><th>Recovery assessment</th><th>Observation context</th></tr></thead>
+    <h2>Operational summary</h2>
+    ${operationalSummaryRows || "<p>No captured endpoints.</p>"}
+    <section class="detail-pages">
+    <h2>Detailed captured endpoint evidence</h2>
+    <table><thead><tr><th>Endpoint</th><th>Organization / hardware</th><th>Address context</th><th>Raw location</th><th>Assessment / timing</th></tr></thead>
       <tbody>${evidenceRows || "<tr><td colspan=\"5\">No captured endpoints.</td></tr>"}</tbody></table>
     <h2>Audit history</h2><ul>${auditRows || "<li>No audit entries available.</li>"}</ul>
     <h2>Limitations and provenance</h2><ul>${exportData.limitations.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
     <footer>Source: ${escapeHtml(exportData.source)}<br>Schema: ${escapeHtml(exportData.schemaVersion)}</footer>
+    </section>
   </body>
 </html>`;
 }

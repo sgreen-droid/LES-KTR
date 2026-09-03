@@ -240,6 +240,26 @@ export function parseNominatimResponse(
   };
 }
 
+export function mergeOsmAddressContext(
+  device: RecoveryDevice,
+  result: OSMGeocodeResult,
+): RecoveryDevice {
+  return {
+    ...device,
+    streetAddress: result.streetAddress ?? device.streetAddress,
+    city: result.city ?? device.city,
+    state: result.state ?? device.state,
+    postalCode: result.postalCode ?? device.postalCode,
+    country: result.country ?? device.country,
+    nearestAddress: result.nearestAddress ?? device.nearestAddress,
+    // Nominatim reverse geocoding does not reliably return a pair of
+    // intersecting roads. Retain cross streets reported by Action1 instead.
+    crossStreets: device.crossStreets,
+    addressPrecision: result.addressPrecision,
+    addressSource: result.addressSource,
+  };
+}
+
 async function fetchFromNominatim(
   latitude: number,
   longitude: number,
@@ -358,18 +378,7 @@ export async function enrichRecoveryDevices(
       if (!result) {
         return device;
       }
-      return {
-        ...device,
-        streetAddress: result.streetAddress ?? device.streetAddress,
-        city: result.city ?? device.city,
-        state: result.state ?? device.state,
-        postalCode: result.postalCode ?? device.postalCode,
-        country: result.country ?? device.country,
-        nearestAddress: result.nearestAddress ?? device.nearestAddress,
-        crossStreets: device.crossStreets,
-        addressPrecision: result.addressPrecision,
-        addressSource: result.addressSource,
-      };
+      return mergeOsmAddressContext(device, result);
     }),
   );
 }

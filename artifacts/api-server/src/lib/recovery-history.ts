@@ -648,6 +648,7 @@ export async function createRecoveryLocationHistoryExport(
       "Movement fields are calculated between chronologically ordered coordinate observations for the same Action1 endpoint. They describe apparent coordinate change, not a verified route, continuous path, possession, or travel by a person.",
       "Distances use a straight-line great-circle calculation. Accuracy, missing observations, delayed uploads, repeated coordinates, and source timestamps can materially affect distance and apparent-speed values.",
       "A coordinate change of 25 meters or less is labeled NO_MATERIAL_CHANGE as an investigative aid; retain and assess the raw coordinates, accuracy, integrity, and timestamps.",
+      "Cross streets are shown only when Action1 reported them. OpenStreetMap Nominatim address enrichment does not infer or fabricate an intersection.",
       "This export contains no provider credentials, recovery secrets, or agent HMAC material and is for authorized company-owned device recovery only.",
     ],
   };
@@ -856,7 +857,7 @@ export function renderRecoveryLocationHistoryCsv(
         endpointSummary?.postalCode ?? "",
         endpointSummary?.country ?? "",
         endpointSummary?.nearestAddress ?? "",
-        endpointSummary?.crossStreets ?? "",
+        endpointSummary?.crossStreets ?? "NOT_AVAILABLE",
         observation.id,
         observation.observationNumber,
         observation.observationTimeBasis,
@@ -874,7 +875,7 @@ export function renderRecoveryLocationHistoryCsv(
         observation.country,
         observation.addressSource,
         observation.nearestAddress,
-        observation.crossStreets,
+        observation.crossStreets ?? "NOT_AVAILABLE",
         observation.addressPrecision,
         observation.accuracy,
         observation.locationStatus,
@@ -920,12 +921,42 @@ function escapeHtml(value: unknown): string {
 export function renderRecoveryLocationHistoryPrintDocument(
   exportData: RecoveryLocationHistoryExport,
 ): string {
+  const localityText = (
+    value: Pick<
+      RecoveryLocationObservation,
+      "city" | "state" | "postalCode" | "country"
+    >,
+  ) =>
+    [value.city, value.state, value.postalCode, value.country]
+      .filter(Boolean)
+      .join(", ") || "Not available";
+  const operationalSummaryRows = exportData.coverage.endpointSummaries
+    .map((summary) => {
+      const latestObservation = [...exportData.observations]
+        .reverse()
+        .find((observation) => observation.endpointId === summary.endpointId);
+      return `<tr>
+        <td>${escapeHtml(summary.computerNames.at(-1) ?? "Name unavailable")}<br><small>${escapeHtml(summary.endpointId)} · Device ID: ${escapeHtml(summary.deviceId ?? "Not reported")}</small></td>
+        <td>${escapeHtml(summary.nearestAddress ?? "Not available")}</td>
+        <td>${escapeHtml(summary.crossStreets ?? "Not available")}<br><small>${summary.crossStreets ? "Source: Action1 recovery attribute" : "No cross streets were reported by Action1"}</small></td>
+        <td>${escapeHtml(localityText({
+          city: summary.city,
+          state: summary.state,
+          postalCode: summary.postalCode,
+          country: summary.country,
+        }))}<br><small>Precision: ${escapeHtml(latestObservation?.addressPrecision ?? "Unavailable")} · Source: ${escapeHtml(latestObservation?.addressSource ?? "Not available")}</small></td>
+        <td>${escapeHtml(summary.lastCoordinate ?? "Not available")}<br><small>Last observation: ${escapeHtml(summary.lastObservationAt?.toISOString() ?? "Unavailable")}</small></td>
+        <td>${escapeHtml(summary.locationStatuses.at(-1) ?? "Unavailable")}<br><small>Integrity: ${escapeHtml(summary.integrityStates.at(-1) ?? "Unknown")}</small></td>
+      </tr>`;
+    })
+    .join("");
   const rows = exportData.observations
     .map(
       (observation) => `<tr>
         <td>${escapeHtml(observation.computerName)}<br><small>Endpoint: ${escapeHtml(observation.endpointId)}<br>Device ID: ${escapeHtml(observation.deviceId ?? "Not reported")}</small></td>
         <td>${escapeHtml(observation.serialNumber ?? "Not reported")}<br><small>${escapeHtml(observation.manufacturer ?? "")} ${escapeHtml(observation.model ?? "")}</small></td>
-        <td>${escapeHtml(observation.locationCoordinates ?? "Unavailable")}<br><small>${escapeHtml(observation.nearestAddress ?? observation.crossStreets ?? ([observation.city, observation.state, observation.postalCode, observation.country].filter(Boolean).join(", ") || "Address unavailable"))} · ${escapeHtml(observation.accuracy ?? "Accuracy unavailable")}</small></td>
+        <td><strong>Nearest address:</strong> ${escapeHtml(observation.nearestAddress ?? observation.streetAddress ?? "Not available")}<br><strong>Cross streets:</strong> ${escapeHtml(observation.crossStreets ?? "Not available")}<br><small>${observation.crossStreets ? "Cross-street source: Action1 recovery attribute" : "Cross streets unavailable — not reported by Action1"}<br>${escapeHtml(localityText(observation))}<br>Precision: ${escapeHtml(observation.addressPrecision ?? "Unavailable")} · Source: ${escapeHtml(observation.addressSource ?? "Not available")}</small></td>
+        <td>${escapeHtml(observation.locationCoordinates ?? "Unavailable")}<br><small>Accuracy: ${escapeHtml(observation.accuracy ?? "Unavailable")}</small></td>
         <td>${escapeHtml(observation.locationStatus ?? "Unavailable")}<br><small>Integrity: ${escapeHtml(observation.locationIntegrity ?? "Unknown")}</small></td>
         <td>#${observation.observationNumber} · ${escapeHtml(observation.locationObservedAt?.toISOString() ?? observation.sourceRefreshedAt.toISOString())}<br><small>${escapeHtml(observation.observationTimeBasis)} · Captured: ${escapeHtml(observation.capturedAt.toISOString())}</small></td>
         <td>${
@@ -945,6 +976,12 @@ export function renderRecoveryLocationHistoryPrintDocument(
         <td>${summary.observationCount} total · ${summary.coordinateObservationCount} with coordinates</td>
         <td>${escapeHtml(summary.firstObservationAt?.toISOString() ?? "Unavailable")}<br><small>through ${escapeHtml(summary.lastObservationAt?.toISOString() ?? "Unavailable")}</small></td>
         <td>${escapeHtml(summary.firstCoordinate ?? "Unavailable")}<br><small>to ${escapeHtml(summary.lastCoordinate ?? "Unavailable")}</small></td>
+        <td><strong>Nearest address:</strong> ${escapeHtml(summary.nearestAddress ?? "Not available")}<br><strong>Cross streets:</strong> ${escapeHtml(summary.crossStreets ?? "Not available")}<br><small>${summary.crossStreets ? "Cross-street source: Action1 recovery attribute" : "Cross streets unavailable — not reported by Action1"}<br>${escapeHtml(localityText({
+          city: summary.city,
+          state: summary.state,
+          postalCode: summary.postalCode,
+          country: summary.country,
+        }))}</small></td>
         <td>${escapeHtml(summary.apparentDistanceMeters)} m<br><small>${summary.movementSegmentCount} segment(s) · max apparent speed ${escapeHtml(summary.maxApparentSpeedKmh ?? "Unknown")} km/h</small></td>
         <td>${escapeHtml(summary.locationStatuses.join(", ") || "Unavailable")}<br><small>Integrity: ${escapeHtml(summary.integrityStates.join(", ") || "Unknown")}</small></td>
       </tr>`,
@@ -970,6 +1007,7 @@ export function renderRecoveryLocationHistoryPrintDocument(
       th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; vertical-align: top; }
       th { background: #f3f4f6; text-transform: uppercase; font-size: 10px; letter-spacing: .08em; }
       small { color: #4b5563; } footer { margin-top: 28px; font-size: 11px; color: #4b5563; }
+      .detail-pages { break-before: page; page-break-before: always; }
       @media print { body { margin: 12mm; } .toolbar { display: none; } }
     </style>
   </head>
@@ -984,18 +1022,25 @@ export function renderRecoveryLocationHistoryPrintDocument(
       <div><strong>${exportData.coverage.movementSegmentCount}</strong><span>Comparable segments</span></div>
       <div><strong>${escapeHtml(exportData.coverage.totalApparentDistanceMeters)} m</strong><span>Total apparent distance</span></div>
     </div>
+    <h2>Operational summary</h2>
+    <table>
+      <thead><tr><th>Endpoint</th><th>Nearest address</th><th>Cross streets</th><th>Locality / provenance</th><th>Latest coordinate / time</th><th>Status / integrity</th></tr></thead>
+      <tbody>${operationalSummaryRows || '<tr><td colspan="6">No endpoints match this selection.</td></tr>'}</tbody>
+    </table>
+    <section class="detail-pages">
     <h2>Endpoint case summary</h2>
     <table>
-      <thead><tr><th>Canonical endpoint identity</th><th>Coverage</th><th>Observation period</th><th>First / last coordinate</th><th>Apparent movement</th><th>Status / integrity</th></tr></thead>
-      <tbody>${endpointSummaryRows || '<tr><td colspan="6">No endpoints match this selection.</td></tr>'}</tbody>
+      <thead><tr><th>Canonical endpoint identity</th><th>Coverage</th><th>Observation period</th><th>First / last coordinate</th><th>Latest address context</th><th>Apparent movement</th><th>Status / integrity</th></tr></thead>
+      <tbody>${endpointSummaryRows || '<tr><td colspan="7">No endpoints match this selection.</td></tr>'}</tbody>
     </table>
     <h2>Chronological observations by endpoint</h2>
     <table>
-      <thead><tr><th>Endpoint identity</th><th>Hardware identity</th><th>Last-known location</th><th>Status</th><th>Observation time</th><th>Apparent change from prior coordinate</th></tr></thead>
-      <tbody>${rows || '<tr><td colspan="6">No observations match this selection.</td></tr>'}</tbody>
+      <thead><tr><th>Endpoint identity</th><th>Hardware identity</th><th>Address context</th><th>Raw location</th><th>Status</th><th>Observation time</th><th>Apparent change from prior coordinate</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="7">No observations match this selection.</td></tr>'}</tbody>
     </table>
     <h2>Limitations</h2><ul>${limitations}</ul>
     <footer>${escapeHtml(exportData.source)}<br>Schema: ${escapeHtml(exportData.schemaVersion)}</footer>
+    </section>
   </body>
 </html>`;
 }

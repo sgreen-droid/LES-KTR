@@ -6,6 +6,7 @@ import {
   createRecoveryObservationKey,
   parseAction1Timestamp,
   renderRecoveryLocationHistoryCsv,
+  renderRecoveryLocationHistoryPrintDocument,
   type RecoveryLocationObservation,
   type RecoveryLocationHistoryExport,
 } from "./recovery-history";
@@ -153,6 +154,16 @@ test("history CSV is spreadsheet-safe for identity values", () => {
     .split("\r\n")
     .map((line) => line.split('","').length);
   assert.ok(columnCounts.every((count) => count === columnCounts[0]));
+
+  const printDocument = renderRecoveryLocationHistoryPrintDocument(exportData);
+  assert.ok(
+    printDocument.indexOf("Operational summary") <
+      printDocument.indexOf("Endpoint case summary"),
+  );
+  assert.match(printDocument, /Cross streets/);
+  assert.match(printDocument, /1st Ave &amp; Pine St/);
+  assert.match(printDocument, /Cross-street source: Action1 recovery attribute/);
+  assert.match(printDocument, /class="detail-pages"/);
 });
 
 test("history evidence is chronological and calculates apparent movement per endpoint", () => {

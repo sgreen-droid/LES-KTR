@@ -355,14 +355,30 @@ export default function IncidentDetail() {
                     </div>
                     
                     {ev.device.latitude !== null && ev.device.longitude !== null ? (
-                      <div className="bg-muted/30 border border-border p-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="bg-muted/30 border border-border p-3 grid grid-cols-1 lg:grid-cols-3 gap-4">
                         <div className="space-y-1">
                           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1">
-                            <MapPin className="h-3 w-3" /> Last-known location
+                            <MapPin className="h-3 w-3" /> Address context
+                          </p>
+                          <p className="text-xs"><span className="font-bold">Nearest address:</span> {ev.device.nearestAddress || ev.device.streetAddress || "Not available"}</p>
+                          <p className="text-xs"><span className="font-bold">Cross streets:</span> {ev.device.crossStreets || "Not available"}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {ev.device.crossStreets ? "Cross-street source: Action1 recovery attribute" : "No cross streets were reported by Action1"}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {[ev.device.city, ev.device.state, ev.device.postalCode, ev.device.country].filter(Boolean).join(", ") || "City/state/ZIP/country not available"}
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1">
+                            Raw last-known location
                           </p>
                           <p className="text-xs font-bold border-l-2 border-primary pl-2">{ev.device.locationCoordinates}</p>
                           <p className="text-[10px] text-muted-foreground">
-                            Source: {ev.device.locationSource || ev.device.positionSource || "Action1 recovery attribute"}
+                            Accuracy: {ev.device.accuracy || "Unavailable"}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            Location source: {ev.device.locationSource || ev.device.positionSource || "Action1 recovery attribute"}
                           </p>
                         </div>
                         <div className="space-y-1">
@@ -374,6 +390,9 @@ export default function IncidentDetail() {
                           </p>
                           <p className="text-[10px] text-muted-foreground">
                             Status: {ev.device.locationStatus || "Unavailable"} · Action1 snapshot: {formatRecoveryDate(ev.sourceRefreshedAt, "PP p")}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            Address precision: {ev.device.addressPrecision || "Unavailable"} · Address source: {ev.device.addressSource || "Not available"}
                           </p>
                         </div>
                       </div>
