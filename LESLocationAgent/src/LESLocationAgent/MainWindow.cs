@@ -66,8 +66,11 @@ public sealed class MainWindow : Window
         // Register startup so the agent auto-launches on sign-in
         _startupService.Enable();
 
-        // Request permission immediately on load (non-blocking)
-        _ = CheckPermissionOnLoadAsync();
+        // Request permission and acquire a location immediately on load.
+        // The recurring timer keeps the record fresh afterward; without this
+        // initial request, a sign-in launch could wait for the first timer tick
+        // before updating location.json.
+        _ = InitializeLocationAsync();
     }
 
     // ---------------------------------------------------------------
@@ -279,6 +282,16 @@ public sealed class MainWindow : Window
         catch (Exception ex)
         {
             SetStatus($"Permission check failed: {ex.Message}");
+        }
+    }
+
+    private async Task InitializeLocationAsync()
+    {
+        await CheckPermissionOnLoadAsync();
+
+        if (string.Equals(_currentPermissionStatus, "Allowed", StringComparison.OrdinalIgnoreCase))
+        {
+            await GetLocationAsync();
         }
     }
 
