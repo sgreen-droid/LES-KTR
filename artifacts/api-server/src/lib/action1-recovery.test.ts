@@ -12,7 +12,7 @@ function requestReadiness(
   return new Promise((resolve, reject) => {
     const clientRequest = request(
       {
-        headers: { Cookie: `les_recovery_session=${sessionToken}` },
+        headers: { Cookie: `__Host-les_recovery_session=${sessionToken}` },
         hostname: "127.0.0.1",
         method: "GET",
         path: "/api/recovery/readiness",

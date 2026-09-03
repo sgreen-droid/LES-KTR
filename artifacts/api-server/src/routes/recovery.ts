@@ -1,4 +1,10 @@
-import { Router, type IRouter, type Request, type Response } from "express";
+import {
+  Router,
+  type IRouter,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import {
   CreateRecoverySessionBody,
   CreateRecoverySessionResponse,
@@ -44,6 +50,7 @@ import {
   getLoginAttemptState,
   getRecoverySessionExpiry,
   recordFailedLogin,
+  revokeRecoverySession,
   verifyDashboardPassword,
 } from "../lib/recovery-session";
 import {
@@ -65,10 +72,13 @@ import {
 } from "../lib/recovery-history";
 
 const router: IRouter = Router();
-const SESSION_COOKIE = "les_recovery_session";
+const SESSION_COOKIE = "__Host-les_recovery_session";
 const EXPORT_WINDOW_MS = 5 * 60 * 1000;
 const EXPORT_LIMIT = 12;
+const REQUEST_WINDOW_MS = 60 * 1000;
+const REQUEST_LIMIT = 180;
 const exportAttempts = new Map<string, number[]>();
+const requestAttempts = new Map<string, number[]>();
 
 function getClientIdentifier(req: Request): string {
   return req.ip || "unknown";
@@ -94,6 +104,36 @@ function allowExport(clientId: string): { allowed: boolean; retryAfterSeconds: n
   return { allowed: true, retryAfterSeconds: 0 };
 }
 
+function allowRecoveryRequest(clientId: string): {
+  allowed: boolean;
+  retryAfterSeconds: number;
+} {
+  const now = Date.now();
+  const attempts = (requestAttempts.get(clientId) ?? []).filter(
+    (attempt) => now - attempt < REQUEST_WINDOW_MS,
+  );
+  if (attempts.length >= REQUEST_LIMIT) {
+    requestAttempts.set(clientId, attempts);
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(
+        1,
+        Math.ceil((REQUEST_WINDOW_MS - (now - attempts[0])) / 1000),
+      ),
+    };
+  }
+  attempts.push(now);
+  requestAttempts.set(clientId, attempts);
+  if (requestAttempts.size > 5_000) {
+    for (const [key, values] of requestAttempts) {
+      if (values.every((attempt) => now - attempt >= REQUEST_WINDOW_MS)) {
+        requestAttempts.delete(key);
+      }
+    }
+  }
+  return { allowed: true, retryAfterSeconds: 0 };
+}
+
 function setRecoveryCookie(
   res: Response,
   token: string,
@@ -116,6 +156,50 @@ function clearRecoveryCookie(res: Response): void {
     secure: true,
   });
 }
+
+function requireSameOrigin(req: Request, res: Response): boolean {
+  const origin = req.get("origin");
+  const referer = req.get("referer");
+  let candidate = origin ?? null;
+  if (!candidate && referer) {
+    try {
+      candidate = new URL(referer).origin;
+    } catch {
+      candidate = "invalid";
+    }
+  }
+  if (!candidate) {
+    return true;
+  }
+
+  const host = req.get("host");
+  const expected = host ? `${req.protocol}://${host}` : null;
+  if (candidate !== expected) {
+    res.status(403).json({
+      error: "CROSS_SITE_REQUEST",
+      message: "The request origin was not accepted.",
+    });
+    return false;
+  }
+  return true;
+}
+
+router.use(
+  "/recovery",
+  (req: Request, res: Response, next: NextFunction): void => {
+    res.set("Cache-Control", "no-store");
+    const state = allowRecoveryRequest(getClientIdentifier(req));
+    if (!state.allowed) {
+      res.set("Retry-After", String(state.retryAfterSeconds));
+      res.status(429).json({
+        error: "RATE_LIMITED",
+        message: "Recovery requests are temporarily rate limited. Try again shortly.",
+      });
+      return;
+    }
+    next();
+  },
+);
 
 function sendUnauthorized(res: Response): void {
   res.status(401).json({
@@ -232,6 +316,9 @@ router.get(
 router.post(
   "/recovery/auth/session",
   (req, res): void => {
+    if (!requireSameOrigin(req, res)) {
+      return;
+    }
     res.set("Cache-Control", "no-store");
     const body = CreateRecoverySessionBody.safeParse(req.body);
     if (!body.success) {
@@ -279,6 +366,10 @@ router.post(
 router.delete(
   "/recovery/auth/session",
   (req, res): void => {
+    if (!requireSameOrigin(req, res)) {
+      return;
+    }
+    revokeRecoverySession(req.cookies?.[SESSION_COOKIE]);
     clearRecoveryCookie(res);
     res.set("Cache-Control", "no-store");
     req.log.info("Recovery console locked");
@@ -588,6 +679,9 @@ router.get(
 router.post(
   "/recovery/incidents",
   async (req, res): Promise<void> => {
+    if (!requireSameOrigin(req, res)) {
+      return;
+    }
     if (!requireRecoverySession(req, res)) {
       return;
     }
@@ -653,6 +747,9 @@ router.get(
 router.patch(
   "/recovery/incidents/:incidentId",
   async (req, res): Promise<void> => {
+    if (!requireSameOrigin(req, res)) {
+      return;
+    }
     if (!requireRecoverySession(req, res)) {
       return;
     }
@@ -686,6 +783,9 @@ router.patch(
 router.post(
   "/recovery/incidents/:incidentId/export",
   async (req, res): Promise<void> => {
+    if (!requireSameOrigin(req, res)) {
+      return;
+    }
     if (!requireRecoverySession(req, res)) {
       return;
     }

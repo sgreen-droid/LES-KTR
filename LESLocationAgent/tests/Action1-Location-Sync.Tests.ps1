@@ -128,6 +128,18 @@ try {
         $global:LesCapturedAttributes['Location Summary']
     Assert-Equal 'Approx Location' '1200 Main St, Bronx, NY 10460' `
         $global:LesCapturedAttributes['Approx Location']
+    Assert-Equal 'Nearest Address' '1200 Main St, Bronx, NY 10460' `
+        $global:LesCapturedAttributes['Nearest Address']
+    Assert-Equal 'Cross Streets' 'Main St & First Ave' `
+        $global:LesCapturedAttributes['Cross Streets']
+    Assert-Equal 'City' 'Bronx' $global:LesCapturedAttributes['City']
+    Assert-Equal 'State' 'NY' $global:LesCapturedAttributes['State']
+    Assert-Equal 'ZIP' '10460' $global:LesCapturedAttributes['ZIP']
+    Assert-Equal 'Country' 'US' $global:LesCapturedAttributes['Country']
+    Assert-Equal 'Address Source' 'OSM_NOMINATIM' `
+        $global:LesCapturedAttributes['Address Source']
+    Assert-Equal 'Address Precision' 'STREET' `
+        $global:LesCapturedAttributes['Address Precision']
     Assert-Equal 'Device ID' $deviceId $global:LesCapturedAttributes['Device ID']
     Assert-Equal 'Location Sequence' '7' $global:LesCapturedAttributes['Location Sequence']
     Assert-Equal 'Location Integrity' 'VALID' $global:LesCapturedAttributes['Location Integrity']

@@ -169,6 +169,9 @@ jobs:
           $enabled = ($env:SIGN_PFX_BASE64 -ne '') -and ($null -ne $env:SIGN_PFX_BASE64)
           "signing_enabled=$($enabled.ToString().ToLower())" | Out-File $env:GITHUB_OUTPUT -Append
           Write-Host "Code signing enabled: $enabled"
+          if ($env:GITHUB_REF -like 'refs/tags/v*' -and -not $enabled) {
+            throw 'Release tags require CODE_SIGN_PFX and CODE_SIGN_PASSWORD. Refusing to publish an unsigned MSI.'
+          }
 
       - name: Sign MSI (production)
         if: steps.check-signing.outputs.signing_enabled == 'true'
@@ -177,35 +180,44 @@ jobs:
           SIGN_PFX_BASE64: ${{ secrets.CODE_SIGN_PFX }}
           SIGN_PASSWORD:   ${{ secrets.CODE_SIGN_PASSWORD }}
         run: |
+          if ([string]::IsNullOrWhiteSpace($env:SIGN_PASSWORD)) {
+            throw 'CODE_SIGN_PASSWORD is required when code signing is enabled.'
+          }
           Write-Host 'CODE_SIGN_PFX is present — signing MSI...'
           $pfx = Join-Path $env:TEMP 'sign.pfx'
-          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_PFX_BASE64))
+          try {
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_PFX_BASE64))
 
-          # Locate signtool.exe — prefer the newest Windows Kit available.
-          $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' `
-              -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
-              Where-Object { $_.FullName -match 'x64' } |
-              Sort-Object FullName -Descending |
-              Select-Object -First 1 -ExpandProperty FullName
+            # Locate signtool.exe — prefer the newest Windows Kit available.
+            $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' `
+                -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -match 'x64' } |
+                Sort-Object FullName -Descending |
+                Select-Object -First 1 -ExpandProperty FullName
 
-          if (-not $signtool) {
-            throw 'signtool.exe not found — ensure the Windows SDK is installed on the runner.'
+            if (-not $signtool) {
+              throw 'signtool.exe not found — ensure the Windows SDK is installed on the runner.'
+            }
+            Write-Host "Using signtool: $signtool"
+
+            & $signtool sign /fd SHA256 /f $pfx /p $env:SIGN_PASSWORD `
+              /tr https://timestamp.digicert.com /td SHA256 `
+              installer\LESLocationAgent.msi
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "signtool exited with code $LASTEXITCODE"
+            }
+
+            # Verify the signature is present and trusted.
+            & $signtool verify /pa /v installer\LESLocationAgent.msi
+            if ($LASTEXITCODE -ne 0) {
+              throw "Signature verification failed (exit $LASTEXITCODE)."
+            }
           }
-          Write-Host "Using signtool: $signtool"
-
-          & $signtool sign /fd SHA256 /f $pfx /p $env:SIGN_PASSWORD `
-            /tr http://timestamp.digicert.com /td SHA256 `
-            installer\LESLocationAgent.msi
-
-          if ($LASTEXITCODE -ne 0) {
-            throw "signtool exited with code $LASTEXITCODE"
-          }
-          Remove-Item $pfx -Force
-
-          # Verify the signature is present and trusted.
-          & $signtool verify /pa /v installer\LESLocationAgent.msi
-          if ($LASTEXITCODE -ne 0) {
-            throw "Signature verification failed (exit $LASTEXITCODE)."
+          finally {
+            if (Test-Path $pfx) {
+              Remove-Item $pfx -Force
+            }
           }
           Write-Host 'MSI signed and verified successfully.'
 

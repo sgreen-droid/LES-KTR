@@ -56,6 +56,10 @@ function getUserAgent(): string {
   );
 }
 
+function isPublicGeocodingAllowed(): boolean {
+  return process.env["OSM_NOMINATIM_ALLOW_PUBLIC"] === "true";
+}
+
 function isValidCoordinate(latitude: number | null, longitude: number | null): boolean {
   return (
     latitude !== null &&
@@ -295,6 +299,9 @@ async function lookupCoordinate(
   longitude: number,
   key: string,
 ): Promise<OSMGeocodeResult | null> {
+  if (!isPublicGeocodingAllowed()) {
+    return null;
+  }
   const cached = await readCache(key);
   if (cached !== undefined) {
     return cached;

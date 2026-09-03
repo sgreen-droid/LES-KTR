@@ -411,10 +411,13 @@ Use Action1 to create alert policies from the recovery attributes:
 
 ### OpenStreetMap address enrichment
 
-The Recovery Console uses OpenStreetMap rather than a Google Maps API:
+The Recovery Console can use OpenStreetMap rather than a Google Maps API:
 
-- Valid coordinates are reverse-geocoded through the public Nominatim service
-  only when address context is missing or merely approximate.
+- Public Nominatim reverse geocoding is disabled by default so production
+  coordinates are not sent to a third party without an explicit decision.
+- Set `OSM_NOMINATIM_ALLOW_PUBLIC=true` only for approved low-volume testing.
+  When enabled, valid coordinates are reverse-geocoded only when address
+  context is missing or merely approximate.
 - Requests are serialized below Nominatim's one-request-per-second public limit.
 - Successful lookups are cached for 30 days; unavailable results and provider
   failures are also cached temporarily so an outage cannot create a retry flood.
@@ -423,10 +426,13 @@ The Recovery Console uses OpenStreetMap rather than a Google Maps API:
 - Console and Action1 map links open OpenStreetMap and require no Google API key.
 - OpenStreetMap attribution remains visible on the embedded map.
 
-Set `OSM_NOMINATIM_USER_AGENT` to an organization-approved identifying value
-for production use. The public service is appropriate only for low-volume,
-cached testing. Larger recurring fleets should use a self-hosted Nominatim
-instance or another approved OpenStreetMap-based service.
+When public testing is approved, set `OSM_NOMINATIM_USER_AGENT` to an
+organization-approved identifying value. Larger recurring fleets should use a
+self-hosted Nominatim instance or another approved OpenStreetMap-based service.
+
+Nominatim does not reliably produce cross streets. The Action1 sync publishes
+`Cross Streets` only when an approved endpoint-side or provider-side process
+has already supplied a real intersection value; it never invents one.
 
 For a missing or stolen device:
 
@@ -472,7 +478,11 @@ For production deployment:
    - `CODE_SIGN_PASSWORD` — the password protecting the `.pfx`
 5. Push any commit to `main` (or trigger **Run workflow** manually).
 
-The **Sign MSI (production)** step in the workflow runs automatically whenever `CODE_SIGN_PFX` is present. Development builds that lack the secret are left unsigned without any code change. After signing, the workflow also runs `signtool verify` to confirm the signature is valid before the MSI is packaged into the release artifact.
+The **Sign MSI (production)** step in the workflow runs automatically whenever
+`CODE_SIGN_PFX` is present. Development builds may remain unsigned, but a
+version-tagged release now fails closed if the signing certificate or password
+is missing. After signing, the workflow runs `signtool verify` before packaging
+the MSI into the release artifact.
 
 Signed installers show your publisher name in Windows SmartScreen instead of "Unknown publisher" and are required for enterprise deployment without Group Policy exceptions.
 

@@ -487,22 +487,34 @@ if ($null -ne $mapLink) {
     Set-OptionalAttribute 'Location Coordinates' $locationCoordinates
     Set-OptionalAttribute 'Location Summary'     $locationSummary
     Set-OptionalAttribute 'Approx Location'      $approxLocation
+    Set-OptionalAttribute 'Nearest Address'       $nearestAddress
+    Set-OptionalAttribute 'Cross Streets'         $crossStreets
+    Set-OptionalAttribute 'City'                  $city
+    Set-OptionalAttribute 'State'                 $state
+    Set-OptionalAttribute 'ZIP'                   $postalCode
+    Set-OptionalAttribute 'Country'               $country
+    Set-OptionalAttribute 'Address Source'        $addressSource
+    Set-OptionalAttribute 'Address Precision'     $addressPrecision
 } else {
     Write-Warning 'Map fields cleared — valid coordinates unavailable or untrusted.'
     Set-OptionalAttribute 'Map Link'             ''
     Set-OptionalAttribute 'Location Coordinates' ''
     Set-OptionalAttribute 'Location Summary'     ''
     Set-OptionalAttribute 'Approx Location'      ''
+    Set-OptionalAttribute 'Nearest Address'       ''
+    Set-OptionalAttribute 'Cross Streets'         ''
+    Set-OptionalAttribute 'City'                  ''
+    Set-OptionalAttribute 'State'                 ''
+    Set-OptionalAttribute 'ZIP'                   ''
+    Set-OptionalAttribute 'Country'               ''
+    Set-OptionalAttribute 'Address Source'        ''
+    Set-OptionalAttribute 'Address Precision'     ''
 }
 
 Write-Host "`n=== Sync complete ==="
 Write-Output "RESULT: $locationStatus"
-Write-Output "Latitude: $lat  Longitude: $lon  Accuracy: $accuracyMeters m  Quality: $accuracyQuality"
 if ($null -ne $mapLink) {
-    Write-Output "Map: $mapLink"
-    if (-not [string]::IsNullOrWhiteSpace("$approxLocation")) {
-        Write-Output "Approx Location: $approxLocation"
-    }
+    Write-Output "Location details updated in Action1 custom attributes."
 } else {
     Write-Output 'Map fields cleared — valid coordinates unavailable or untrusted.'
 }

@@ -69,22 +69,25 @@ views and alerts are clearest when all are present.
 
 | Group | Attributes |
 | --- | --- |
-| Location | `Latitude`, `Longitude`, `Location Accuracy`, `Location Quality`, `Location Source`, `Position Source`, `Location Permission`, `Location Updated`, `Location Status`, `Map Link`, `Location Coordinates`, `Location Summary` |
+| Location | `Latitude`, `Longitude`, `Location Accuracy`, `Location Quality`, `Location Source`, `Position Source`, `Location Permission`, `Location Updated`, `Location Status`, `Map Link`, `Location Coordinates`, `Location Summary`, `Approx Location` |
+| Optional address context | `Nearest Address`, `Cross Streets`, `City`, `State`, `ZIP`, `Country`, `Address Source`, `Address Precision` |
 | Identity and integrity | `Device ID`, `Location Sequence`, `Location Integrity` |
 | Health and freshness | `Agent Health`, `Agent Version`, `Last Attempt`, `Last Success`, `Location Age Minutes`, `Recovery Status`, `Location Error` |
 
 ## OpenStreetMap enrichment
 
-The Recovery Console may add derived address context from OpenStreetMap
-Nominatim after Action1 returns a validated coordinate. Raw coordinates remain
-the authoritative endpoint evidence. Derived fields are labeled
-`OSM_NOMINATIM`, cached, and may be unavailable when the provider is throttled
-or offline.
+Public Nominatim lookup is disabled by default. It may be enabled only for
+approved low-volume testing by setting `OSM_NOMINATIM_ALLOW_PUBLIC=true` and an
+organization-approved `OSM_NOMINATIM_USER_AGENT`. Raw coordinates remain the
+authoritative endpoint evidence. Derived fields are labeled `OSM_NOMINATIM`,
+cached, and may be unavailable when the provider is disabled, throttled, or
+offline.
 
 The public service is queried no faster than once per second. Operators must not
 interpret an address or map marker as more precise than the endpoint's reported
-accuracy. Cross streets are optional and are not fabricated when Nominatim does
-not return them.
+accuracy. Nominatim does not reliably return cross streets. The sync publishes
+`Cross Streets` only when an approved endpoint-side or provider-side process
+supplies a real value; the system never fabricates an intersection.
 
 The Action1 endpoint, serial number, hostname/computer name, asset tag, and
 stable `Device ID` are complementary identifiers:

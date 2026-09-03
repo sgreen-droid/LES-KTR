@@ -5,7 +5,7 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 
-const SESSION_DURATION_MS = 4 * 60 * 60 * 1000;
+const SESSION_DURATION_MS = 60 * 60 * 1000;
 const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_ATTEMPT_LIMIT = 5;
 
@@ -22,6 +22,7 @@ interface LoginAttempt {
 }
 
 const attemptsByClient = new Map<string, LoginAttempt>();
+const revokedSessions = new Map<string, number>();
 
 function getSessionSecret(): string {
   const secret = process.env["SESSION_SECRET"];
@@ -70,7 +71,7 @@ export function createRecoverySession(): {
   };
 }
 
-export function getRecoverySessionExpiry(token: unknown): string | null {
+function parseVerifiedPayload(token: unknown): SessionPayload | null {
   if (typeof token !== "string") {
     return null;
   }
@@ -93,13 +94,45 @@ export function getRecoverySessionExpiry(token: unknown): string | null {
       payload.version !== 1 ||
       typeof payload.exp !== "number" ||
       !Number.isFinite(payload.exp) ||
+      typeof payload.nonce !== "string" ||
+      payload.nonce.length < 16 ||
       payload.exp <= Date.now()
     ) {
       return null;
     }
-    return new Date(payload.exp).toISOString();
+    return payload as SessionPayload;
   } catch {
     return null;
+  }
+}
+
+export function getRecoverySessionExpiry(token: unknown): string | null {
+  const payload = parseVerifiedPayload(token);
+  if (!payload) {
+    return null;
+  }
+  purgeRevokedSessions();
+  if (revokedSessions.has(payload.nonce)) {
+    return null;
+  }
+  return new Date(payload.exp).toISOString();
+}
+
+export function revokeRecoverySession(token: unknown): void {
+  const payload = parseVerifiedPayload(token);
+  if (!payload) {
+    return;
+  }
+  revokedSessions.set(payload.nonce, payload.exp);
+  purgeRevokedSessions();
+}
+
+function purgeRevokedSessions(): void {
+  const now = Date.now();
+  for (const [nonce, expiresAt] of revokedSessions) {
+    if (expiresAt <= now) {
+      revokedSessions.delete(nonce);
+    }
   }
 }
 
