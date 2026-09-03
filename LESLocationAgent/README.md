@@ -560,12 +560,18 @@ The CI pipeline verifies that the published self-contained package includes the 
 
 ### App does not start with Windows
 
-- Open the app manually, then close it to the tray. The startup entry is written on the first launch.
-- Or run this PowerShell command:
+- The MSI installs a machine-wide startup entry, so the agent should launch
+  minimized to the tray for each interactive user at sign-in.
+- If the MSI startup entry is unavailable, open the app manually once, then
+  close it to the tray. The app writes a per-user fallback startup entry.
+- Or run this PowerShell command for the current user:
   ```powershell
   Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' `
       -Name 'LESLocationAgent' -Value '"C:\Program Files\LES Location Agent\LESLocationAgent.exe" --startup'
   ```
+
+On sign-in, the agent requests a fresh Windows location immediately and then
+continues refreshing at the configured interval (15 minutes by default).
 
 ### location.json not found
 
