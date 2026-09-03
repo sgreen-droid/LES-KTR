@@ -3,7 +3,7 @@
     Reads LES Location Agent output files and populates Action1 Custom Attributes.
 
 .DESCRIPTION
-    Reads C:\ProgramData\LESLocationAgent\location.json and status.json,
+    Reads C:\ProgramDatais there\LESLocationAgent\location.json and status.json,
     validates all values, calculates staleness, and calls Action1-Set-CustomAttribute
     with the existing location attributes plus Map Link, Location Coordinates,
     Location Summary, and Approx Location. Approx Location is populated from
