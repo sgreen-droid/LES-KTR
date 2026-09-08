@@ -1,0 +1,68 @@
+=== LES Location Agent — Action1 Sync ===
+Running as: ADMIN$ on ADMIN
+Timestamp:  2026-09-08T14:50:34Z
+Location age: 6.1 minutes — ACTIVE
+Setting Action1 Custom Attributes...
+  Setting 'Latitude'
+Action1-Set-CustomAttribute: Latitude=40.8131081034837
+  Setting 'Longitude'
+Action1-Set-CustomAttribute: Longitude=-73.9454040528944
+  Setting 'Location Accuracy'
+Action1-Set-CustomAttribute: Location Accuracy=87
+  Setting 'Location Quality'
+Action1-Set-CustomAttribute: Location Quality=GOOD
+  Setting 'Location Source'
+Action1-Set-CustomAttribute: Location Source=Windows Geolocation
+  Setting 'Position Source'
+Action1-Set-CustomAttribute: Position Source=WiFi
+  Setting 'Location Permission'
+Action1-Set-CustomAttribute: Location Permission=Allowed
+  Setting 'Location Updated'
+Action1-Set-CustomAttribute: Location Updated=2026-09-08T14:44:31Z
+  Setting 'Location Status'
+Action1-Set-CustomAttribute: Location Status=ACTIVE
+  Setting 'Device ID'
+Action1-Set-CustomAttribute: Device ID=24b0ee0a-236a-4dd7-88db-00f80eefe6d2
+  Setting 'Location Sequence'
+Action1-Set-CustomAttribute: Location Sequence=73
+  Setting 'Location Integrity'
+Action1-Set-CustomAttribute: Location Integrity=VALID
+  Setting 'Agent Health'
+Action1-Set-CustomAttribute: Agent Health=HEALTHY
+  Setting 'Agent Version'
+Action1-Set-CustomAttribute: Agent Version=1.1.5
+  Setting 'Last Attempt'
+Action1-Set-CustomAttribute: Last Attempt=2026-09-08T14:44:50Z
+  Setting 'Last Success'
+Action1-Set-CustomAttribute: Last Success=2026-09-08T10:44:31Z
+  Setting 'Location Age Minutes'
+Action1-Set-CustomAttribute: Location Age Minutes=6.1
+  Setting 'Recovery Status'
+Action1-Set-CustomAttribute: Recovery Status=ACTIVE
+  Setting 'Map Link'
+Action1-Set-CustomAttribute: Map Link=https://www.openstreetmap.org/?mlat=40.813108&mlon=-73.945404#map=18/40.813108/-73.945404
+  Setting 'Location Coordinates'
+Action1-Set-CustomAttribute: Location Coordinates=40.813108, -73.945404
+  Setting 'Location Summary'
+Action1-Set-CustomAttribute: Location Summary=40.813108, -73.945404 | ±87 m | WiFi | ACTIVE
+  Setting 'Approx Location'
+Action1-Set-CustomAttribute: Approx Location=
+  Setting 'Nearest Address'
+Error in Action1-Set-CustomAttribute: "Nearest Address" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Cross Streets'
+Error in Action1-Set-CustomAttribute: "Cross Streets" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'City'
+Error in Action1-Set-CustomAttribute: "City" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'State'
+Error in Action1-Set-CustomAttribute: "State" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'ZIP'
+Error in Action1-Set-CustomAttribute: "ZIP" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Country'
+Error in Action1-Set-CustomAttribute: "Country" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Address Source'
+Error in Action1-Set-CustomAttribute: "Address Source" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+  Setting 'Address Precision'
+Error in Action1-Set-CustomAttribute: "Address Precision" is not defined. Please review your endpoint custom attributes in Advanced Settings.
+=== Sync complete ===
+RESULT: ACTIVE
+Location details updated in Action1 custom attributes.
