@@ -1,7 +1,7 @@
 # LES Location Agent — Recovery Operations Runbook
 
 This runbook is for authorized IT, security, and asset-management staff operating
-LES Location Agent on **company-owned Windows 11 devices only**. It describes
+LES Location Agent on **company-owned 64-bit Windows 10 22H2 or Windows 11 devices only**. It describes
 last-known recovery telemetry; it is not a live tracking or remote-control
 system.
 
@@ -44,8 +44,8 @@ items.
 
 ### Windows and agent prerequisites
 
-- [ ] Confirm Windows 11 client edition, build 22000 or later, x64, with
-  Windows Location Services enabled.
+- [ ] Confirm a supported x64 Windows client edition: Windows 10 22H2 build
+  19045 or Windows 11, with Windows Location Services enabled.
 - [ ] Confirm **Let apps access your location** and **Let desktop apps access
   your location** are enabled by the approved organization policy.
 - [ ] Confirm the device has a usable location source such as Wi-Fi scanning,
