@@ -386,6 +386,14 @@ $locationSource  = if ($data.PSObject.Properties['locationSource'])  { $data.loc
 $positionSource  = if ($data.PSObject.Properties['positionSource'])  { $data.positionSource  } else { '' }
 $permission      = if ($data.PSObject.Properties['permissionStatus']){ $data.permissionStatus } else { $permissionStatus }
 
+$normalizedPositionSource = "$positionSource".Trim().ToUpperInvariant()
+if ($normalizedPositionSource -in @('IPADDRESS', 'IP ADDRESS', 'IP', 'IP GEOLOCATION')) {
+    Set-ErrorState 'NO LOCATION' `
+        "IP-derived position source '$positionSource' is not accepted as physical location data." `
+        $permission
+    return
+}
+
 # These values are optional. The agent can provide them directly, or an
 # approved reverse-geocoder can add them to location.json. Keep them separate
 # internally, then pack them into Location Summary so no additional Action1

@@ -21,4 +21,10 @@ public sealed class LocationReading
         double.IsFinite(Longitude) &&
         Latitude >= -90 && Latitude <= 90 &&
         Longitude >= -180 && Longitude <= 180;
+
+    public bool IsTrustedPhysicalSource =>
+        !PositionSource.Equals("IPAddress", StringComparison.OrdinalIgnoreCase) &&
+        !PositionSource.Equals("IP Address", StringComparison.OrdinalIgnoreCase) &&
+        !PositionSource.Equals("IP", StringComparison.OrdinalIgnoreCase) &&
+        !PositionSource.Equals("IP Geolocation", StringComparison.OrdinalIgnoreCase);
 }
