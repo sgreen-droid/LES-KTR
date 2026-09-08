@@ -54,4 +54,22 @@ public sealed class CoordinateValidationTests
         nanLatitude.IsValid.Should().BeFalse();
         infiniteLongitude.IsValid.Should().BeFalse();
     }
+
+    [Theory]
+    [InlineData("IPAddress", false)]
+    [InlineData("IP Address", false)]
+    [InlineData("IP", false)]
+    [InlineData("IP Geolocation", false)]
+    [InlineData("WiFi", true)]
+    [InlineData("Satellite", true)]
+    [InlineData("Cellular", true)]
+    [InlineData("Unknown", true)]
+    public void IsTrustedPhysicalSource_RejectsIpDerivedLocations(
+        string positionSource,
+        bool expected)
+    {
+        var reading = new LocationReading { PositionSource = positionSource };
+
+        reading.IsTrustedPhysicalSource.Should().Be(expected);
+    }
 }

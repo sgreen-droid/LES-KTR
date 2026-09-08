@@ -250,6 +250,29 @@ try {
             $global:LesCapturedAttributes['Location Status']
     }
 
+    # IP-derived coordinates may be numerically valid but are not accepted as
+    # physical device location evidence.
+    $ipLocation = [pscustomobject]@{
+        latitude         = 40.839466
+        longitude        = -73.859357
+        accuracyMeters   = 67
+        locationSource   = 'Windows Geolocation'
+        positionSource   = 'IP Geolocation'
+        permissionStatus = 'Allowed'
+        timestampUtc     = $timestamp
+    }
+    $ipLocation | ConvertTo-Json | Set-Content -Path $locationFile -Encoding UTF8
+    $global:LesCapturedAttributes = @{
+        'Map Link' = 'https://example.invalid/ip-derived-location'
+        'Location Coordinates' = '40.839466, -73.859357'
+    }
+    $global:LesOptionalAttributeFailures = @()
+    & $scriptPath
+
+    Assert-Equal 'Location Status after IP-derived reading' 'NO LOCATION' `
+        $global:LesCapturedAttributes['Location Status']
+    Assert-MapFieldsCleared 'Map fields after IP-derived reading'
+
     Write-Host 'Action1 location sync tests passed.'
 }
 finally {

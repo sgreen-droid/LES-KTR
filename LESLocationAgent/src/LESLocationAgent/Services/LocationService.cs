@@ -62,6 +62,13 @@ public sealed class LocationService
                     continue;
                 }
 
+                if (!reading.IsTrustedPhysicalSource)
+                {
+                    errorMessage = "Windows returned an IP-derived location, which is not accepted as physical location data.";
+                    locationStatus = "UntrustedSource";
+                    continue;
+                }
+
                 // Keep the reading with the smallest accuracy radius
                 if (best is null || reading.AccuracyMeters < best.AccuracyMeters)
                 {
@@ -142,7 +149,7 @@ public sealed class LocationService
                 timeout:    TimeSpan.FromSeconds(config.LocationTimeoutSeconds));
 
             var reading = MapToReading(position);
-            return reading.IsValid ? reading : null;
+            return reading.IsValid && reading.IsTrustedPhysicalSource ? reading : null;
         }
         catch
         {
