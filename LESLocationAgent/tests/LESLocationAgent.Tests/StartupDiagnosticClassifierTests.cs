@@ -115,6 +115,7 @@ public sealed class StartupDiagnosticClassifierTests
                 XamlRequirementsSatisfied: true));
 
         result.FailureKind.Should().Be(StartupFailureKind.IncompatibleArchitecture);
+        result.RecommendedAction.Should().Contain("Windows 10 or Windows 11");
     }
 
     private static StartupDiagnosticEvidence Evidence(
