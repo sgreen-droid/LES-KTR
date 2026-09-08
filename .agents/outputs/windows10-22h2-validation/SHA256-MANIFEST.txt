@@ -1,0 +1,7 @@
+LESLocationAgent.msi SHA-256 : 30CC85EF8804127F0A6A7F1F2E6555C4A08A217BB76ED1B4E1CE211C6FC9E364
+Built                        : 2026-09-08T17:50:25Z
+Commit                       : c4a061367b4fa20c992be4883dde48eca693062f
+Branch / Tag                 : les-location-agent/windows10-22h2
+
+Paste the SHA-256 above into Action1-Install-LESLocationAgent.ps1
+as the value of ExpectedSha256.

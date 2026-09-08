@@ -1,0 +1,2 @@
+.agents/outputs/LESLocationAgent-Windows10-22H2-Validation.zip filter=lfs diff=lfs merge=lfs -text
+.agents/outputs/windows10-22h2-validation/LESLocationAgent.msi filter=lfs diff=lfs merge=lfs -text
