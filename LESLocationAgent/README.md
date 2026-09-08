@@ -553,8 +553,8 @@ When you are ready to deploy to endpoints, publish a tagged GitHub Release so Ac
 Run these commands locally (or in any terminal with git access):
 
 ```powershell
-git tag v1.1.6
-git push origin v1.1.6
+git tag v1.1.8
+git push origin v1.1.8
 ```
 
 That's it. GitHub Actions detects the `v*.*.*` tag, builds the MSI, and automatically creates a GitHub Release with the following files attached:
