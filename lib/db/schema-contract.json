@@ -1,0 +1,641 @@
+{
+  "version": 1,
+  "scope": "public.recovery_*",
+  "tables": {
+    "recovery_device_aliases": {
+      "columns": [
+        {
+          "name": "endpoint_id",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "friendly_name",
+          "type": "character varying(120)",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "recovery_device_aliases_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (endpoint_id)"
+        }
+      ],
+      "indexes": []
+    },
+    "recovery_geocoding_cache": {
+      "columns": [
+        {
+          "name": "coordinate_key",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "latitude",
+          "type": "double precision",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "longitude",
+          "type": "double precision",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "street_address",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "city",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "state",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "postal_code",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "country",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "nearest_address",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "address_precision",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "attempted_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": null
+        }
+      ],
+      "constraints": [
+        {
+          "name": "recovery_geocoding_cache_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (coordinate_key)"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "recovery_geocoding_cache_expires_at_idx",
+          "definition": "CREATE INDEX recovery_geocoding_cache_expires_at_idx ON recovery_geocoding_cache USING btree (expires_at)"
+        }
+      ]
+    },
+    "recovery_incident_audit": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "incident_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "endpoint_id",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "event_type",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "actor_label",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "summary",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "metadata",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb"
+        },
+        {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "recovery_incident_audit_incident_id_recovery_incidents_id_fk",
+          "type": "f",
+          "definition": "FOREIGN KEY (incident_id) REFERENCES recovery_incidents(id)"
+        },
+        {
+          "name": "recovery_incident_audit_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "recovery_incident_audit_incident_at_idx",
+          "definition": "CREATE INDEX recovery_incident_audit_incident_at_idx ON recovery_incident_audit USING btree (incident_id, occurred_at)"
+        }
+      ]
+    },
+    "recovery_incident_endpoints": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "incident_id",
+          "type": "uuid",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "endpoint_id",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "organization_id",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "organization_name",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "captured_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "source_refreshed_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "device_snapshot",
+          "type": "jsonb",
+          "nullable": false,
+          "default": null
+        }
+      ],
+      "constraints": [
+        {
+          "name": "recovery_incident_endpoints_incident_id_recovery_incidents_id_f",
+          "type": "f",
+          "definition": "FOREIGN KEY (incident_id) REFERENCES recovery_incidents(id)"
+        },
+        {
+          "name": "recovery_incident_endpoints_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "recovery_incident_endpoints_endpoint_idx",
+          "definition": "CREATE INDEX recovery_incident_endpoints_endpoint_idx ON recovery_incident_endpoints USING btree (endpoint_id)"
+        },
+        {
+          "name": "recovery_incident_endpoints_incident_idx",
+          "definition": "CREATE INDEX recovery_incident_endpoints_incident_idx ON recovery_incident_endpoints USING btree (incident_id)"
+        },
+        {
+          "name": "recovery_incident_endpoints_unique",
+          "definition": "CREATE UNIQUE INDEX recovery_incident_endpoints_unique ON recovery_incident_endpoints USING btree (incident_id, endpoint_id)"
+        }
+      ]
+    },
+    "recovery_incidents": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "case_number",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "owner",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'OPEN'::text"
+        },
+        {
+          "name": "reported_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "resolved_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "recovery_incidents_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "recovery_incidents_reported_at_idx",
+          "definition": "CREATE INDEX recovery_incidents_reported_at_idx ON recovery_incidents USING btree (reported_at)"
+        },
+        {
+          "name": "recovery_incidents_status_idx",
+          "definition": "CREATE INDEX recovery_incidents_status_idx ON recovery_incidents USING btree (status)"
+        }
+      ]
+    },
+    "recovery_location_observations": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "observation_key",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "endpoint_id",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "device_id",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "computer_name",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "organization_id",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "organization_name",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "serial_number",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "manufacturer",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "model",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "operating_system",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "agent_version",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "source",
+          "type": "text",
+          "nullable": false,
+          "default": "'Action1'::text"
+        },
+        {
+          "name": "captured_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "source_refreshed_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "location_observed_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "last_seen_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "latitude",
+          "type": "double precision",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "longitude",
+          "type": "double precision",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "accuracy",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "location_coordinates",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "location_status",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "location_integrity",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "location_quality",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "location_source",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "position_source",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "location_permission",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "location_sequence",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "location_age_minutes",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "location_error",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "location_summary",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "is_map_safe",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "device_snapshot",
+          "type": "jsonb",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "street_address",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "city",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "state",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "postal_code",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "country",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "address_source",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "nearest_address",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "cross_streets",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "address_precision",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "constraints": [
+        {
+          "name": "recovery_location_observations_pkey",
+          "type": "p",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "recovery_location_observations_captured_at_idx",
+          "definition": "CREATE INDEX recovery_location_observations_captured_at_idx ON recovery_location_observations USING btree (captured_at)"
+        },
+        {
+          "name": "recovery_location_observations_device_id_idx",
+          "definition": "CREATE INDEX recovery_location_observations_device_id_idx ON recovery_location_observations USING btree (device_id)"
+        },
+        {
+          "name": "recovery_location_observations_endpoint_at_idx",
+          "definition": "CREATE INDEX recovery_location_observations_endpoint_at_idx ON recovery_location_observations USING btree (endpoint_id, source_refreshed_at)"
+        },
+        {
+          "name": "recovery_location_observations_key_unique",
+          "definition": "CREATE UNIQUE INDEX recovery_location_observations_key_unique ON recovery_location_observations USING btree (observation_key)"
+        }
+      ]
+    }
+  }
+}
