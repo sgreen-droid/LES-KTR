@@ -1,6 +1,6 @@
 # LES Location Agent
 
-A small Windows 11 desktop application that obtains the most accurate GPS/Wi-Fi/cellular location Windows can provide, stores it locally, and makes it readable by **Action1 RMM**.
+A small Windows 10/11 desktop application that obtains the most accurate GPS/Wi-Fi/cellular location Windows can provide, stores it locally, and makes it readable by **Action1 RMM**.
 
 ---
 
@@ -93,7 +93,7 @@ Action1-LESLocationAgent-Health.ps1        ← Action1 health check script
 
 ## STEP 8 — Move the installer to your Windows test PC
 
-Copy `LESLocationAgent.msi` to the Windows 11 PC where you want to test.
+Copy `LESLocationAgent.msi` to the Windows 10 22H2 or Windows 11 PC where you want to test.
 
 ---
 
@@ -145,7 +145,7 @@ Status: Ready
 
 Before clicking anything, make sure Windows Location is enabled:
 
-1. Click **Open Location Settings** (or go to Settings → Privacy & Security → Location).
+1. Click **Open Location Settings** (or go to Settings → Privacy → Location on Windows 10; Settings → Privacy & security → Location on Windows 11).
 2. Turn on **Location services** (the top toggle).
 3. Turn on **Let apps access your location**.
 
@@ -471,7 +471,7 @@ Signed installers show your publisher name in Windows SmartScreen instead of "Un
 
 ### Permission denied
 
-1. Click **Open Location Settings** (or go to Settings → Privacy & Security → Location).
+1. Click **Open Location Settings** (or go to Settings → Privacy → Location on Windows 10; Settings → Privacy & security → Location on Windows 11).
 2. Make sure **Location services** is ON.
 3. Make sure **Let desktop apps access your location** is ON (scroll down on that settings page).
 4. Click **Enable Location** in the app again.
@@ -479,14 +479,14 @@ Signed installers show your publisher name in Windows SmartScreen instead of "Un
 
 ### Location unavailable
 
-- Check that Windows Location Services is enabled (Settings → Privacy & Security → Location).
+- Check that Windows Location Services is enabled (Settings → Privacy → Location on Windows 10; Settings → Privacy & security → Location on Windows 11).
 - If the PC has no GPS, Wi-Fi, or cellular modem, Windows cannot determine location.
 - Check `C:\ProgramData\LESLocationAgent\status.json` for the `locationStatus` and `error` fields.
 - Review the Windows Event Log for Location-related errors.
 
 ### App won't start after installation
 
-The agent supports Windows 11 version 21H2 (build 22000) and later. Starting with agent version **1.1.6**, the startup dialog first inspects the installed self-contained files and asks Windows to load the exact `Microsoft.ui.xaml.dll` beside the agent. It reports verifiable file, architecture, and loader evidence rather than invoking the legacy `XamlCheckProcessRequirements` compatibility export as a startup gate.
+The agent supports 64-bit Windows 10 version 22H2 (build 19045) and Windows 11. Older Windows 10 releases, Windows Server, 32-bit Windows, and ARM64 are not supported. Starting with agent version **1.1.6**, the startup dialog first inspects the installed self-contained files and asks Windows to load the exact `Microsoft.ui.xaml.dll` beside the agent. It reports verifiable file, architecture, and loader evidence rather than invoking the legacy `XamlCheckProcessRequirements` compatibility export as a startup gate.
 
 The dialog can distinguish these cases:
 
@@ -494,7 +494,7 @@ The dialog can distinguish these cases:
 |---|---|
 | **`Microsoft.ui.xaml.dll` is missing** | Reinstall the latest MSI. Do not launch a copied EXE outside `C:\Program Files\LES Location Agent`. |
 | **The XAML DLL does not provide the required startup export** | Reinstall the latest MSI. The installed XAML runtime is incomplete or incompatible. |
-| **x64 architecture mismatch** | Use the x64 MSI on a 64-bit Windows 11 PC. |
+| **x64 architecture mismatch** | Use the x64 MSI on a supported 64-bit Windows 10 or Windows 11 PC. |
 | **Windows could not load the XAML DLL or a native dependency** | Reinstall the MSI first. If the diagnostic also says the x64 Visual C++ runtime is not detected, repair that runtime next. Windows error 126 does not name the missing transitive DLL, so the agent does not claim Visual C++ is definitely the cause. |
 | **Windows did not identify one specific missing dependency** | Reinstall the MSI first. The dialog and log show the Windows loader error and the files the agent found; do not install unrelated software at random. |
 

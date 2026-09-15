@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "C-qRCOL0tpAxc0ahKV4zK"
+uri = "file://.agents/outputs/LESLocationAgent-Windows10-22H2-Validation.zip"
+type = "unspecified"
+title = "Windows 10/11 Validation Package"
+description = "Verified build artifact for PR #3. Contains the MSI, its SHA-256 manifest, and the Action1 health script for real-device validation."
+logical_id = "978a8927-e17d-47b1-b9d0-30d150608cd9"
+content_hash = "sha256:327e1ddac5cf3bc37bd779b5e99fc5ce6d30f8872f1e317a853fb03ef0fb0343"
+size = 53237675
+mtime_ms = 1788890064501
+storage_uri = "gcs://replit-rams-assets-picard/rams/assets/repl:b46ffd92-1747-4344-b090-f8befc9db1b0/978a8927-e17d-47b1-b9d0-30d150608cd9/c427d316-98b7-4063-9e63-4df558abcb40"
+storage_version_token = "1788890071160488"
+content_type = "application/octet-stream"
