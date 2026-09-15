@@ -31,6 +31,11 @@ export interface RecoverySession {
 export interface RecoveryDevice {
   endpointId: string;
   computerName: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  friendlyName: string | null;
   organizationId: string;
   organizationName: string;
   endpointStatus: string;
@@ -112,6 +117,14 @@ export interface RecoveryDevice {
   /** @nullable */
   locationSummary: string | null;
   isMapSafe: boolean;
+}
+
+export interface RecoveryDeviceAliasUpdate {
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  friendlyName: string | null;
 }
 
 export interface RecoveryDeviceList {
@@ -240,6 +253,8 @@ export const RecoveryLocationExportObservationObservationTimeBasis = {
 export type RecoveryLocationExportObservation = RecoveryLocationObservation & ({
   /** @minimum 1 */
   observationNumber: number;
+  /** @nullable */
+  friendlyName: string | null;
   observationTimeBasis: RecoveryLocationExportObservationObservationTimeBasis;
   movementFromPrevious: RecoveryLocationMovement | null;
 });
@@ -249,6 +264,8 @@ export interface RecoveryLocationEndpointSummary {
   /** @nullable */
   deviceId: string | null;
   computerNames: string[];
+  /** @nullable */
+  friendlyName: string | null;
   organizationName: string;
   /** @minimum 0 */
   observationCount: number;

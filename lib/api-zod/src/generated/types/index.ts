@@ -21,6 +21,7 @@ export * from './listRecoveryDevicesParams';
 export * from './listRecoveryLocationHistoryParams';
 export * from './rateLimitedResponse';
 export * from './recoveryDevice';
+export * from './recoveryDeviceAliasUpdate';
 export * from './recoveryDeviceList';
 export * from './recoveryEvidenceExport';
 export * from './recoveryEvidenceExportRequest';

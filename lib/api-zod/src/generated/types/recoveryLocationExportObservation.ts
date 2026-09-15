@@ -12,6 +12,8 @@ import type { RecoveryLocationObservation } from './recoveryLocationObservation'
 export type RecoveryLocationExportObservation = RecoveryLocationObservation & ({
   /** @minimum 1 */
   observationNumber: number;
+  /** @nullable */
+  friendlyName: string | null;
   observationTimeBasis: RecoveryLocationExportObservationObservationTimeBasis;
   movementFromPrevious: RecoveryLocationMovement | null;
 });

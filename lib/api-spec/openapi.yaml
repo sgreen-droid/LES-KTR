@@ -1,319 +1,3 @@
-openapi: 3.1.0
-info:
-  # Do not change the title, if the title changes, the import paths will be broken
-  title: Api
-  version: 0.1.0
-  description: API specification
-servers:
-  - url: /api
-    description: Base API path
-tags:
-  - name: health
-    description: Health operations
-  - name: recovery-auth
-    description: Recovery console session operations
-  - name: recovery
-    description: Recovery endpoint, incident, and evidence operations
-paths:
-  /healthz:
-    get:
-      operationId: healthCheck
-      tags: [health]
-      summary: Health check
-      description: Returns server health status
-      responses:
-        "200":
-          description: Healthy
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
-  /recovery/auth/session:
-    get:
-      operationId: getRecoverySession
-      tags: [recovery-auth]
-      summary: Check the current recovery console session
-      responses:
-        "200":
-          description: Session state
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RecoverySession"
-    post:
-      operationId: createRecoverySession
-      tags: [recovery-auth]
-      summary: Unlock the recovery console
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RecoveryLogin"
-      responses:
-        "200":
-          description: Authenticated session
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RecoverySession"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "429":
-          $ref: "#/components/responses/RateLimited"
-    delete:
-      operationId: deleteRecoverySession
-      tags: [recovery-auth]
-      summary: Lock the recovery console
-      responses:
-        "204":
-          description: Session cleared
-  /recovery/summary:
-    get:
-      operationId: getRecoverySummary
-      tags: [recovery]
-      summary: Get recovery fleet status totals
-      responses:
-        "200":
-          description: Fleet summary
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RecoverySummary"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "502":
-          $ref: "#/components/responses/Action1Unavailable"
-  /recovery/readiness:
-    get:
-      operationId: getAction1Readiness
-      tags: [recovery]
-      summary: Check Action1 recovery data readiness
-      description: Confirms Action1 authentication and recovery read access without returning recovery records
-      responses:
-        "200":
-          description: Safe readiness status
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Action1Readiness"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-  /recovery/devices:
-    get:
-      operationId: listRecoveryDevices
-      tags: [recovery]
-      summary: List Action1 endpoints with recovery data
-      parameters:
-        - name: search
-          in: query
-          required: false
-          schema:
-            type: string
-            maxLength: 100
-        - name: recoveryStatus
-          in: query
-          required: false
-          schema:
-            type: string
-            maxLength: 50
-        - name: agentHealth
-          in: query
-          required: false
-          schema:
-            type: string
-            maxLength: 80
-        - name: integrity
-          in: query
-          required: false
-          schema:
-            type: string
-            maxLength: 30
-        - name: freshness
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [ACTIVE, STALE, ALL]
-      responses:
-        "200":
-          description: Matching endpoint records
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RecoveryDeviceList"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "502":
-          $ref: "#/components/responses/Action1Unavailable"
-  /recovery/devices/{endpointId}:
-    get:
-      operationId: getRecoveryDevice
-      tags: [recovery]
-      summary: Get one recovery endpoint with labeled location details
-      parameters:
-        - name: endpointId
-          in: path
-          required: true
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 160
-      responses:
-        "200":
-          description: Endpoint record
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RecoveryDevice"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          description: Endpoint not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiError"
-        "502":
-          $ref: "#/components/responses/Action1Unavailable"
-  /recovery/devices/{endpointId}/location-history:
-    get:
-      operationId: getRecoveryDeviceLocationHistory
-      tags: [recovery]
-      summary: Get time-bounded, last-known observations for one Action1 endpoint
-      parameters:
-        - name: endpointId
-          in: path
-          required: true
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 160
-        - name: from
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date-time
-        - name: to
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date-time
-      responses:
-        "200":
-          description: Matching persisted last-known observations
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RecoveryLocationHistory"
-        "400":
-          description: Invalid history date range
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-  /recovery/devices/{endpointId}/location-history/export:
-    get:
-      operationId: exportRecoveryDeviceLocationHistory
-      tags: [recovery]
-      summary: Export time-bounded, last-known observations for one Action1 endpoint
-      parameters:
-        - name: endpointId
-          in: path
-          required: true
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 160
-        - name: from
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date-time
-        - name: to
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date-time
-        - name: format
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [json, csv, print]
-            default: json
-      responses:
-        "200":
-          description: JSON, CSV, or print-ready HTML location history export
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RecoveryLocationHistoryExport"
-            text/csv:
-              schema:
-                type: string
-            text/html:
-              schema:
-                type: string
-        "400":
-          description: Invalid history date range or export request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "429":
-          $ref: "#/components/responses/RateLimited"
-  /recovery/location-history:
-    get:
-      operationId: listRecoveryLocationHistory
-      tags: [recovery]
-      summary: List persisted last-known observations for the fleet or selected Action1 endpoints
-      parameters:
-        - name: endpointIds
-          in: query
-          required: false
-          style: form
-          explode: true
-          schema:
-            type: array
-            maxItems: 50
-            items:
-              type: string
-              minLength: 1
-              maxLength: 160
-        - name: from
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date-time
-        - name: to
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date-time
-      responses:
-        "200":
-          description: Matching persisted last-known observations
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RecoveryLocationHistory"
-        "400":
-          description: Invalid history date range
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiError"
         "401":
           $ref: "#/components/responses/Unauthorized"
   /recovery/location-history/export:
@@ -510,6 +194,14 @@ paths:
           $ref: "#/components/responses/RateLimited"
 components:
   parameters:
+    EndpointId:
+      name: endpointId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 160
     IncidentId:
       name: incidentId
       in: path
@@ -574,6 +266,9 @@ components:
           type: string
         computerName:
           type: string
+        friendlyName:
+          type: ["string", "null"]
+          maxLength: 120
         organizationId:
           type: string
         organizationName:
@@ -662,6 +357,7 @@ components:
       required:
         - endpointId
         - computerName
+        - friendlyName
         - organizationId
         - organizationName
         - endpointStatus
@@ -704,6 +400,13 @@ components:
         - locationCoordinates
         - locationSummary
         - isMapSafe
+    RecoveryDeviceAliasUpdate:
+      type: object
+      properties:
+        friendlyName:
+          type: ["string", "null"]
+          maxLength: 120
+      required: [friendlyName]
     RecoveryDeviceList:
       type: object
       properties:
@@ -894,6 +597,8 @@ components:
             observationNumber:
               type: number
               minimum: 1
+            friendlyName:
+              type: ["string", "null"]
             observationTimeBasis:
               type: string
               enum:
@@ -905,6 +610,7 @@ components:
                 - type: "null"
           required:
             - observationNumber
+            - friendlyName
             - observationTimeBasis
             - movementFromPrevious
     RecoveryLocationEndpointSummary:
@@ -918,6 +624,8 @@ components:
           type: array
           items:
             type: string
+        friendlyName:
+          type: ["string", "null"]
         organizationName:
           type: string
         observationCount:
@@ -969,6 +677,7 @@ components:
         - endpointId
         - deviceId
         - computerNames
+        - friendlyName
         - organizationName
         - observationCount
         - coordinateObservationCount

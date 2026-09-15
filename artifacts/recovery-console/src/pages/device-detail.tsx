@@ -1,8 +1,19 @@
 import { useParams, Link, useLocation } from "wouter";
-import { useGetRecoveryDevice, useGetRecoveryDeviceLocationHistory, useCreateRecoveryIncident, getGetRecoveryDeviceLocationHistoryQueryKey, getListRecoveryIncidentsQueryKey } from "@/hooks/api";
+import {
+  useGetRecoveryDevice,
+  useGetRecoveryDeviceLocationHistory,
+  useCreateRecoveryIncident,
+  useUpdateRecoveryDeviceAlias,
+  getGetRecoveryDeviceQueryKey,
+  getGetRecoveryDeviceLocationHistoryQueryKey,
+  getExportRecoveryDeviceLocationHistoryQueryKey,
+  getListRecoveryDevicesQueryKey,
+  getListRecoveryLocationHistoryQueryKey,
+  getExportRecoveryLocationHistoryQueryKey,
+  getListRecoveryIncidentsQueryKey,
+} from "@/hooks/api";
 import { formatRecoveryDate, formatRecoveryDistance, parseRecoveryDate } from "@/lib/recovery-dates";
 import { exportRecoveryLocationHistory } from "@/lib/recovery-history-export";
-import { getGetRecoveryDeviceQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,7 +40,8 @@ import {
   FileJson,
   FileText,
   History,
-  Printer
+  Printer,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -46,6 +58,9 @@ export default function DeviceDetail() {
   const [incidentNote, setIncidentNote] = useState("");
   const [historyFrom, setHistoryFrom] = useState("");
   const [historyTo, setHistoryTo] = useState("");
+  const [isFriendlyNameDialogOpen, setIsFriendlyNameDialogOpen] = useState(false);
+  const [friendlyNameDraft, setFriendlyNameDraft] = useState("");
+  const [aliasFeedback, setAliasFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const { data: device, isLoading, isError } = useGetRecoveryDevice(endpointId, {
     query: { enabled: !!endpointId, queryKey: getGetRecoveryDeviceQueryKey(endpointId) },
@@ -70,6 +85,52 @@ export default function DeviceDetail() {
   );
 
   const createIncident = useCreateRecoveryIncident({ request: { credentials: "include" } });
+  const updateFriendlyName = useUpdateRecoveryDeviceAlias({ request: { credentials: "include" } });
+
+  const openFriendlyNameDialog = () => {
+    setFriendlyNameDraft(device?.friendlyName ?? "");
+    setAliasFeedback(null);
+    setIsFriendlyNameDialogOpen(true);
+  };
+
+  const handleFriendlyNameDialogChange = (open: boolean) => {
+    setIsFriendlyNameDialogOpen(open);
+    if (open) {
+      setFriendlyNameDraft(device?.friendlyName ?? "");
+      setAliasFeedback(null);
+    } else {
+      setFriendlyNameDraft("");
+      setAliasFeedback(null);
+    }
+  };
+
+  const handleFriendlyNameSave = () => {
+    const trimmedFriendlyName = friendlyNameDraft.trim();
+    updateFriendlyName.mutate(
+      {
+        endpointId,
+        data: { friendlyName: trimmedFriendlyName || null },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetRecoveryDeviceQueryKey(endpointId) });
+          queryClient.invalidateQueries({ queryKey: getListRecoveryDevicesQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetRecoveryDeviceLocationHistoryQueryKey(endpointId) });
+          queryClient.invalidateQueries({ queryKey: getExportRecoveryDeviceLocationHistoryQueryKey(endpointId) });
+          queryClient.invalidateQueries({ queryKey: getListRecoveryLocationHistoryQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getExportRecoveryLocationHistoryQueryKey() });
+          setAliasFeedback({ type: "success", message: "Friendly name saved." });
+          toast.success("Friendly name saved.");
+          setIsFriendlyNameDialogOpen(false);
+          setFriendlyNameDraft("");
+        },
+        onError: () => {
+          setAliasFeedback({ type: "error", message: "Could not save the friendly name. Try again." });
+          toast.error("Could not save the friendly name.");
+        },
+      },
+    );
+  };
 
   const handleCreateIncident = () => {
     if (!incidentTitle.trim()) return;
@@ -92,7 +153,7 @@ export default function DeviceDetail() {
   };
 
   const openDialog = () => {
-    setIncidentTitle(`Target: ${device?.computerName || endpointId}`);
+    setIncidentTitle(`Target: ${device?.friendlyName ?? device?.computerName ?? endpointId}`);
     setIncidentCase("");
     setIncidentOwner("");
     setIncidentNote("");
@@ -159,6 +220,8 @@ export default function DeviceDetail() {
   const integrityNeedsReview = ['LEGACY', 'MISSING'].includes(integrityStatus ?? '');
   const hasHealthyAgent = ['OK', 'HEALTHY'].includes(device.agentHealth?.toUpperCase() ?? '');
   const locationUpdatedDate = parseRecoveryDate(device.locationUpdated);
+  const displayName = device.friendlyName ?? device.computerName;
+  const hasFriendlyName = Boolean(device.friendlyName);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
@@ -193,8 +256,13 @@ export default function DeviceDetail() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3 font-mono uppercase">
             <MonitorSmartphone className="h-8 w-8 text-primary" />
-            {device.computerName}
+            <span data-testid="text-device-display-name">{displayName}</span>
           </h1>
+          {hasFriendlyName && (
+            <p className="mt-2 text-xs font-mono uppercase tracking-widest text-muted-foreground">
+              Windows computer name: <span className="font-bold text-foreground">{device.computerName}</span>
+            </p>
+          )}
           <p className="text-muted-foreground mt-1 text-sm font-mono uppercase tracking-widest">
             {device.organizationName}
           </p>
@@ -203,6 +271,16 @@ export default function DeviceDetail() {
           <Badge variant="outline" className="rounded-none text-[10px] px-2 py-1 font-mono uppercase tracking-widest border-border text-muted-foreground bg-muted/50">
             Action1 endpoint: {device.endpointId}
           </Badge>
+          <Button
+            variant="outline"
+            onClick={openFriendlyNameDialog}
+            className="rounded-none text-[10px] px-3 py-1 font-mono uppercase tracking-widest gap-2"
+            data-testid="button-edit-friendly-name"
+            aria-label={`Edit friendly name for ${displayName}`}
+          >
+            <Pencil className="h-3 w-3" />
+            {hasFriendlyName ? "Edit friendly name" : "Set friendly name"}
+          </Button>
           <Badge 
             variant="outline"
             className={`rounded-none text-[10px] px-3 py-1 font-mono uppercase tracking-widest font-bold
@@ -434,6 +512,15 @@ export default function DeviceDetail() {
             </CardHeader>
             <CardContent className="space-y-5 pt-5 font-mono">
               <div className="space-y-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Friendly Name</p>
+                <p className="text-sm font-bold break-words" data-testid="text-friendly-name">
+                  {displayName}
+                </p>
+                {hasFriendlyName && (
+                  <p className="text-[10px] text-muted-foreground">Windows computer name: {device.computerName}</p>
+                )}
+              </div>
+              <div className="space-y-1">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Canonical Action1 Endpoint ID</p>
                 <p className="text-xs break-all bg-muted px-2 py-1 inline-block border-l-2 border-primary">{device.endpointId}</p>
               </div>
@@ -501,13 +588,83 @@ export default function DeviceDetail() {
         </div>
       </div>
 
+      {/* Edit Friendly Name Dialog */}
+      <Dialog open={isFriendlyNameDialogOpen} onOpenChange={handleFriendlyNameDialogChange}>
+        <DialogContent className="rounded-none border-t-4 border-t-primary font-mono sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="uppercase tracking-widest">Edit Friendly Name</DialogTitle>
+            <DialogDescription className="font-sans">
+              Set an operator-friendly label for this endpoint. The Windows computer name remains available as source identity.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-4">
+            <Label htmlFor="friendly-name" className="uppercase text-xs tracking-widest font-bold">
+              Friendly name
+            </Label>
+            <Input
+              id="friendly-name"
+              value={friendlyNameDraft}
+              maxLength={120}
+              onChange={(event) => setFriendlyNameDraft(event.target.value)}
+              placeholder={device.computerName}
+              className="rounded-none font-sans"
+              aria-describedby="friendly-name-help friendly-name-feedback"
+              data-testid="input-friendly-name"
+            />
+            <div id="friendly-name-help" className="flex justify-between text-[10px] text-muted-foreground">
+              <span>Clear the field to remove the friendly name.</span>
+              <span>{friendlyNameDraft.length}/120</span>
+            </div>
+            {aliasFeedback && (
+              <p
+                id="friendly-name-feedback"
+                role="status"
+                className={aliasFeedback.type === "error" ? "text-xs text-destructive" : "text-xs text-green-600"}
+                data-testid={`status-friendly-name-${aliasFeedback.type}`}
+              >
+                {aliasFeedback.message}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="rounded-none uppercase tracking-widest text-xs font-bold"
+              onClick={() => handleFriendlyNameDialogChange(false)}
+              disabled={updateFriendlyName.isPending}
+              data-testid="button-cancel-friendly-name"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              className="rounded-none uppercase tracking-widest text-xs font-bold"
+              onClick={() => setFriendlyNameDraft("")}
+              disabled={updateFriendlyName.isPending || !friendlyNameDraft}
+              data-testid="button-clear-friendly-name"
+            >
+              Clear
+            </Button>
+            <Button
+              className="rounded-none uppercase tracking-widest text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={handleFriendlyNameSave}
+              disabled={updateFriendlyName.isPending}
+              data-testid="button-save-friendly-name"
+            >
+              {updateFriendlyName.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              {updateFriendlyName.isPending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Create Incident Dialog */}
       <Dialog open={isIncidentDialogOpen} onOpenChange={setIsIncidentDialogOpen}>
         <DialogContent className="rounded-none border-t-4 border-t-primary font-mono sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle className="uppercase tracking-widest">Initialize Recovery Incident</DialogTitle>
             <DialogDescription className="font-sans">
-              Lock in endpoint <span className="font-bold">{device?.computerName}</span> as evidence for a new persistent recovery operation.
+              Lock in endpoint <span className="font-bold">{displayName}</span> as evidence for a new persistent recovery operation.
             </DialogDescription>
           </DialogHeader>
           

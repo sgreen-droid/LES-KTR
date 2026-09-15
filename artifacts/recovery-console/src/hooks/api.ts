@@ -12,9 +12,15 @@ import {
   useGetRecoveryIncident,
   useUpdateRecoveryIncident,
   useExportRecoveryIncident,
+  useUpdateRecoveryDeviceAlias,
+  getListRecoveryDevicesQueryKey,
+  getGetRecoveryDeviceQueryKey,
   getListRecoveryIncidentsQueryKey,
   getGetRecoveryIncidentQueryKey,
-  getGetRecoveryDeviceLocationHistoryQueryKey
+  getGetRecoveryDeviceLocationHistoryQueryKey,
+  getExportRecoveryDeviceLocationHistoryQueryKey,
+  getListRecoveryLocationHistoryQueryKey,
+  getExportRecoveryLocationHistoryQueryKey
 } from "@workspace/api-client-react"
 
 export {
@@ -31,7 +37,13 @@ export {
   useGetRecoveryIncident,
   useUpdateRecoveryIncident,
   useExportRecoveryIncident,
+  useUpdateRecoveryDeviceAlias,
+  getListRecoveryDevicesQueryKey,
+  getGetRecoveryDeviceQueryKey,
   getListRecoveryIncidentsQueryKey,
   getGetRecoveryIncidentQueryKey,
-  getGetRecoveryDeviceLocationHistoryQueryKey
+  getGetRecoveryDeviceLocationHistoryQueryKey,
+  getExportRecoveryDeviceLocationHistoryQueryKey,
+  getListRecoveryLocationHistoryQueryKey,
+  getExportRecoveryLocationHistoryQueryKey
 }

@@ -99,7 +99,12 @@ export default function Dashboard() {
   };
 
   const openDialog = () => {
-    setIncidentTitle("");
+    const selectedDevice = deviceList?.devices.find((device) => selectedEndpoints.has(device.endpointId));
+    setIncidentTitle(
+      selectedEndpoints.size === 1 && selectedDevice
+        ? `Target: ${selectedDevice.friendlyName ?? selectedDevice.computerName}`
+        : "",
+    );
     setIncidentCase("");
     setIncidentOwner("");
     setIncidentNote("");
@@ -265,6 +270,8 @@ export default function Dashboard() {
                 ) : (
                   deviceList?.devices.map((device) => {
                     const isSelected = selectedEndpoints.has(device.endpointId);
+                    const displayName = device.friendlyName ?? device.computerName;
+                    const hasFriendlyName = Boolean(device.friendlyName);
                     const locationStatus = device.locationStatus?.toUpperCase();
                     const locationStatusClass =
                       locationStatus === "ACTIVE"
@@ -283,11 +290,17 @@ export default function Dashboard() {
                           <Checkbox 
                             checked={isSelected}
                             onCheckedChange={() => toggleEndpoint(device.endpointId)}
-                            aria-label={`Select ${device.computerName}`}
+                            aria-label={`Select ${displayName}`}
+                            data-testid={`checkbox-select-device-${device.endpointId}`}
                           />
                         </td>
                         <td className="px-4 py-3">
-                          <div className="font-bold text-foreground">{device.computerName}</div>
+                          <div className="font-bold text-foreground" data-testid={`text-device-display-name-${device.endpointId}`}>{displayName}</div>
+                          {hasFriendlyName && (
+                            <div className="text-[10px] text-muted-foreground">
+                              Windows computer name: {device.computerName}
+                            </div>
+                          )}
                           <div className="text-[10px] text-muted-foreground">Action1 endpoint: {device.endpointId}</div>
                           <div className="text-[10px] text-muted-foreground">Device ID: {device.deviceId || "Not reported"}</div>
                           <div className="text-[10px] text-muted-foreground">{device.serialNumber ? `Serial: ${device.serialNumber}` : device.operatingSystem}</div>
@@ -346,7 +359,7 @@ export default function Dashboard() {
                         </td>
                         <td className="px-4 py-3 text-right">
                           <Button variant="outline" size="sm" asChild className="rounded-none hover:bg-secondary hover:text-secondary-foreground uppercase text-[10px] font-bold tracking-widest">
-                            <Link href={`/devices/${device.endpointId}`}>
+                            <Link href={`/devices/${device.endpointId}`} aria-label={`Inspect ${displayName}`}>
                               Inspect
                             </Link>
                           </Button>

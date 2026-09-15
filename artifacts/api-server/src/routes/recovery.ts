@@ -30,6 +30,9 @@ import {
   UpdateRecoveryIncidentBody,
   UpdateRecoveryIncidentParams,
   UpdateRecoveryIncidentResponse,
+  UpdateRecoveryDeviceAliasBody,
+  UpdateRecoveryDeviceAliasParams,
+  UpdateRecoveryDeviceAliasResponse,
 } from "@workspace/api-zod";
 import {
   Action1UnavailableError,
@@ -63,6 +66,10 @@ import {
   renderRecoveryLocationHistoryCsv,
   renderRecoveryLocationHistoryPrintDocument,
 } from "../lib/recovery-history";
+import {
+  mergeCurrentRecoveryDeviceAliases,
+  upsertRecoveryDeviceAlias,
+} from "../lib/recovery-device-aliases";
 
 const router: IRouter = Router();
 const SESSION_COOKIE = "les_recovery_session";
@@ -335,7 +342,10 @@ router.get(
 
     try {
       const snapshot = await getRecoverySnapshot();
-      const devices = filterRecoveryDevices(snapshot.devices, filters.data);
+      const devices = filterRecoveryDevices(
+        await mergeCurrentRecoveryDeviceAliases(snapshot.devices),
+        filters.data,
+      );
       res.set("Cache-Control", "no-store");
       res.json(
         ListRecoveryDevicesResponse.parse({
@@ -377,10 +387,70 @@ router.get(
         });
         return;
       }
+      const [mergedDevice] = await mergeCurrentRecoveryDeviceAliases([device]);
       res.set("Cache-Control", "no-store");
-      res.json(GetRecoveryDeviceResponse.parse(device));
+      res.json(GetRecoveryDeviceResponse.parse(mergedDevice));
     } catch (error) {
       sendAction1Unavailable(req, res, error);
+    }
+  },
+);
+
+router.patch(
+  "/recovery/devices/:endpointId",
+  async (req, res): Promise<void> => {
+    if (!requireRecoverySession(req, res)) {
+      return;
+    }
+    const params = UpdateRecoveryDeviceAliasParams.safeParse(req.params);
+    const body = UpdateRecoveryDeviceAliasBody.safeParse(req.body);
+    if (!params.success || !body.success) {
+      res.status(400).json({
+        error: "INVALID_ENDPOINT_ALIAS",
+        message: "Provide a friendly name of 120 characters or fewer.",
+      });
+      return;
+    }
+
+    try {
+      const snapshot = await getRecoverySnapshot();
+      const currentDevice = snapshot.devices.find(
+        (candidate) => candidate.endpointId === params.data.endpointId,
+      );
+      if (!currentDevice) {
+        sendNotFound(res, "The requested Action1 endpoint was not found.");
+        return;
+      }
+      const updatedAlias = await upsertRecoveryDeviceAlias(
+        params.data.endpointId,
+        body.data.friendlyName,
+      );
+      const updatedDevice = {
+        ...currentDevice,
+        friendlyName: updatedAlias?.friendlyName ?? null,
+      };
+      req.log.info(
+        {
+          endpointId: params.data.endpointId,
+          aliasChanged: updatedDevice.friendlyName !== currentDevice.friendlyName,
+        },
+        "Recovery endpoint friendly name updated",
+      );
+      res.set("Cache-Control", "no-store");
+      res.json(UpdateRecoveryDeviceAliasResponse.parse(updatedDevice));
+    } catch (error) {
+      if (error instanceof Action1UnavailableError) {
+        sendAction1Unavailable(req, res, error);
+        return;
+      }
+      req.log.error(
+        { endpointId: params.data.endpointId, error },
+        "Could not update recovery endpoint friendly name",
+      );
+      res.status(500).json({
+        error: "ENDPOINT_ALIAS_UNAVAILABLE",
+        message: "The friendly name could not be saved. Try again shortly.",
+      });
     }
   },
 );

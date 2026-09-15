@@ -9,6 +9,11 @@
 export interface RecoveryDevice {
   endpointId: string;
   computerName: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  friendlyName: string | null;
   organizationId: string;
   organizationName: string;
   endpointStatus: string;
