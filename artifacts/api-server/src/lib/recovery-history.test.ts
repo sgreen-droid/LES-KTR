@@ -6,6 +6,7 @@ import {
   createRecoveryObservationKey,
   parseAction1Timestamp,
   renderRecoveryLocationHistoryCsv,
+  renderRecoveryLocationHistoryPrintDocument,
   type RecoveryLocationObservation,
   type RecoveryLocationHistoryExport,
 } from "./recovery-history";
@@ -17,6 +18,7 @@ const device: RecoveryDevice = {
   agentVersion: "1.0.0",
   city: "Seattle",
   computerName: "=unsafe-computer-name",
+  friendlyName: null,
   country: "US",
   crossStreets: "1st Ave & Pine St",
   deviceId: null,
@@ -81,7 +83,7 @@ test("observation keys suppress identical captures but retain a newly reported d
 test("history CSV is spreadsheet-safe for identity values", () => {
   const exportData: RecoveryLocationHistoryExport = {
     exportId: "export-1",
-    schemaVersion: "les-recovery-location-history/v2",
+    schemaVersion: "les-recovery-location-history/v3",
     generatedAt: new Date("2026-08-25T18:00:00.000Z"),
     source: "test",
     scope: "SINGLE",
@@ -104,6 +106,7 @@ test("history CSV is spreadsheet-safe for identity values", () => {
           endpointId: device.endpointId,
           deviceId: null,
           computerNames: [device.computerName],
+          friendlyName: "Friendly Test PC",
           organizationName: device.organizationName,
           observationCount: 1,
           coordinateObservationCount: 1,
@@ -129,6 +132,7 @@ test("history CSV is spreadsheet-safe for identity values", () => {
     observations: [
       {
         ...device,
+        friendlyName: "Friendly Test PC",
         id: "observation-1",
         capturedAt: new Date("2026-08-25T18:00:00.000Z"),
         sourceRefreshedAt: new Date("2026-08-25T18:00:00.000Z"),
@@ -148,11 +152,15 @@ test("history CSV is spreadsheet-safe for identity values", () => {
   assert.match(csv, /"EXPORT_SUMMARY"/);
   assert.match(csv, /"ENDPOINT_SUMMARY"/);
   assert.match(csv, /"OBSERVATION"/);
+  assert.match(csv, /Friendly Test PC/);
   assert.match(csv, /"movement_assessment"/);
   const columnCounts = csv
     .split("\r\n")
     .map((line) => line.split('","').length);
   assert.ok(columnCounts.every((count) => count === columnCounts[0]));
+  const printDocument = renderRecoveryLocationHistoryPrintDocument(exportData);
+  assert.match(printDocument, /Friendly Test PC/);
+  assert.match(printDocument, /Windows computer name/);
 });
 
 test("history evidence is chronological and calculates apparent movement per endpoint", () => {

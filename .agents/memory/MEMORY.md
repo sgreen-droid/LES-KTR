@@ -1,3 +1,4 @@
 - [WinUI3 SDK pinning](winui3-sdk-pinning.md) — GitHub Actions windows-latest now ships .NET SDK 10; WinUI 3 PRI tasks break on SDK 10; pin to 8.x via global.json.
 - [H.NotifyIcon WinUI API](h-notifyicon-winui-api.md) — No public events; use LeftClickCommand (ICommand). Global\ named events crash non-elevated processes; use Local\. Capture DispatcherQueue on UI thread before spawning listener thread.
 - [WinUI3 XBF loader failure](winui3-xbf-loader.md) — self-contained unpackaged WinUI 3: LoadComponent can fail with "XAML parsing failed" regardless of XAML content; build UI in code. Location consent auto-grant via HKCU ConsentStore.
+- [Drizzle schema drift](drizzle-schema-drift.md) — never force a schema push while recovery_geocoding_cache is unmodeled; Drizzle proposes deleting its data.

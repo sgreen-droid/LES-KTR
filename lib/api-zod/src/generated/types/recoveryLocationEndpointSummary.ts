@@ -11,6 +11,8 @@ export interface RecoveryLocationEndpointSummary {
   /** @nullable */
   deviceId: string | null;
   computerNames: string[];
+  /** @nullable */
+  friendlyName: string | null;
   organizationName: string;
   /** @minimum 0 */
   observationCount: number;

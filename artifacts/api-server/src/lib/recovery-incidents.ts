@@ -13,6 +13,10 @@ import type {
   RecoveryIncidentUpdate,
 } from "@workspace/api-zod";
 import type { RecoveryDevice } from "./action1-recovery";
+import {
+  listRecoveryDeviceAliases,
+  mergeRecoveryDeviceAliases,
+} from "./recovery-device-aliases";
 
 const ACTOR_LABEL = "Authorized recovery operator";
 const INCIDENT_STATUSES = new Set(["OPEN", "ESCALATED", "RECOVERED", "CLOSED"]);
@@ -89,6 +93,39 @@ function toAuditRecord(row: typeof recoveryIncidentAuditTable.$inferSelect) {
   };
 }
 
+export function normalizeRecoveryDeviceSnapshot(
+  deviceSnapshot: unknown,
+): RecoveryDevice {
+  const snapshot =
+    deviceSnapshot !== null &&
+    typeof deviceSnapshot === "object" &&
+    !Array.isArray(deviceSnapshot)
+      ? (deviceSnapshot as Record<string, unknown>)
+      : {};
+  return {
+    ...snapshot,
+    friendlyName:
+      typeof snapshot["friendlyName"] === "string"
+        ? snapshot["friendlyName"]
+        : null,
+  } as RecoveryDevice;
+}
+
+export function applyCurrentFriendlyNamesToIncident(
+  incident: RecoveryIncidentDetail,
+  aliases: Array<{ endpointId: string; friendlyName: string | null }>,
+): RecoveryIncidentDetail {
+  return {
+    ...incident,
+    evidence: incident.evidence.map((evidence) => ({
+      ...evidence,
+      device:
+        mergeRecoveryDeviceAliases([evidence.device], aliases)[0] ??
+        evidence.device,
+    })),
+  };
+}
+
 export async function listRecoveryIncidents() {
   const incidents = await db
     .select()
@@ -134,7 +171,7 @@ export async function getRecoveryIncidentDetail(
       organizationName: row.organizationName,
       capturedAt: row.capturedAt,
       sourceRefreshedAt: row.sourceRefreshedAt,
-      device: row.deviceSnapshot as RecoveryDevice,
+      device: normalizeRecoveryDeviceSnapshot(row.deviceSnapshot),
     })),
     audit: auditRows.map(toAuditRecord),
   };
@@ -318,13 +355,14 @@ export async function createRecoveryEvidenceExport(
   if (!incident) {
     return null;
   }
+  const currentAliases = await listRecoveryDeviceAliases();
   return {
     exportId,
-    schemaVersion: "les-recovery-evidence/v1",
+    schemaVersion: "les-recovery-evidence/v2",
     generatedAt: new Date(),
     source:
       "Action1 endpoint recovery attributes captured at incident creation; this export does not represent a live device location.",
-    incident,
+    incident: applyCurrentFriendlyNamesToIncident(incident, currentAliases),
     limitations: [
       "Location coordinates are last-known observations captured when this incident was opened, not live tracking data.",
       "A stale, invalid, legacy, unavailable, or unverifiable status must be considered before relying on any location field.",
@@ -359,6 +397,7 @@ export function renderRecoveryEvidenceCsv(exportData: RecoveryEvidenceExport): s
     "incident_status",
     "endpoint_id",
     "device_id",
+    "friendly_name",
     "computer_name",
     "serial_number",
     "manufacturer",
@@ -388,6 +427,7 @@ export function renderRecoveryEvidenceCsv(exportData: RecoveryEvidenceExport): s
       exportData.incident.status,
       evidence.endpointId,
       device.deviceId,
+      device.friendlyName,
       device.computerName,
       device.serialNumber,
       device.manufacturer,
@@ -427,7 +467,7 @@ export function renderRecoveryEvidencePrintDocument(
   const evidenceRows = incident.evidence
     .map(({ device, capturedAt, sourceRefreshedAt }) => {
       return `<tr>
-        <td>${escapeHtml(device.computerName)}<br><small>Endpoint: ${escapeHtml(device.endpointId)}<br>Device ID: ${escapeHtml(device.deviceId ?? "Not reported")}</small></td>
+        <td><strong>${escapeHtml(device.friendlyName ?? device.computerName)}</strong><br><small>${device.friendlyName ? `Windows computer name: ${escapeHtml(device.computerName)}<br>` : ""}Endpoint ID: ${escapeHtml(device.endpointId)}<br>Device ID: ${escapeHtml(device.deviceId ?? "Not reported")}</small></td>
         <td>${escapeHtml(device.organizationName)}</td>
         <td>${escapeHtml(device.locationCoordinates || "Unavailable")}<br><small>${escapeHtml(device.accuracy || "Accuracy unavailable")}</small></td>
         <td>${escapeHtml(device.locationStatus || "Unavailable")}<br><small>Integrity: ${escapeHtml(device.locationIntegrity || "Unknown")}</small></td>

@@ -22,6 +22,7 @@ export interface RecoveryDevice {
   agentVersion: string | null;
   city: string | null;
   computerName: string;
+  friendlyName: string | null;
   country: string | null;
   crossStreets: string | null;
   deviceId: string | null;
@@ -297,6 +298,7 @@ function normalizeEndpoint(
       getString(endpoint["name"]) ??
       pick(attributes, ["Computer Name"]) ??
       endpointId,
+    friendlyName: null,
     country:
       pick(attributes, ["Country", "Country Code", "Location Country"]) ??
       contextValue(["Country"]),
@@ -784,6 +786,7 @@ export function filterRecoveryDevices(
       search &&
       ![
         device.computerName,
+        device.friendlyName,
         device.deviceId,
         device.endpointId,
         device.manufacturer,

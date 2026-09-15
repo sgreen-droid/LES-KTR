@@ -1,85 +1,3 @@
-import { createHash, randomUUID } from "node:crypto";
-import { and, desc, eq, gte, inArray, lte, lt } from "drizzle-orm";
-import {
-  db,
-  recoveryIncidentAuditTable,
-  recoveryLocationObservationsTable,
-} from "@workspace/db";
-import type { RecoveryDevice } from "./action1-recovery";
-
-const ACTOR_LABEL = "Authorized recovery operator";
-const DEFAULT_RETENTION_DAYS = 90;
-const MAX_RETENTION_DAYS = 3650;
-const MAX_HISTORY_RECORDS = 10000;
-
-export type RecoveryLocationHistoryFormat = "json" | "csv" | "print";
-export type RecoveryLocationHistoryScope = "FLEET" | "SELECTED" | "SINGLE";
-
-export interface RecoveryLocationHistoryFilters {
-  endpointIds?: string[];
-  from?: Date;
-  to?: Date;
-  scope?: RecoveryLocationHistoryScope;
-}
-
-export interface RecoveryLocationObservation {
-  id: string;
-  endpointId: string;
-  deviceId: string | null;
-  computerName: string;
-  organizationId: string;
-  organizationName: string;
-  serialNumber: string | null;
-  manufacturer: string | null;
-  model: string | null;
-  operatingSystem: string;
-  agentVersion: string | null;
-  capturedAt: Date;
-  sourceRefreshedAt: Date;
-  locationObservedAt: Date | null;
-  lastSeenAt: Date | null;
-  latitude: number | null;
-  longitude: number | null;
-  accuracy: string | null;
-  streetAddress: string | null;
-  city: string | null;
-  state: string | null;
-  postalCode: string | null;
-  country: string | null;
-  addressSource: string | null;
-  nearestAddress: string | null;
-  crossStreets: string | null;
-  addressPrecision: string | null;
-  locationCoordinates: string | null;
-  locationStatus: string | null;
-  locationIntegrity: string | null;
-  locationQuality: string | null;
-  locationSource: string | null;
-  positionSource: string | null;
-  locationPermission: string | null;
-  locationSequence: string | null;
-  locationAgeMinutes: string | null;
-  locationError: string | null;
-  locationSummary: string | null;
-  isMapSafe: boolean;
-}
-
-export type RecoveryLocationMovementAssessment =
-  | "FIRST_COORDINATE"
-  | "NO_MATERIAL_CHANGE"
-  | "COORDINATE_CHANGE";
-
-export interface RecoveryLocationMovement {
-  priorObservationId: string;
-  priorObservationAt: Date;
-  distanceMeters: number;
-  elapsedMinutes: number | null;
-  apparentSpeedKmh: number | null;
-  assessment: RecoveryLocationMovementAssessment;
-}
-
-export interface RecoveryLocationExportObservation
-  extends RecoveryLocationObservation {
   observationNumber: number;
   observationTimeBasis:
     | "ENDPOINT_LOCATION_OBSERVED_AT"
@@ -91,6 +9,7 @@ export interface RecoveryLocationEndpointSummary {
   endpointId: string;
   deviceId: string | null;
   computerNames: string[];
+  friendlyName: string | null;
   organizationName: string;
   observationCount: number;
   coordinateObservationCount: number;
@@ -387,6 +306,7 @@ export function buildRecoveryLocationHistoryAnalysis(
 
       const exportObservation: RecoveryLocationExportObservation = {
         ...observation,
+        friendlyName: null,
         observationNumber: index + 1,
         observationTimeBasis: currentTime.basis,
         movementFromPrevious,
@@ -408,6 +328,7 @@ export function buildRecoveryLocationHistoryAnalysis(
       computerNames: uniqueNonEmpty(
         endpointObservations.map((observation) => observation.computerName),
       ),
+      friendlyName: null,
       organizationName: first.organizationName,
       observationCount: endpointObservations.length,
       coordinateObservationCount: endpointObservations.filter(
@@ -588,6 +509,21 @@ export async function createRecoveryLocationHistoryExport(
   const sourceObservations = await listRecoveryLocationHistory(filters);
   const movementAnalysis =
     buildRecoveryLocationHistoryAnalysis(sourceObservations);
+  const aliases = await listRecoveryDeviceAliases();
+  const friendlyNames = new Map(
+    aliases.map((alias) => [
+      alias.endpointId,
+      normalizeFriendlyName(alias.friendlyName),
+    ]),
+  );
+  const exportObservations = movementAnalysis.observations.map((observation) => ({
+    ...observation,
+    friendlyName: friendlyNames.get(observation.endpointId) ?? null,
+  }));
+  const endpointSummaries = movementAnalysis.endpointSummaries.map((summary) => ({
+    ...summary,
+    friendlyName: friendlyNames.get(summary.endpointId) ?? null,
+  }));
   const endpointIds = [...new Set(filters.endpointIds?.filter(Boolean) ?? [])];
   const exportId = randomUUID();
   const scope =
@@ -614,7 +550,7 @@ export async function createRecoveryLocationHistoryExport(
   });
   return {
     exportId,
-    schemaVersion: "les-recovery-location-history/v2",
+    schemaVersion: "les-recovery-location-history/v3",
     generatedAt: new Date(),
     source:
       "Action1 recovery observations captured by this console after history collection was enabled; this export does not represent live device tracking.",
@@ -625,8 +561,8 @@ export async function createRecoveryLocationHistoryExport(
     observationCount: sourceObservations.length,
     observationOrdering: "GROUPED_BY_ENDPOINT_THEN_CHRONOLOGICAL_ASCENDING",
     coverage: {
-      endpointCount: movementAnalysis.endpointSummaries.length,
-      endpointsWithCoordinates: movementAnalysis.endpointSummaries.filter(
+      endpointCount: endpointSummaries.length,
+      endpointsWithCoordinates: endpointSummaries.filter(
         (summary) => summary.coordinateObservationCount > 0,
       ).length,
       observationCount: sourceObservations.length,
@@ -637,9 +573,9 @@ export async function createRecoveryLocationHistoryExport(
       lastObservationAt: movementAnalysis.lastObservationAt,
       totalApparentDistanceMeters:
         movementAnalysis.totalApparentDistanceMeters,
-      endpointSummaries: movementAnalysis.endpointSummaries,
+      endpointSummaries,
     },
-    observations: movementAnalysis.observations,
+    observations: exportObservations,
     limitations: [
       `History retention is ${getRetentionDays()} days from capture time. Records before history collection was enabled do not exist.`,
       "Coordinates are last-known observations from Action1, not live tracking data. Powered-off or disconnected devices cannot report a new location.",
@@ -693,6 +629,7 @@ export function renderRecoveryLocationHistoryCsv(
     "export_movement_segment_count",
     "endpoint_id",
     "device_id",
+    "friendly_name",
     "computer_name",
     "computer_names_seen",
     "serial_number",
@@ -793,6 +730,7 @@ export function renderRecoveryLocationHistoryCsv(
       ...commonExportValues,
       summary.endpointId,
       summary.deviceId,
+      summary.friendlyName ?? "",
       summary.computerNames.at(-1) ?? "",
       summary.computerNames.join(" | "),
       "",
@@ -831,6 +769,7 @@ export function renderRecoveryLocationHistoryCsv(
         ...commonExportValues,
         observation.endpointId,
         observation.deviceId,
+        observation.friendlyName ?? "",
         observation.computerName,
         endpointSummary?.computerNames.join(" | ") ?? observation.computerName,
         observation.serialNumber,
@@ -923,7 +862,7 @@ export function renderRecoveryLocationHistoryPrintDocument(
   const rows = exportData.observations
     .map(
       (observation) => `<tr>
-        <td>${escapeHtml(observation.computerName)}<br><small>Endpoint: ${escapeHtml(observation.endpointId)}<br>Device ID: ${escapeHtml(observation.deviceId ?? "Not reported")}</small></td>
+        <td><strong>${escapeHtml(observation.friendlyName ?? observation.computerName)}</strong><br><small>${observation.friendlyName ? `Windows computer name: ${escapeHtml(observation.computerName)}<br>` : ""}Endpoint ID: ${escapeHtml(observation.endpointId)}<br>Device ID: ${escapeHtml(observation.deviceId ?? "Not reported")}</small></td>
         <td>${escapeHtml(observation.serialNumber ?? "Not reported")}<br><small>${escapeHtml(observation.manufacturer ?? "")} ${escapeHtml(observation.model ?? "")}</small></td>
         <td>${escapeHtml(observation.locationCoordinates ?? "Unavailable")}<br><small>${escapeHtml(observation.nearestAddress ?? observation.crossStreets ?? ([observation.city, observation.state, observation.postalCode, observation.country].filter(Boolean).join(", ") || "Address unavailable"))} · ${escapeHtml(observation.accuracy ?? "Accuracy unavailable")}</small></td>
         <td>${escapeHtml(observation.locationStatus ?? "Unavailable")}<br><small>Integrity: ${escapeHtml(observation.locationIntegrity ?? "Unknown")}</small></td>
@@ -941,7 +880,7 @@ export function renderRecoveryLocationHistoryPrintDocument(
   const endpointSummaryRows = exportData.coverage.endpointSummaries
     .map(
       (summary) => `<tr>
-        <td>${escapeHtml(summary.computerNames.join(", ") || "Name unavailable")}<br><small>${escapeHtml(summary.endpointId)} · Device ID: ${escapeHtml(summary.deviceId ?? "Not reported")}</small></td>
+        <td><strong>${escapeHtml(summary.friendlyName ?? summary.computerNames.at(-1) ?? "Name unavailable")}</strong><br><small>${summary.friendlyName ? `Windows names: ${escapeHtml(summary.computerNames.join(", "))}<br>` : ""}Endpoint ID: ${escapeHtml(summary.endpointId)} · Device ID: ${escapeHtml(summary.deviceId ?? "Not reported")}</small></td>
         <td>${summary.observationCount} total · ${summary.coordinateObservationCount} with coordinates</td>
         <td>${escapeHtml(summary.firstObservationAt?.toISOString() ?? "Unavailable")}<br><small>through ${escapeHtml(summary.lastObservationAt?.toISOString() ?? "Unavailable")}</small></td>
         <td>${escapeHtml(summary.firstCoordinate ?? "Unavailable")}<br><small>to ${escapeHtml(summary.lastCoordinate ?? "Unavailable")}</small></td>
