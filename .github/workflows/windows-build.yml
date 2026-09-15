@@ -30,16 +30,16 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # Visual Studio MSBuild is required for WinUI 3 PRI resource tasks.
       # 'dotnet publish' uses dotnet's bundled MSBuild which lacks the
       # AppxPackage folder; VS MSBuild has it and resolves the task DLL correctly.
       - name: Setup MSBuild (Visual Studio)
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Set up .NET 8
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -267,7 +267,7 @@ jobs:
           Get-ChildItem release-artifacts | Format-Table Name, Length -AutoSize
 
       - name: Upload Actions artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: LESLocationAgent-Windows
           path: LESLocationAgent/release-artifacts/
@@ -281,7 +281,7 @@ jobs:
       # ----------------------------------------------------------------
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: LES Location Agent ${{ github.ref_name }}
           generate_release_notes: true
