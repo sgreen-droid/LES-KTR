@@ -16,6 +16,11 @@ compares it with the reviewed SQL contract. The second reads development
 catalog metadata inside a `READ ONLY` transaction. Neither check executes DDL
 or changes rows.
 
+Both `push` and `push-force` run the database-free source check first. A
+destructive or unreviewed Drizzle change therefore stops before `drizzle-kit
+push` can connect or execute SQL. The root `pnpm run build` command also runs
+the source check.
+
 The check fails on every unreviewed difference and labels missing tables,
 missing columns, narrowing varchar changes, new `NOT NULL` requirements, and
 changed constraints or indexes as destructive or breaking.
