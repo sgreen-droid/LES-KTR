@@ -81,8 +81,8 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           Get-ChildItem tests -Filter '*.Tests.ps1' | ForEach-Object {
-            & $_.FullName
-            if (-not $?) { throw "Script checks failed: $($_.Name)" }
+            & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $_.FullName
+            if ($LASTEXITCODE -ne 0) { throw "Script checks failed: $($_.Name)" }
           }
 
       # Use Visual Studio MSBuild (/t:Publish) instead of 'dotnet publish'.
