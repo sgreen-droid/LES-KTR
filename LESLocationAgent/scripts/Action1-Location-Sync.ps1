@@ -11,12 +11,12 @@
     human-readable result. This script does not guess an address from a map URL.
 
     Location Status values:
-      ACTIVE          — last-known reading is less than 60 minutes old
-      WARNING         — no new reading for 60 to less than 1440 minutes
-      STALE           — no new reading for 1440 minutes or more
-      NO LOCATION     — no valid location has ever been written
-      PERMISSION DENIED — Windows location access is denied
-      ERROR           — file missing, malformed JSON, or invalid coordinates
+      ACTIVE          - last-known reading is less than 60 minutes old
+      WARNING         - no new reading for 60 to less than 1440 minutes
+      STALE           - no new reading for 1440 minutes or more
+      NO LOCATION     - no valid location has ever been written
+      PERMISSION DENIED - Windows location access is denied
+      ERROR           - file missing, malformed JSON, or invalid coordinates
 
 .NOTES
     Deploy this script via Action1 Automation.
@@ -78,7 +78,7 @@ function Get-LocationAgeStatus {
 }
 
 # ---------------------------------------------------------------
-# Helper: safe attribute setter — wraps Action1-Set-CustomAttribute
+# Helper: safe attribute setter - wraps Action1-Set-CustomAttribute
 # ---------------------------------------------------------------
 function Set-Attribute {
     param([string]$Name, $Value)
@@ -256,7 +256,7 @@ function Set-RecoveryAttributes {
 function Set-ErrorState {
     param([string]$Status, [string]$Reason, [string]$PermissionStatus)
     Write-Warning "Location Sync: $Reason"
-    Write-Warning 'Map fields cleared — valid coordinates are unavailable or untrusted.'
+    Write-Warning 'Map fields cleared - valid coordinates are unavailable or untrusted.'
     Set-Attribute 'Latitude'          ''
     Set-Attribute 'Longitude'         ''
     Set-Attribute 'Location Accuracy' ''
@@ -275,18 +275,18 @@ function Set-ErrorState {
     Set-OptionalAttribute 'Approx Location'      ''
     Set-RecoveryAttributes $script:locationData $script:statusData `
         $Status $script:integrityStatus
-    Write-Output "RESULT: $Status — $Reason"
+    Write-Output "RESULT: $Status - $Reason"
 }
 
 # ---------------------------------------------------------------
 # Main logic
 # ---------------------------------------------------------------
 
-Write-Host '=== LES Location Agent — Action1 Sync ==='
+Write-Host '=== LES Location Agent - Action1 Sync ==='
 Write-Host "Running as: $($env:USERNAME) on $($env:COMPUTERNAME)"
 Write-Host "Timestamp:  $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
 
-# 1. Check permission status first (from status.json — more reliable for permission info)
+# 1. Check permission status first (from status.json - more reliable for permission info)
 $permissionStatus = 'Unknown'
 if (Test-Path $StatusFile) {
     try {
@@ -380,7 +380,7 @@ if ($data.PSObject.Properties['timestampUtc'] -and $data.timestampUtc) {
 
         $locationStatus = if ($timestampStr -notmatch '(Z|[+-]\d{2}:?\d{2})$') { 'UNKNOWN' }
             else { Get-LocationAgeStatus -HasCoordinates $true -ReadingAge $ageMinutes }
-        Write-Host "Location age: $([Math]::Round($ageMinutes, 1)) minutes — $locationStatus"
+        Write-Host "Location age: $([Math]::Round($ageMinutes, 1)) minutes - $locationStatus"
     } catch {
         Write-Warning "Could not parse timestamp '$timestampStr': $_"
         $locationStatus = 'UNKNOWN'
@@ -456,7 +456,7 @@ try {
         "$positionSource"
     }
     $summaryParts = [System.Collections.Generic.List[string]]::new()
-    $summaryParts.Add("$locationCoordinates | ±$summaryAccuracy m | $summarySource | $locationStatus")
+    $summaryParts.Add("$locationCoordinates | $([char]0x00B1)$summaryAccuracy m | $summarySource | $locationStatus")
     if ($nearestAddress) { $summaryParts.Add("Nearest Address=$nearestAddress") }
     if ($crossStreets) { $summaryParts.Add("Cross=$crossStreets") }
     if ($city) { $summaryParts.Add("City=$city") }
@@ -484,7 +484,7 @@ try {
         }
     }
 } catch {
-    Write-Warning "Map fields cleared — could not format valid coordinates: $_"
+    Write-Warning "Map fields cleared - could not format valid coordinates: $_"
 }
 
 # 10. Set all Custom Attributes
@@ -506,7 +506,7 @@ if ($null -ne $mapLink) {
     Set-OptionalAttribute 'Location Summary'     $locationSummary
     Set-OptionalAttribute 'Approx Location'      $approxLocation
 } else {
-    Write-Warning 'Map fields cleared — valid coordinates unavailable or untrusted.'
+    Write-Warning 'Map fields cleared - valid coordinates unavailable or untrusted.'
     Set-OptionalAttribute 'Map Link'             ''
     Set-OptionalAttribute 'Location Coordinates' ''
     Set-OptionalAttribute 'Location Summary'     ''
@@ -522,5 +522,5 @@ if ($null -ne $mapLink) {
         Write-Output "Approx Location: $approxLocation"
     }
 } else {
-    Write-Output 'Map fields cleared — valid coordinates unavailable or untrusted.'
+    Write-Output 'Map fields cleared - valid coordinates unavailable or untrusted.'
 }

@@ -20,7 +20,7 @@
     UPDATE THIS for each new build.
 
 .NOTES
-    Deploy via Action1 Automation → Script.
+    Deploy via Action1 Automation > Script.
     The script does NOT disable Windows Defender or any antivirus.
 #>
 
@@ -49,7 +49,7 @@ function Write-Step { param([string]$Msg) Write-Host "`n[$([DateTime]::UtcNow.To
 function Fail       { param([string]$Msg) Write-Error "FAILURE: $Msg"; exit 1 }
 function Pass       { param([string]$Msg) Write-Host "  OK: $Msg" }
 
-Write-Host '=== LES Location Agent — Action1 Installer ==='
+Write-Host '=== LES Location Agent - Action1 Installer ==='
 Write-Host "Computer : $env:COMPUTERNAME"
 Write-Host "Run as   : $($env:USERNAME)"
 Write-Host "Time     : $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))"
@@ -75,9 +75,9 @@ Pass "Temp dir: $TempDir"
 # ---------------------------------------------------------------
 Write-Step "Downloading installer from: $InstallerUrl"
 try {
-    # Force TLS 1.2 — required for GitHub (PS5.1 defaults to older versions)
+    # Force TLS 1.2 - required for GitHub (PS5.1 defaults to older versions)
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-    # Use Invoke-WebRequest — handles GitHub CDN redirects more reliably than WebClient
+    # Use Invoke-WebRequest - handles GitHub CDN redirects more reliably than WebClient
     Invoke-WebRequest -Uri $InstallerUrl -OutFile $InstallerPath -UseBasicParsing `
         -UserAgent 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
     $sizeMB = [Math]::Round((Get-Item $InstallerPath).Length / 1MB, 2)
@@ -124,7 +124,7 @@ Pass "Executable exists: $ExePath"
 
 # Check registry startup entry
 $runKey  = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run'
-# The startup entry is written by the app itself on first launch — skip this check
+# The startup entry is written by the app itself on first launch - skip this check
 Pass 'Installation file check passed'
 
 # ---------------------------------------------------------------

@@ -93,7 +93,7 @@ public static class LesBackgroundSession {
             [LesBackgroundSession]::IsActive($_.SessionId) })
     $sessions = @($active | Select-Object -ExpandProperty SessionId -Unique)
     if ($sessions.Count -eq 0) {
-        Write-Host 'RESULT: DEFERRED_NO_USER — installed startup will collect automatically at user sign-in; no fresh location claimed.'
+        Write-Host 'RESULT: DEFERRED_NO_USER - installed startup will collect automatically at user sign-in; no fresh location claimed.'
         exit 0
     }
     if ($sessions.Count -ne 1) { throw 'Multiple active user sessions; no ambiguous collection will be started.' }
@@ -107,7 +107,7 @@ public static class LesBackgroundSession {
     if ((Get-CollectorConsentValue $path) -ne 'Allow' -or
         (Get-CollectorConsentValue "$path\NonPackaged") -eq 'Deny' -or
         (Get-CollectorConsentValue $machine) -eq 'Deny') {
-        throw 'BLOCKED_CONSENT — Windows location permission is not already allowed; no prompt or permission change was made.'
+        throw 'BLOCKED_CONSENT - Windows location permission is not already allowed; no prompt or permission change was made.'
     }
     $minutes = 15
     $config = 'C:\ProgramData\LESLocationAgent\config.json'
@@ -164,12 +164,12 @@ public static class LesBackgroundSession {
             if (-not (Test-CollectorObservation $reading $previousSequence $previousTime ([DateTimeOffset]::UtcNow))) {
                 throw 'Job finished without a new physical observation; saved coordinates were not relabeled fresh.'
             }
-            Write-Host 'RESULT: NEW_PHYSICAL_OBSERVATION — unattended collection verified; recurring task remains enabled.'
+            Write-Host 'RESULT: NEW_PHYSICAL_OBSERVATION - unattended collection verified; recurring task remains enabled.'
             exit 0
         }
     } while ([DateTime]::Now -lt $deadline)
     throw 'Timed out waiting for background collection; task is retained, but no fresh location is claimed.'
 } catch {
-    Write-Host "RESULT: BACKGROUND_START_BLOCKED — $($_.Exception.Message)"
+    Write-Host "RESULT: BACKGROUND_START_BLOCKED - $($_.Exception.Message)"
     exit 1
 }
