@@ -34,10 +34,10 @@ if ($installer -match 'verification skipped') {
     throw 'Installer script must not contain a hash-verification bypass.'
 }
 
-Assert-Contains 'Release workflow' $workflow 'Compute final SHA-256'
-Assert-Contains 'Release workflow' $workflow "Replace('__INSTALLER_URL__', `$releaseUrl)"
+Assert-Contains 'Release workflow' $workflow 'Compute final MSI SHA-256'
+Assert-Contains 'Release workflow' $workflow "Replace('__INSTALLER_URL__', `$installerUrl)"
 Assert-Contains 'Release workflow' $workflow "Replace('__INSTALLER_SHA256__', `$env:INSTALLER_SHA256)"
-if ($workflow.IndexOf('Compute final SHA-256') -lt $workflow.IndexOf('Sign MSI (production)')) {
+if ($workflow.IndexOf('Compute final MSI SHA-256') -lt $workflow.IndexOf('Sign MSI (production)')) {
     throw 'Final MSI hash must be calculated after the optional signing step.'
 }
 
