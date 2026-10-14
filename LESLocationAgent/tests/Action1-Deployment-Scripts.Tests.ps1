@@ -8,7 +8,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $installerPath = Join-Path $repoRoot 'scripts\Action1-Install-LESLocationAgent.ps1'
 $healthPath = Join-Path $repoRoot 'scripts\Action1-LESLocationAgent-Health.ps1'
-$workflowPath = Join-Path $repoRoot '.github\workflows\windows-build.yml'
+$workflowPath = Join-Path (Split-Path -Parent $repoRoot) '.github\workflows\windows-build.yml'
 $installerPackagePath = Join-Path $repoRoot 'installer\Package.wxs'
 $programPath = Join-Path $repoRoot 'src\LESLocationAgent\Program.cs'
 
@@ -47,8 +47,27 @@ foreach ($field in @(
     Assert-Contains 'Health script' $health $field
 }
 
-if ($installerPackage -match 'LaunchApp|CustomAction') {
+if ($installerPackage -match 'LaunchApp') {
     throw 'The MSI must not launch the interactive agent from the installer service context.'
+}
+[xml]$packageXml = $installerPackage
+$customActions = @($packageXml.SelectNodes("//*[local-name()='CustomAction']"))
+foreach ($action in $customActions) {
+    if ($action.Id -notin @('SetCollectorCleanup', 'CollectorCleanup')) {
+        throw 'Only the uninstall-only collector cleanup custom actions are permitted.'
+    }
+    if ($action.Id -eq 'SetCollectorCleanup' -and
+        ($action.Property -ne 'CollectorCleanup' -or
+         $action.Value -notlike '*-NonInteractive*-File*Remove-CollectorTasks.ps1*' -or
+         $action.Value -like '*LESLocationAgent.exe*')) {
+        throw 'Collector cleanup must invoke only its noninteractive uninstall script.'
+    }
+}
+foreach ($entry in $packageXml.SelectNodes("//*[local-name()='InstallExecuteSequence']/*[local-name()='Custom']")) {
+    if ($entry.Action -notin @('SetCollectorCleanup', 'CollectorCleanup') -or
+        $entry.Condition -ne 'REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE') {
+        throw 'Collector cleanup must be uninstall-only, never an installer-service collection launch.'
+    }
 }
 Assert-Contains 'Application startup guard' $program 'TryAcquireMachineInstanceLock'
 Assert-Contains 'Application startup guard' $program 'FileShare.None'

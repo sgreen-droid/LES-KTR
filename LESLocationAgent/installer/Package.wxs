@@ -17,7 +17,7 @@
   <Package
     Name="LES Location Agent"
     Manufacturer="LES"
-    Version="1.1.8.0"
+    Version="1.1.9.0"
     UpgradeCode="A1B2C3D4-E5F6-7890-ABCD-EF1234567890"
     Language="1033"
     InstallerVersion="500"
@@ -82,15 +82,15 @@
          ============================================================ -->
     <ComponentGroup Id="SystemSettings" Directory="INSTALLFOLDER">
 
-      <!-- HKLM Run key: launches the agent at sign-in for EVERY user account.
-           Launched with the startup flag so it starts minimised to tray.
+      <!-- Register/run the no-UI collector at sign-in for every user.
+           It registers only that user's non-elevated interactive periodic task.
            MSI removes this key automatically on uninstall. -->
       <Component Id="AllUserStartup" Guid="F1E2D3C4-B5A6-9078-FEDC-BA9876543210">
         <RegistryValue Root="HKLM"
                        Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
                        Name="LESLocationAgent"
                        Type="string"
-                       Value="&quot;[INSTALLFOLDER]LESLocationAgent.exe&quot; --startup"
+                       Value="&quot;[INSTALLFOLDER]collector\LESLocationCollector.exe&quot;"
                        KeyPath="yes" />
       </Component>
 
@@ -148,5 +148,15 @@
          on managed endpoints. Silent uninstall via Action1 remains available to
          IT staff using the provided Action1 scripts. -->
 
+    <CustomAction Id="SetCollectorCleanup" Property="CollectorCleanup"
+                  Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]collector\Remove-CollectorTasks.ps1&quot;" />
+    <CustomAction Id="CollectorCleanup" BinaryRef="Wix4UtilCA_X64"
+                  DllEntry="WixQuietExec" Execute="deferred" Impersonate="no" Return="check" />
+    <InstallExecuteSequence>
+      <Custom Action="SetCollectorCleanup" Before="CollectorCleanup"
+              Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+      <Custom Action="CollectorCleanup" Before="RemoveFiles"
+              Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+    </InstallExecuteSequence>
   </Package>
 </Wix>

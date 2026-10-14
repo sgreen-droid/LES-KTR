@@ -128,11 +128,24 @@ $runKey  = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run'
 Pass 'Installation file check passed'
 
 # ---------------------------------------------------------------
-# Step 6: Interactive-user consent
+# Step 6: Unattended background initialization
 # ---------------------------------------------------------------
-Write-Step 'Recording interactive-user consent requirement...'
-Write-Warning 'Action1 runs this installer outside the interactive user session.'
-Write-Warning 'LES Location Agent starts at the next user sign-in. An authorized user must then review Windows Location Services under the organization-approved policy.'
+Write-Step 'Starting unattended background collection...'
+$bootstrap = Join-Path $InstallDir 'collector\Initialize-BackgroundCollector.ps1'
+if (-not (Test-Path $bootstrap)) {
+    Fail 'This package does not contain unattended background initialization. Deploy the new background-capable MSI through Action1.'
+}
+# Management orchestrates the task; it never invokes geolocation or the GUI as SYSTEM.
+$bootstrapArgs = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$bootstrap`""
+$bootstrapProcess = Start-Process "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" `
+    -ArgumentList $bootstrapArgs -Wait -PassThru -WindowStyle Hidden `
+    -RedirectStandardOutput (Join-Path $TempDir 'background.log') `
+    -RedirectStandardError (Join-Path $TempDir 'background-error.log')
+Get-Content (Join-Path $TempDir 'background.log') | Write-Host
+if ($bootstrapProcess.ExitCode -ne 0) {
+    Fail 'Installation succeeded, but unattended collection is blocked. No user prompt or consent change was attempted; see background diagnostics.'
+}
+Pass 'Unattended background initialization completed; no user input required.'
 
 # ---------------------------------------------------------------
 # Clean up temp files

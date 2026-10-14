@@ -55,6 +55,7 @@ jobs:
         run: |
           .\tests\Action1-Location-Sync.Tests.ps1
           .\tests\Action1-Deployment-Scripts.Tests.ps1
+          .\tests\Action1-Health.Tests.ps1
 
       # ----------------------------------------------------------------
       # 5. Run unit tests

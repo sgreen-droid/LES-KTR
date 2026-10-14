@@ -29,7 +29,7 @@ public sealed class LocationService
         public string? ErrorMessage { get; init; }
     }
 
-    public async Task<LocationResult> GetBestLocationAsync(AppConfig config)
+    public async Task<LocationResult> GetBestLocationAsync(AppConfig config, bool forceFresh = false)
     {
         LocationReading? best = null;
         string locationStatus = "Unavailable";
@@ -49,7 +49,7 @@ public sealed class LocationService
                     TimeSpan.FromSeconds(config.LocationTimeoutSeconds));
 
                 Geoposition position = await geolocator.GetGeopositionAsync(
-                    maximumAge: TimeSpan.FromSeconds(30),
+                    maximumAge: forceFresh ? TimeSpan.Zero : TimeSpan.FromSeconds(30),
                     timeout:    TimeSpan.FromSeconds(config.LocationTimeoutSeconds))
                     .AsTask(cts.Token);
 

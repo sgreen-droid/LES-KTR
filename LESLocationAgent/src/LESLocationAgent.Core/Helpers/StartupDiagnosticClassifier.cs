@@ -43,7 +43,7 @@ public static class StartupDiagnosticClassifier
                 explicitMismatch
                     ? "The agent or its XAML runtime does not match the required x64 architecture."
                     : "Windows could not verify that the XAML runtime is the required x64 architecture.",
-                "Install the x64 LES Location Agent MSI on a 64-bit Windows 11 PC.",
+                "Install the x64 LES Location Agent MSI on a supported 64-bit Windows 10 or Windows 11 PC.",
                 IsSpecific: explicitMismatch);
         }
 

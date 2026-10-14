@@ -26,8 +26,6 @@ internal static class Program
 
     // ── Event Log source name (written to Windows Logs → Application) ────────
     private const string EventSourceName  = "LESLocationAgent";
-    private const string MinWindowsVersion = "Windows 11 version 21H2 (build 22000)";
-    private const uint MinimumWindows11Build = 22000;
     private const byte VerNtWorkstation = 1;
     private static FileStream? _machineInstanceLock;
 
@@ -60,14 +58,16 @@ internal static class Program
         byte ProductType)
     {
         public bool IsWorkstation => ProductType == VerNtWorkstation;
-        public bool IsWindows11OrLater =>
-            IsWorkstation && Build >= MinimumWindows11Build;
+        public bool IsSupported =>
+            WindowsClientSupport.IsSupported(Major, Build, ProductType);
 
         public string DisplayName =>
-            IsWindows11OrLater
+            IsWorkstation && Build >= 22000
                 ? $"Windows 11 detected (build {Build})"
                 : IsWorkstation
-                    ? $"Windows client detected (version {Major}.{Minor}, build {Build})"
+                    ? Build >= WindowsClientSupport.MinimumBuild
+                        ? $"Windows 10 version 22H2 detected (build {Build})"
+                        : $"Unsupported Windows client detected (version {Major}.{Minor}, build {Build})"
                     : $"Windows Server or non-client edition detected (version {Major}.{Minor}, build {Build})";
     }
 
@@ -88,7 +88,7 @@ internal static class Program
 
             var windowsVersion = GetActualWindowsVersion();
             StartupLogger.Write(windowsVersion.DisplayName);
-            if (!windowsVersion.IsWindows11OrLater)
+            if (!windowsVersion.IsSupported)
             {
                 HandleUnsupportedWindowsError(windowsVersion);
                 return;
@@ -156,14 +156,14 @@ internal static class Program
     {
         var message =
             "LES Location Agent could not start because this PC does not meet " +
-            $"the minimum operating-system requirement.\n\nRequired: {MinWindowsVersion} " +
-            $"or later.\n\nDetected: {windowsVersion.DisplayName}." +
-            "\n\nUse a supported Windows 11 client edition (21H2 or later), then " +
+            $"the minimum operating-system requirement.\n\nRequired: {WindowsClientSupport.MinimumVersionDescription}." +
+            $"\n\nDetected: {windowsVersion.DisplayName}." +
+            "\n\nUse a supported 64-bit Windows client edition, then " +
             "install the latest LES Location Agent MSI.";
 
         WriteEventLogEntry(
             $"Startup blocked — unsupported Windows version.\n" +
-            $"Required: {MinWindowsVersion}\n" +
+            $"Required: {WindowsClientSupport.MinimumVersionDescription}\n" +
             $"Detected: {windowsVersion.DisplayName}",
             EventLogEntryType.Error);
 
@@ -188,7 +188,7 @@ internal static class Program
         var message =
             "LES Location Agent could not start." +
             $"\n\n{windowsVersion.DisplayName}. " +
-            $"This meets the {MinWindowsVersion} requirement." +
+            $"This meets the {WindowsClientSupport.MinimumVersionDescription} requirement." +
             $"\n\nProblem: {diagnostic.Summary}" +
             $"\n\n{diagnosticDetail}" +
             $"\n\n{specificityNote}" +

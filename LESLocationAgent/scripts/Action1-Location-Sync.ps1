@@ -11,8 +11,9 @@
     human-readable result. This script does not guess an address from a map URL.
 
     Location Status values:
-      ACTIVE          — location exists and is <= 30 minutes old
-      STALE           — location exists but is > 30 minutes old
+      ACTIVE          — last-known reading is less than 60 minutes old
+      WARNING         — no new reading for 60 to less than 1440 minutes
+      STALE           — no new reading for 1440 minutes or more
       NO LOCATION     — no valid location has ever been written
       PERMISSION DENIED — Windows location access is denied
       ERROR           — file missing, malformed JSON, or invalid coordinates
@@ -63,10 +64,18 @@ else {
     $env:LES_LOCATION_AGENT_STATE_FILE
 }
 
-$StalenessThresholdMinutes = 30
 $script:statusData = $null
 $script:locationData = $null
 $script:integrityStatus = 'MISSING'
+
+function Get-LocationAgeStatus {
+    param([bool]$HasCoordinates, [Nullable[double]]$ReadingAge)
+    if (-not $HasCoordinates) { return 'NO LOCATION' }
+    if ($null -eq $ReadingAge -or [double]::IsNaN($ReadingAge) -or [double]::IsInfinity($ReadingAge) -or $ReadingAge -lt -2) { return 'UNKNOWN' }
+    if ($ReadingAge -ge 1440) { return 'STALE' }
+    if ($ReadingAge -ge 60) { return 'WARNING' }
+    return 'ACTIVE'
+}
 
 # ---------------------------------------------------------------
 # Helper: safe attribute setter — wraps Action1-Set-CustomAttribute
@@ -292,7 +301,7 @@ if (Test-Path $StatusFile) {
 }
 
 # 2. Check if permission is denied before anything else
-if ($permissionStatus -eq 'Denied') {
+if ($permissionStatus -in @('Denied', 'NotGranted')) {
     Set-ErrorState 'PERMISSION DENIED' `
         'Windows location access is denied on this device' 'Denied'
     return
@@ -369,14 +378,15 @@ if ($data.PSObject.Properties['timestampUtc'] -and $data.timestampUtc) {
             [System.Globalization.DateTimeStyles]::RoundtripKind)
         $ageMinutes = ([DateTimeOffset]::UtcNow - $locationTime).TotalMinutes
 
-        $locationStatus = if ($ageMinutes -le $StalenessThresholdMinutes) { 'ACTIVE' } else { 'STALE' }
+        $locationStatus = if ($timestampStr -notmatch '(Z|[+-]\d{2}:?\d{2})$') { 'UNKNOWN' }
+            else { Get-LocationAgeStatus -HasCoordinates $true -ReadingAge $ageMinutes }
         Write-Host "Location age: $([Math]::Round($ageMinutes, 1)) minutes — $locationStatus"
     } catch {
         Write-Warning "Could not parse timestamp '$timestampStr': $_"
-        $locationStatus = 'STALE'
+        $locationStatus = 'UNKNOWN'
     }
 } else {
-    $locationStatus = 'NO LOCATION'
+    $locationStatus = 'UNKNOWN'
 }
 
 # 8. Extract optional fields safely

@@ -49,7 +49,7 @@ public sealed class LocationFileService
                 PositionSource = reading.PositionSource,
                 LocationSource = "Windows Geolocation",
                 PermissionStatus = permissionStatus,
-                TimestampUtc = reading.Timestamp.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                TimestampUtc = UtcTimestamp.Format(reading.Timestamp),
                 ComputerName = Environment.MachineName,
                 AgentVersion = AppConfig.AgentVersion,
                 DeviceId = identity.DeviceId,
@@ -110,12 +110,12 @@ public sealed class LocationFileService
             var integrityStatus = GetLocationIntegrityStatus();
             var statusJson = new StatusJson
             {
-                LastAttemptUtc = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                LastSuccessUtc = effectiveLastSuccess?.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                LastAttemptUtc = UtcTimestamp.Format(DateTimeOffset.UtcNow),
+                LastSuccessUtc = effectiveLastSuccess.HasValue ? UtcTimestamp.Format(effectiveLastSuccess.Value) : null,
                 PermissionStatus = permissionStatus,
                 LocationStatus = locationStatus,
                 Error = error,
-                LastHeartbeatUtc = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                LastHeartbeatUtc = UtcTimestamp.Format(DateTimeOffset.UtcNow),
                 DeviceId = identity.DeviceId,
                 AgentVersion = AppConfig.AgentVersion,
                 RecordSequence = identity.LastRecordSequence,

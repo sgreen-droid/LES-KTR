@@ -6,6 +6,17 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# The deployed script targets Windows PowerShell 5.1, which leaves JSON dates
+# as strings. PowerShell 7.5 otherwise converts them to DateTime, changing the
+# signed timestamp fixture before its integrity check.
+if ((Get-Command Microsoft.PowerShell.Utility\ConvertFrom-Json).Parameters.ContainsKey('DateKind')) {
+    function ConvertFrom-Json {
+        [CmdletBinding()]
+        param([Parameter(ValueFromPipeline = $true)][string]$InputObject)
+        process { Microsoft.PowerShell.Utility\ConvertFrom-Json -InputObject $InputObject -DateKind String }
+    }
+}
+
 $scriptPath = Join-Path $PSScriptRoot '..\scripts\Action1-Location-Sync.ps1'
 $tempDir = Join-Path $env:TEMP "LESLocationSyncTest-$([Guid]::NewGuid().ToString('N'))"
 $locationFile = Join-Path $tempDir 'location.json'
@@ -33,7 +44,7 @@ function Assert-MapFieldsCleared {
     foreach ($field in @(
         'Map Link', 'Location Coordinates', 'Location Summary', 'Approx Location'
     )) {
-        Assert-Equal "$Name: $field" '' $global:LesCapturedAttributes[$field]
+        Assert-Equal "${Name}: $field" '' $global:LesCapturedAttributes[$field]
     }
 }
 
