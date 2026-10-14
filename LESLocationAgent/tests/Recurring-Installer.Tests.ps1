@@ -8,6 +8,17 @@ if ($errors.Count -gt 0) { throw 'Recurring installer does not parse.' }
 $helper = $ast.Find({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Test-InstallationCurrent' }, $true)
 if ($null -eq $helper) { throw 'Missing repeat-install guard.' }
 Invoke-Expression $helper.Extent.Text
+$handoff = $ast.Find({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Test-LegacyAgentHandoff' }, $true)
+if ($null -eq $handoff) { throw 'Missing legacy process handoff guard.' }
+Invoke-Expression $handoff.Extent.Text
+$binaryTime = [datetime]'2026-10-14T16:00:00Z'
+if (-not (Test-LegacyAgentHandoff $false $binaryTime.AddDays(-1) $binaryTime) -or
+    (Test-LegacyAgentHandoff $false $binaryTime.AddMinutes(1) $binaryTime) -or
+    -not (Test-LegacyAgentHandoff $true $binaryTime.AddMinutes(1) $binaryTime) -or
+    $text -notmatch '\$entry.ExecutablePath -ne \$ExpectedExe' -or
+    $text -notmatch '\$process.Path -ne \$ExpectedExe') {
+    throw 'Handoff must target only the exact legacy LES process, not a newer manually opened client.'
+}
 $target = [version]'1.1.10.0'
 foreach ($case in @(
     @('1.1.9.0', '1.1.9.0', $true, $false),

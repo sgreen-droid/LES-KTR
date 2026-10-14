@@ -574,9 +574,35 @@ release assets and paste it directly into Action1 → Automation → Scripts. Th
 release build injects the exact release URL and the **final** SHA-256 after any
 optional code signing.
 
-For private hosting, use `SHA256-MANIFEST.txt` and update both the installer URL
-and hash together. The installer deliberately fails if either value is missing
-or the hash does not match.
+For private hosting, use `SHA256-MANIFEST.txt` and update the installer URL,
+hash, and target MSI version together. The installer deliberately fails if
+configuration is incomplete or the hash does not match.
+
+### Continuous deployment and onboarding
+
+Action1's **LES Location Agent - Continuous Install and Repair** automation
+runs hourly with no end date. It targets the documented `all` endpoint
+pseudo-group within the organization, so later-enrolled devices are included
+without maintaining a fixed endpoint list. Each execution has a 60-minute
+offline catch-up window; subsequent hourly executions keep retrying devices
+that remain offline.
+
+The verified library installer is version-pinned and repeat-safe: current or
+newer complete installations skip MSI download and installation, while missing
+or older installations are upgraded silently. Incomplete newer installations
+are flagged rather than downgraded. Only supported x64 Windows 10/11 client
+devices are eligible; servers and unsupported architectures are skipped.
+Automatic reboots and user prompts are disabled.
+
+Background reconciliation runs in management context but starts collection
+only under the existing consenting user's limited interactive token. It repairs
+narrow application-data access without resetting identity or evidence. No
+signed-in user is reported as deferred; denied permission or an unavailable
+fresh physical observation is reported explicitly, never relabeled fresh.
+
+Collection remains every 15 minutes by default, location sync every 10 minutes,
+and health checks hourly. Rollout scheduling is separate from those cadences.
+An API-only rollout does not require this Replit workspace to remain open.
 
 ### For future releases
 
@@ -587,7 +613,10 @@ git tag v1.0.1
 git push origin v1.0.1
 ```
 
-Then update `$InstallerUrl` and `$ExpectedSha256` in your Action1 script to match the new release.
+Then update the existing installer library from the new verified release asset,
+including `$InstallerUrl`, `$ExpectedSha256`, and `$TargetVersionText`. The
+continuous automation references that library directly; do not duplicate the
+automation or freeze its scope to currently enrolled devices.
 
 ---
 

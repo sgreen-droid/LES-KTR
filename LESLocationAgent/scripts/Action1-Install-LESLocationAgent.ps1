@@ -57,6 +57,37 @@ function Test-InstallationCurrent {
     return $client -ge $Target -and $collector -ge $Target
 }
 
+function Test-LegacyAgentHandoff {
+    param([bool]$UpgradeRequired, [DateTime]$ProcessStartedUtc, [DateTime]$BinaryWrittenUtc)
+    # A process older than the installed binary is still running the replaced
+    # image. Never stop a current client opened after that binary was written.
+    return $UpgradeRequired -or $ProcessStartedUtc -lt $BinaryWrittenUtc
+}
+
+function Stop-LegacyAgentForHandoff {
+    param([string]$ExpectedExe, [bool]$UpgradeRequired)
+    if (-not (Test-Path -LiteralPath $ExpectedExe)) { return }
+    $written = [IO.File]::GetLastWriteTimeUtc($ExpectedExe)
+    foreach ($entry in @(Get-CimInstance Win32_Process -Filter "Name='LESLocationAgent.exe'")) {
+        if ($entry.ExecutablePath -ne $ExpectedExe) { continue }
+        $process = Get-Process -Id $entry.ProcessId -ErrorAction SilentlyContinue
+        if ($null -eq $process) { continue }
+        if ($process.Path -ne $ExpectedExe -or
+            [Math]::Abs(($process.StartTime.ToUniversalTime() - $entry.CreationDate.ToUniversalTime()).TotalSeconds) -gt 1) {
+            throw 'Agent process identity changed; no process was stopped.'
+        }
+        if (-not (Test-LegacyAgentHandoff $UpgradeRequired $process.StartTime.ToUniversalTime() $written)) { continue }
+        $null = $process.CloseMainWindow()
+        if (-not $process.WaitForExit(5000)) {
+            # Only this verified stale LES process is retired. Core writes are
+            # atomic; no evidence, identity, task, or other application is deleted.
+            $process.Kill()
+            if (-not $process.WaitForExit(10000)) { throw 'Legacy agent did not release its process.' }
+        }
+        Write-Host "Legacy LES agent retired for unattended collector handoff (PID $($entry.ProcessId))."
+    }
+}
+
 function Write-Step { param([string]$Msg) Write-Host "`n[$([DateTime]::UtcNow.ToString('HH:mm:ss'))] $Msg" }
 function Fail       { param([string]$Msg) Write-Error "FAILURE: $Msg"; exit 1 }
 function Pass       { param([string]$Msg) Write-Host "  OK: $Msg" }
@@ -98,6 +129,7 @@ foreach ($installedVersion in @($clientVersion, $collectorVersion)) {
         Fail 'A newer but incomplete installation needs repair; refusing to downgrade it.'
     }
 }
+Stop-LegacyAgentForHandoff $ExePath (-not $alreadyCurrent)
 # Isolate invocation logs and downloads from any other management action.
 $TempDir = Join-Path $env:TEMP ('LESLocationAgent_Install_' + [guid]::NewGuid().ToString('N'))
 $InstallerPath = Join-Path $TempDir 'LESLocationAgent.msi'
