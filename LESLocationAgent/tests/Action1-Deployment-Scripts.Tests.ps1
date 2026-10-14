@@ -28,6 +28,7 @@ $program = Get-Content $programPath -Raw -Encoding UTF8
 
 Assert-Contains 'Installer template' $installer "__INSTALLER_URL__"
 Assert-Contains 'Installer template' $installer "__INSTALLER_SHA256__"
+Assert-Contains 'Installer template' $installer "__INSTALLER_VERSION__"
 Assert-Contains 'Installer validation' $installer "InstallerUrl must be an HTTPS URL"
 Assert-Contains 'Installer validation' $installer "Integrity verification cannot be skipped"
 if ($installer -match 'verification skipped') {
@@ -37,6 +38,7 @@ if ($installer -match 'verification skipped') {
 Assert-Contains 'Release workflow' $workflow 'Compute final MSI SHA-256'
 Assert-Contains 'Release workflow' $workflow "Replace('__INSTALLER_URL__', `$installerUrl)"
 Assert-Contains 'Release workflow' $workflow "Replace('__INSTALLER_SHA256__', `$env:INSTALLER_SHA256)"
+Assert-Contains 'Release workflow' $workflow "Replace('__INSTALLER_VERSION__', `$env:INSTALLER_VERSION)"
 if ($workflow.IndexOf('Compute final MSI SHA-256') -lt $workflow.IndexOf('Sign MSI (production)')) {
     throw 'Final MSI hash must be calculated after the optional signing step.'
 }

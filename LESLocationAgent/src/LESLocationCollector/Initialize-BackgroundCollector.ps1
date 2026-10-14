@@ -71,6 +71,48 @@ function Read-CollectorObservation {
     return [pscustomobject]$properties
 }
 
+function Grant-CollectorDataAccess {
+    param([string]$Sid)
+    if ($Sid -notmatch '^S-1-(5-21|12-1)-[0-9-]+$') { throw 'Unsupported data-access identity.' }
+    $directory = 'C:\ProgramData\LESLocationAgent'
+    $null = [IO.Directory]::CreateDirectory($directory)
+    # Legacy SYSTEM-created files can be readable but not writable by the
+    # consenting interactive user. Preserve all contents and existing rights.
+    # Grant Modify only to that SID, never Everyone or all Users, and do not
+    # recursively change arbitrary files or follow reparse points.
+    $paths = @($directory)
+    foreach ($name in @('agent.instance.lock', 'agent-state.json', 'agent-state.json.lock',
+        'location.json', 'status.json', 'config.json', 'collector.log', 'startup.log')) {
+        $file = Join-Path $directory $name
+        if (Test-Path -LiteralPath $file) { $paths += $file }
+    }
+    foreach ($path in $paths) {
+        $item = Get-Item -LiteralPath $path -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw 'Agent data reparse point detected; no permissions were changed.'
+        }
+    }
+    $identity = New-Object Security.Principal.SecurityIdentifier($Sid)
+    $rule = New-Object Security.AccessControl.FileSystemAccessRule(
+        $identity, [Security.AccessControl.FileSystemRights]::Modify,
+        [Security.AccessControl.AccessControlType]::Allow)
+    foreach ($path in $paths) {
+        $acl = Get-Acl -LiteralPath $path
+        $acl.AddAccessRule($rule)
+        Set-Acl -LiteralPath $path -AclObject $acl
+    }
+    Write-Host 'Agent data access prepared for the existing consenting user; identity and location contents preserved.'
+}
+
+function Resolve-CollectorPrincipalSid {
+    param([string]$Identity)
+    if ($Identity -match '^S-1-(5-21|12-1)-[0-9-]+$') { return $Identity }
+    if ([string]::IsNullOrWhiteSpace($Identity)) { throw 'Task principal is missing.' }
+    # Task Scheduler can return a local account name for a SID-authored task.
+    $account = New-Object Security.Principal.NTAccount($Identity)
+    return $account.Translate([Security.Principal.SecurityIdentifier]).Value
+}
+
 try {
     $exe = 'C:\Program Files\LES Location Agent\collector\LESLocationCollector.exe'
     if (-not (Test-Path $exe)) { throw 'No-UI collector is not installed; Action1 must deploy the new MSI first.' }
@@ -132,11 +174,13 @@ public static class LesBackgroundSession {
     $existing = @(Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue)
     if ($existing.Count -gt 0 -and (@($existing[0].Actions).Count -ne 1 -or
         $existing[0].Actions[0].Execute -ne $exe -or
-        $existing[0].Principal.UserId -ne $sid -or
+        (Resolve-CollectorPrincipalSid $existing[0].Principal.UserId) -ne $sid -or
         $existing[0].Principal.LogonType -ne 'Interactive' -or
-        $existing[0].Principal.RunLevel -ne 'Limited')) {
+        $existing[0].Principal.RunLevel -ne 'Limited' -or
+        $existing[0].Actions[0].Arguments -notin @('', '--once'))) {
         throw 'Existing task has unexpected identity/action; no task was replaced.'
     }
+    Grant-CollectorDataAccess $sid
     $xml = New-CollectorTaskXml $sid $exe $minutes ([DateTimeOffset]::Now.AddMinutes(1))
     # Rights apply only to this user's app task, not to other tasks or roles.
     # Own-user full control permits later non-elevated sign-in refresh.

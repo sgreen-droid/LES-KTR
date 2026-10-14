@@ -44,6 +44,16 @@ if (Test-CollectorObservation $reading 9 $now.AddDays(-1) $now) { throw 'Nonfini
 if ($source -match 'HasRunBefore|RequestAccessAsync|GrantLocationConsent|New-ItemProperty|Start-Process') {
     throw 'Background bootstrap must not launch the client or grant consent.'
 }
+if ($source -notmatch 'Grant-CollectorDataAccess \$sid' -or
+    $source -notmatch 'FileSystemRights\]::Modify' -or
+    $source -notmatch 'FileAttributes\]::ReparsePoint' -or
+    $source -match 'FileSystemRights\]::FullControl|Get-ChildItem.*-Recurse|Remove-Item.*agent-state') {
+    throw 'Data access must preserve evidence and grant only narrowly scoped Modify rights.'
+}
+if ($source -notmatch 'Resolve-CollectorPrincipalSid \$existing\[0\].Principal.UserId' -or
+    $source -notmatch 'Translate\(\[Security.Principal.SecurityIdentifier\]\)') {
+    throw 'Task identity comparison must resolve account-name principals back to the exact user SID.'
+}
 $installer = Get-Content (Join-Path $PSScriptRoot '../scripts/Action1-Install-LESLocationAgent.ps1') -Raw
 if ($installer -notmatch 'Initialize-BackgroundCollector.ps1' -or $installer -notmatch '-NonInteractive') {
     throw 'Action1 installer must initialize background collection automatically.'

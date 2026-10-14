@@ -5,9 +5,9 @@
 .DESCRIPTION
     1. Downloads the MSI installer from a configurable HTTPS URL.
     2. Verifies the SHA-256 hash before installation.
-    3. Installs silently.
+    3. Installs silently only when older or missing; never downgrades.
     4. Confirms program files exist.
-    5. Leaves the agent registered for the next interactive user sign-in.
+    5. Ensures unattended background collection for the existing consenting user.
     6. Reports SUCCESS or FAILURE.
 
 .PARAMETER InstallerUrl
@@ -38,12 +38,24 @@ $ErrorActionPreference = 'Stop'
 # ---------------------------------------------------------------
 $InstallerUrl   = '__INSTALLER_URL__'
 $ExpectedSha256 = '__INSTALLER_SHA256__'
+$TargetVersionText = '__INSTALLER_VERSION__'
 # ---------------------------------------------------------------
 
 $TempDir       = Join-Path $env:TEMP 'LESLocationAgent_Install'
 $InstallerPath = Join-Path $TempDir  'LESLocationAgent.msi'
 $InstallDir    = 'C:\Program Files\LES Location Agent'
 $ExePath       = Join-Path $InstallDir 'LESLocationAgent.exe'
+$CollectorExe = Join-Path $InstallDir 'collector\LESLocationCollector.exe'
+
+function Test-InstallationCurrent {
+    param([version]$Target, [string]$ClientVersion, [string]$CollectorVersion, [bool]$RequiredFilesPresent)
+    if (-not $RequiredFilesPresent) { return $false }
+    $client = $null
+    $collector = $null
+    if (-not [version]::TryParse($ClientVersion, [ref]$client) -or
+        -not [version]::TryParse($CollectorVersion, [ref]$collector)) { return $false }
+    return $client -ge $Target -and $collector -ge $Target
+}
 
 function Write-Step { param([string]$Msg) Write-Host "`n[$([DateTime]::UtcNow.ToString('HH:mm:ss'))] $Msg" }
 function Fail       { param([string]$Msg) Write-Error "FAILURE: $Msg"; exit 1 }
@@ -61,6 +73,37 @@ if ($InstallerUrl -notmatch '^https://') {
 if ($ExpectedSha256 -notmatch '^[0-9A-Fa-f]{64}$') {
     Fail 'ExpectedSha256 must be the 64-character SHA-256 hash for this exact MSI. Integrity verification cannot be skipped.'
 }
+if ($TargetVersionText -notmatch '^\d+\.\d+\.\d+\.\d+$') { Fail 'Installer target version is not configured.' }
+$targetVersion = [version]$TargetVersionText
+$os = Get-CimInstance Win32_OperatingSystem
+$architecture = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
+if ($os.ProductType -ne 1 -or [int]$os.BuildNumber -lt 19041 -or
+    -not [Environment]::Is64BitOperatingSystem -or $architecture -ne 'AMD64') {
+    Write-Host 'RESULT: SKIPPED_UNSUPPORTED - only supported x64 Windows 10/11 client devices are eligible.'
+    exit 0
+}
+$required = @('LESLocationCollector.exe', 'LESLocationCollector.dll', 'LESLocationCollector.runtimeconfig.json',
+    'WinRT.Runtime.dll', 'Microsoft.Windows.SDK.NET.dll', 'Initialize-BackgroundCollector.ps1', 'Remove-CollectorTasks.ps1')
+$complete = Test-Path $ExePath
+foreach ($name in $required) {
+    if (-not (Test-Path (Join-Path $InstallDir "collector\$name"))) { $complete = $false }
+}
+$clientVersion = if (Test-Path $ExePath) { (Get-Item $ExePath).VersionInfo.FileVersion } else { '' }
+$collectorVersion = if (Test-Path $CollectorExe) { (Get-Item $CollectorExe).VersionInfo.FileVersion } else { '' }
+$alreadyCurrent = Test-InstallationCurrent $targetVersion $clientVersion $collectorVersion $complete
+# Missing files on a newer installation must not trigger a downgrade.
+foreach ($installedVersion in @($clientVersion, $collectorVersion)) {
+    $parsedVersion = $null
+    if (-not $alreadyCurrent -and [version]::TryParse($installedVersion, [ref]$parsedVersion) -and $parsedVersion -gt $targetVersion) {
+        Fail 'A newer but incomplete installation needs repair; refusing to downgrade it.'
+    }
+}
+# Isolate invocation logs and downloads from any other management action.
+$TempDir = Join-Path $env:TEMP ('LESLocationAgent_Install_' + [guid]::NewGuid().ToString('N'))
+$InstallerPath = Join-Path $TempDir 'LESLocationAgent.msi'
+New-Item -ItemType Directory -Path $TempDir | Out-Null
+
+if (-not $alreadyCurrent) {
 
 # ---------------------------------------------------------------
 # Step 1: Create temp directory
@@ -126,6 +169,9 @@ Pass "Executable exists: $ExePath"
 $runKey  = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run'
 # The startup entry is written by the app itself on first launch - skip this check
 Pass 'Installation file check passed'
+} else {
+    Write-Host "RESULT: ALREADY_CURRENT - installed $collectorVersion; MSI download and installation skipped."
+}
 
 # ---------------------------------------------------------------
 # Step 6: Unattended background initialization
@@ -158,5 +204,6 @@ Remove-Item $TempDir -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "`n============================================"
 Write-Host 'RESULT: SUCCESS'
 Write-Host "LES Location Agent installed at: $InstallDir"
-Write-Host 'The agent starts at the next interactive user sign-in.'
+Write-Host "Target version: $TargetVersionText; recurring rollout can safely run again."
+Write-Host 'Background collection uses an existing consenting user; no client launch or forced consent.'
 Write-Host '============================================'

@@ -174,6 +174,7 @@ jobs:
             throw "MSI ProductVersion mismatch. Expected $expectedVersion; found $actualVersion."
           }
           Write-Host "Verified MSI ProductVersion: $actualVersion"
+          "INSTALLER_VERSION=$actualVersion" | Out-File $env:GITHUB_ENV -Append
 
       # CODE SIGNING — runs automatically when CODE_SIGN_PFX is set as a
       # GitHub Actions secret.  Development builds that lack the secret are
@@ -252,7 +253,7 @@ jobs:
           $scriptPath = Resolve-Path 'scripts\Action1-Install-LESLocationAgent.ps1'
           $installerUrl = "https://github.com/$($env:RELEASE_REPOSITORY)/releases/download/$($env:RELEASE_TAG)/LESLocationAgent.msi"
           $scriptContent = [IO.File]::ReadAllText($scriptPath)
-          $scriptContent = $scriptContent.Replace('__INSTALLER_URL__', $installerUrl).Replace('__INSTALLER_SHA256__', $env:INSTALLER_SHA256)
+          $scriptContent = $scriptContent.Replace('__INSTALLER_URL__', $installerUrl).Replace('__INSTALLER_SHA256__', $env:INSTALLER_SHA256).Replace('__INSTALLER_VERSION__', $env:INSTALLER_VERSION)
 
           if ($scriptContent.Contains('__INSTALLER_')) {
             throw 'Action1 installer script still contains an unconfigured release placeholder.'
