@@ -271,6 +271,27 @@ try {
         $global:LesCapturedAttributes['Location Status']
     Assert-MapFieldsCleared 'Map fields after IP-derived reading'
 
+    # A protected identity failure is actionable, not a generic health label.
+    # Publishing diagnostics must not repair the identity or reseal coordinates.
+    $validLocation | ConvertTo-Json | Set-Content -Path $locationFile -Encoding UTF8
+    '{}' | Set-Content -Path $stateFile -Encoding UTF8
+    @{
+        permissionStatus = 'Allowed'
+        locationStatus = 'IdentityProtectionBlocked'
+        agentHealth = 'IDENTITY PROTECTION BLOCKED'
+        error = 'Identity protection blocked: original file was preserved.'
+    } | ConvertTo-Json | Set-Content -Path $statusFile -Encoding UTF8
+    $beforeState = [IO.File]::ReadAllBytes($stateFile)
+    $beforeLocation = [IO.File]::ReadAllBytes($locationFile)
+    $global:LesCapturedAttributes = @{}
+    $global:LesOptionalAttributeFailures = @()
+    & $scriptPath
+    Assert-Equal 'Protected identity health' 'IDENTITY PROTECTION BLOCKED' $global:LesCapturedAttributes['Agent Health']
+    Assert-Equal 'Protected identity integrity' 'INVALID' $global:LesCapturedAttributes['Location Integrity']
+    Assert-MapFieldsCleared 'Protected identity map fields'
+    Assert-Equal 'Identity bytes preserved' ([Convert]::ToBase64String($beforeState)) ([Convert]::ToBase64String([IO.File]::ReadAllBytes($stateFile)))
+    Assert-Equal 'Location bytes preserved' ([Convert]::ToBase64String($beforeLocation)) ([Convert]::ToBase64String([IO.File]::ReadAllBytes($locationFile)))
+
     Write-Host 'Action1 location sync tests passed.'
 }
 finally {

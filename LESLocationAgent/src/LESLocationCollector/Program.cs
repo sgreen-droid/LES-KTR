@@ -11,6 +11,12 @@ internal static class Program
     private static int Main(string[] args)
     {
         try { return RunAsync(args).GetAwaiter().GetResult(); }
+        catch (IdentityProtectionException ex)
+        {
+            new LocationFileService().ReportIdentityProtectionFailure("Allowed", ex);
+            StartupLogger.Write(ex.Message);
+            return 5;
+        }
         catch (Exception ex)
         {
             StartupLogger.Write($"Background collector failed: {ex.GetType().Name}: {ex.Message}");
@@ -57,6 +63,7 @@ internal static class Program
                 StartupLogger.Write("Background collection refused: existing user location consent is not Allow.");
                 return 3;
             }
+            files.EnsureRecoveryIdentity();
             WinRT.ComWrappersSupport.InitializeComWrappers();
             var previous = files.ReadLocation();
             var service = new LocationService();

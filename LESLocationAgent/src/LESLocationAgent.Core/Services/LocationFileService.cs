@@ -11,7 +11,20 @@ namespace LESLocationAgent.Core.Services;
 /// </summary>
 public sealed class LocationFileService
 {
-    private readonly DeviceIdentityService _deviceIdentityService = new();
+    private readonly DeviceIdentityService _deviceIdentityService;
+    private readonly string _dataDirectory;
+    private readonly string _locationPath;
+    private readonly string _statusPath;
+
+    public LocationFileService(string? dataDirectory = null)
+    {
+        _dataDirectory = dataDirectory ?? AppConfig.DataDirectory;
+        _locationPath = Path.Combine(_dataDirectory, "location.json");
+        _statusPath = Path.Combine(_dataDirectory, "status.json");
+        _deviceIdentityService = new DeviceIdentityService(Path.Combine(_dataDirectory, "agent-state.json"));
+    }
+
+    public void EnsureRecoveryIdentity() => _deviceIdentityService.GetOrCreate();
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -59,8 +72,9 @@ public sealed class LocationFileService
             locationJson.IntegrityHmac =
                 _deviceIdentityService.CreateLocationIntegrityHmac(identity, locationJson);
 
-            WriteJsonAtomic(AppConfig.LocationFilePath, locationJson);
+            WriteJsonAtomic(_locationPath, locationJson);
         }
+        catch (IdentityProtectionException) { throw; }
         catch (Exception ex)
         {
             throw new InvalidOperationException($"Failed to write location.json: {ex.Message}", ex);
@@ -71,10 +85,10 @@ public sealed class LocationFileService
     {
         try
         {
-            if (!File.Exists(AppConfig.LocationFilePath))
+            if (!File.Exists(_locationPath))
                 return null;
 
-            var json = File.ReadAllText(AppConfig.LocationFilePath);
+            var json = File.ReadAllText(_locationPath);
             return JsonSerializer.Deserialize<LocationJson>(json);
         }
         catch
@@ -123,19 +137,42 @@ public sealed class LocationFileService
                 AgentHealth = GetAgentHealth(locationStatus, integrityStatus)
             };
 
-            WriteJsonAtomic(AppConfig.StatusFilePath, statusJson);
+            WriteJsonAtomic(_statusPath, statusJson);
         }
+        catch (IdentityProtectionException ex) { ReportIdentityProtectionFailure(permissionStatus, ex); }
         catch { /* Status write is best-effort; do not crash the app */ }
+    }
+
+    public void ReportIdentityProtectionFailure(string permissionStatus, IdentityProtectionException error)
+    {
+        try
+        {
+            var previous = ReadStatus();
+            WriteJsonAtomic(_statusPath, new StatusJson
+            {
+                LastAttemptUtc = UtcTimestamp.Format(DateTimeOffset.UtcNow),
+                LastHeartbeatUtc = UtcTimestamp.Format(DateTimeOffset.UtcNow),
+                LastSuccessUtc = previous?.LastSuccessUtc,
+                PermissionStatus = permissionStatus,
+                LocationStatus = "IdentityProtectionBlocked",
+                Error = error.Message,
+                DeviceId = previous?.DeviceId ?? "",
+                RecordSequence = previous?.RecordSequence ?? 0,
+                IntegrityStatus = "INVALID",
+                AgentHealth = "IDENTITY PROTECTION BLOCKED"
+            });
+        }
+        catch { /* Collector logs also report the failure if status is unwritable. */ }
     }
 
     public StatusJson? ReadStatus()
     {
         try
         {
-            if (!File.Exists(AppConfig.StatusFilePath))
+            if (!File.Exists(_statusPath))
                 return null;
 
-            var json = File.ReadAllText(AppConfig.StatusFilePath);
+            var json = File.ReadAllText(_statusPath);
             return JsonSerializer.Deserialize<StatusJson>(json);
         }
         catch
@@ -164,7 +201,7 @@ public sealed class LocationFileService
     /// </summary>
     public string GetLocationIntegrityStatus()
     {
-        if (!File.Exists(AppConfig.LocationFilePath))
+        if (!File.Exists(_locationPath))
             return "MISSING";
 
         var location = ReadLocation();
@@ -186,11 +223,11 @@ public sealed class LocationFileService
     // Helpers
     // ---------------------------------------------------------------
 
-    private static void EnsureDataDirectory()
+    private void EnsureDataDirectory()
     {
         try
         {
-            Directory.CreateDirectory(AppConfig.DataDirectory);
+            Directory.CreateDirectory(_dataDirectory);
         }
         catch (Exception ex)
         {

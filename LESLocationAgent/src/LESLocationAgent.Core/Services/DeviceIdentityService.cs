@@ -21,6 +21,7 @@ public sealed class DeviceIdentityService
     private readonly string _stateFilePath;
     private readonly string _dataDirectory;
     private readonly string _lockFilePath;
+    private readonly string _initializedPath;
 
     public DeviceIdentityService(string? stateFilePath = null)
     {
@@ -28,6 +29,7 @@ public sealed class DeviceIdentityService
         _dataDirectory = Path.GetDirectoryName(_stateFilePath)
             ?? throw new ArgumentException("A device identity path must include a directory.", nameof(stateFilePath));
         _lockFilePath = $"{_stateFilePath}.lock";
+        _initializedPath = $"{_stateFilePath}.initialized";
     }
 
     public DeviceIdentity GetOrCreate()
@@ -47,6 +49,8 @@ public sealed class DeviceIdentityService
         return WithStateLock(() =>
         {
             var identity = GetOrCreateUnsafe();
+            if (identity.LastRecordSequence == long.MaxValue)
+                throw new IdentityProtectionException("Identity protection blocked: record counter is exhausted; identity was preserved.");
             identity.LastRecordSequence++;
             Write(identity);
             return identity;
@@ -71,7 +75,9 @@ public sealed class DeviceIdentityService
             return false;
         }
 
-        var identity = GetOrCreate();
+        DeviceIdentity identity;
+        try { identity = ReadExisting(); }
+        catch (Exception ex) when (ex is IdentityProtectionException or FileNotFoundException) { return false; }
         if (!string.Equals(identity.DeviceId, location.DeviceId, StringComparison.Ordinal))
             return false;
 
@@ -108,9 +114,26 @@ public sealed class DeviceIdentityService
 
     private DeviceIdentity GetOrCreateUnsafe()
     {
-        var existing = TryRead();
-        if (IsValid(existing))
-            return existing!;
+        try
+        {
+            var existing = ReadExisting();
+            EnsureInitializationMarker();
+            return existing;
+        }
+        catch (IdentityProtectionException) { throw; }
+        catch (FileNotFoundException)
+        {
+            // Only positively missing files permit first-install initialization.
+            // File.Exists also returns false for access errors and is not safe here.
+        }
+
+        foreach (var evidence in new[] { _initializedPath,
+            Path.Combine(_dataDirectory, "location.json"), Path.Combine(_dataDirectory, "status.json") })
+        {
+            if (PathPresent(evidence))
+                throw new IdentityProtectionException(
+                    "Identity protection blocked: identity is missing but prior installation evidence exists; no replacement was created.");
+        }
 
         var identity = new DeviceIdentity
         {
@@ -120,56 +143,110 @@ public sealed class DeviceIdentityService
             IntegrityKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
         };
 
-        Write(identity);
+        // Mark first, so interruption cannot silently authorize a second identity.
+        EnsureInitializationMarker();
+        Write(identity, createOnly: true);
         return identity;
+    }
+
+    private static bool PathPresent(string path)
+    {
+        try { _ = File.GetAttributes(path); return true; }
+        catch (FileNotFoundException) { return false; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new IdentityProtectionException("Identity protection blocked: prior installation evidence cannot be inspected.");
+        }
+    }
+
+    private void EnsureInitializationMarker()
+    {
+        try
+        {
+            if (PathPresent(_initializedPath)) return;
+            using var marker = new FileStream(_initializedPath, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+            marker.Flush(flushToDisk: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new IdentityProtectionException("Identity protection blocked: initialization safeguard cannot be persisted; identity was preserved.");
+        }
     }
 
     private T WithStateLock<T>(Func<T> action)
     {
-        Directory.CreateDirectory(_dataDirectory);
+        try { Directory.CreateDirectory(_dataDirectory); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new IdentityProtectionException("Identity protection blocked: identity directory is inaccessible.");
+        }
 
         const int maxAttempts = 100;
         for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
+            FileStream lockHandle;
             try
             {
-                using var lockHandle = new FileStream(
+                lockHandle = new FileStream(
                     _lockFilePath,
                     FileMode.OpenOrCreate,
                     FileAccess.ReadWrite,
                     FileShare.None);
-                return action();
             }
             catch (IOException) when (attempt < maxAttempts - 1)
             {
                 Thread.Sleep(100);
+                continue;
             }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                throw new IdentityProtectionException("Identity protection blocked: exclusive identity access is unavailable.");
+            }
+            // Retry lock acquisition only, never replay a partially completed write.
+            using (lockHandle) return action();
         }
 
         throw new TimeoutException(
             "Timed out waiting for exclusive access to the recovery identity state.");
     }
 
-    private DeviceIdentity? TryRead()
+    private DeviceIdentity ReadExisting()
     {
+        var existed = false;
         try
         {
-            if (!File.Exists(_stateFilePath))
-                return null;
-
-            return JsonSerializer.Deserialize<DeviceIdentity>(
-                File.ReadAllText(_stateFilePath));
+            var attributes = File.GetAttributes(_stateFilePath);
+            existed = true;
+            if ((attributes & (FileAttributes.Directory | FileAttributes.ReparsePoint)) != 0)
+                throw new IdentityProtectionException("Identity protection blocked: identity path is not a regular file.");
+            using var stream = new FileStream(_stateFilePath, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+            if (stream.Length > 65_536)
+                throw new IdentityProtectionException("Identity protection blocked: identity file exceeds the supported size.");
+            using var document = JsonDocument.Parse(stream);
+            var root = document.RootElement;
+            var required = new[] { "deviceId", "createdUtc", "lastRecordSequence", "integrityKey" };
+            if (root.ValueKind != JsonValueKind.Object ||
+                required.Any(name => root.EnumerateObject().Count(p => p.Name == name) != 1))
+                throw new IdentityProtectionException("Identity protection blocked: identity has missing or duplicate fields; original file was preserved.");
+            var identity = root.Deserialize<DeviceIdentity>();
+            if (!IsValid(identity))
+                throw new IdentityProtectionException("Identity protection blocked: identity is invalid; original file was preserved.");
+            return identity!;
         }
-        catch
+        catch (FileNotFoundException) when (!existed) { throw; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or NotSupportedException)
         {
-            return null;
+            throw new IdentityProtectionException("Identity protection blocked: identity cannot be read or parsed; original file was preserved.");
         }
     }
 
     private static bool IsValid(DeviceIdentity? identity)
     {
         if (identity is null
-            || !Guid.TryParse(identity.DeviceId, out _)
+            || !Guid.TryParse(identity.DeviceId, out var id) || id == Guid.Empty
+            || !DateTimeOffset.TryParse(identity.CreatedUtc, CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind, out _)
             || identity.LastRecordSequence < 0)
         {
             return false;
@@ -185,7 +262,7 @@ public sealed class DeviceIdentityService
         }
     }
 
-    private void Write(DeviceIdentity identity)
+    private void Write(DeviceIdentity identity, bool createOnly = false)
     {
         var tempPath = $"{_stateFilePath}.{Guid.NewGuid():N}.tmp";
         var json = JsonSerializer.Serialize(identity, JsonOptions);
@@ -193,7 +270,7 @@ public sealed class DeviceIdentityService
         try
         {
             File.WriteAllText(tempPath, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-            File.Move(tempPath, _stateFilePath, overwrite: true);
+            File.Move(tempPath, _stateFilePath, overwrite: !createOnly);
         }
         finally
         {

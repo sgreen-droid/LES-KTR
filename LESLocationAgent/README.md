@@ -4,6 +4,23 @@ A small Windows 10/11 desktop application that obtains the most accurate GPS/Wi-
 
 ---
 
+## Identity protection
+
+The agent preserves the existing installation identity and signing key. An
+unreadable, damaged, invalid, or unexpectedly missing identity blocks collection;
+it is never silently replaced. The last signed location is retained. Status and
+Action1 reporting identify the condition as **IDENTITY PROTECTION BLOCKED**.
+
+A new identity is allowed only for a genuinely fresh data directory with no
+identity-initialization marker, saved location, or saved status. The marker is
+persisted before initial identity creation, so an interrupted initialization
+also fails closed. Do not delete the marker or saved evidence to clear a warning:
+recover the original identity through an explicitly authorized procedure.
+
+Signature verification only reads identity state; it never initializes or
+repairs it. This protection does not change Windows location consent, reporting
+cadence, or acceptance of physical versus IP-derived readings.
+
 ## Quick Summary
 
 | What you do | How long |

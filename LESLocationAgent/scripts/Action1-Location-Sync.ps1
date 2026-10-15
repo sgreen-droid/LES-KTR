@@ -222,7 +222,10 @@ function Set-RecoveryAttributes {
     $lastSuccess = [string](Get-PropertyValue $StatusData 'lastSuccessUtc' '')
     $errorText = [string](Get-PropertyValue $StatusData 'error' '')
 
-    if ($IntegrityStatus -eq 'INVALID') {
+    if ([string](Get-PropertyValue $StatusData 'locationStatus' '') -eq 'IdentityProtectionBlocked') {
+        $agentHealth = 'IDENTITY PROTECTION BLOCKED'
+    }
+    elseif ($IntegrityStatus -eq 'INVALID') {
         $agentHealth = 'INTEGRITY FAILED'
     }
     elseif ($RecoveryStatus -notin @('ACTIVE', 'STALE', 'UNKNOWN')) {
