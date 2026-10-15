@@ -21,6 +21,13 @@ Signature verification only reads identity state; it never initializes or
 repairs it. This protection does not change Windows location consent, reporting
 cadence, or acceptance of physical versus IP-derived readings.
 
+The headless collector records `Collecting` before requesting Windows location
+and enforces an independent two-minute acquisition deadline, inside the scheduled
+task's three-minute limit. A deadline failure reports `LOCATION TIMED OUT` while
+retaining the last signed observation and last successful observation time. The
+collector explicitly exits after disposing its evidence lease and saving its
+result, so abandoned WinRT work cannot keep that process running.
+
 ## Quick Summary
 
 | What you do | How long |

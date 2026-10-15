@@ -278,6 +278,8 @@ public sealed class LocationFileService
         {
             "Success" => "HEALTHY",
             "Starting" => "STARTING",
+            "Collecting" => "COLLECTING",
+            "TimedOut" => "LOCATION TIMED OUT",
             "PermissionDenied" => "PERMISSION DENIED",
             "NoLocation" => "NO LOCATION",
             "Error" => "ERROR",

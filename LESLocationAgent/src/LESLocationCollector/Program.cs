@@ -8,7 +8,16 @@ namespace LESLocationCollector;
 internal static class Program
 {
     [MTAThread]
-    private static int Main(string[] args)
+    private static void Main(string[] args)
+    {
+        var exitCode = Execute(args);
+        // Execute has already disposed the evidence lease and persisted status.
+        // Do not leave a background WinRT operation holding the task process open.
+        StartupLogger.Write($"Background collector exiting; code={exitCode}.");
+        Environment.Exit(exitCode);
+    }
+
+    private static int Execute(string[] args)
     {
         try { return RunAsync(args).GetAwaiter().GetResult(); }
         catch (IdentityProtectionException ex)
@@ -64,10 +73,34 @@ internal static class Program
                 return 3;
             }
             files.EnsureRecoveryIdentity();
-            WinRT.ComWrappersSupport.InitializeComWrappers();
+            files.WriteStatus("Collecting", "Allowed");
+            StartupLogger.Write("Background collection attempt started; independent deadline=120 seconds.");
             var previous = files.ReadLocation();
-            var service = new LocationService();
-            var result = await service.GetBestLocationAsync(config, forceFresh: true);
+            LocationService.LocationResult result;
+            try
+            {
+                result = await CollectionDeadline.RunAsync(() =>
+                {
+                    WinRT.ComWrappersSupport.InitializeComWrappers();
+                    return new LocationService().GetBestLocationAsync(config, forceFresh: true);
+                }, CollectionDeadline.BackgroundBudget);
+            }
+            catch (TimeoutException)
+            {
+                if (UserContext.IsActive() && UserContext.HasExistingConsent())
+                    files.WriteStatus("TimedOut", "Allowed",
+                        error: "Windows location collection exceeded its 120-second deadline. Last signed location was preserved.");
+                StartupLogger.Write("Background collection deadline exceeded; last signed location preserved.");
+                return 4;
+            }
+            catch (Exception ex)
+            {
+                if (UserContext.IsActive() && UserContext.HasExistingConsent())
+                    files.WriteStatus("Error", "Allowed",
+                        error: $"Background location request failed ({ex.GetType().Name}). Last signed location was preserved.");
+                StartupLogger.Write($"Background location request failed: {ex.GetType().Name}.");
+                return 4;
+            }
             // Recheck after awaiting Windows: user switch/revocation must not
             // publish another user's fix or overwrite the last good observation.
             if (!UserContext.IsActive() || !UserContext.HasExistingConsent())
